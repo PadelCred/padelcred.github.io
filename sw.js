@@ -1,5 +1,5 @@
 // PadelCred offline support. Change the version when you update the app.
-const VERSION = 'padelcred-v140';
+const VERSION = 'padelcred-v141';
 const SHELL = ['./', 'manifest.json', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'icon-maskable-512.png', 'favicon-64.png'];
 
 self.addEventListener('install', e => {
@@ -15,6 +15,8 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
+  // Only handle normal web addresses: browser extensions and other schemes are left alone.
+  if (!/^https?:/.test(e.request.url)) return;
   // Live lookups (venue search, accounts and sync) always go straight to the network.
   if (/photon\.komoot\.io|firestore\.googleapis|identitytoolkit|securetoken|googleapis\.com\/identity/.test(e.request.url)) return;
   // Pages: try the network first so updates come through, fall back to the saved copy offline.
