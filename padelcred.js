@@ -3000,7 +3000,7 @@ function updateNav(){
   const home=$('homeView').classList.contains('on'),res=$('resultsView').classList.contains('on'),ko=!!($('koView')&&$('koView').classList.contains('on'));
   const show=!blocking&&(home||res||ko);
   nav.classList.toggle('hide',!show);document.body.classList.toggle('hasnav',show);
-  const cur=home&&!res?'home':(typeof tab!=='undefined'?tab:'');
+  const cur=ko&&!res?'home':home&&!res?'home':(typeof tab!=='undefined'?tab:'');
   nav.querySelectorAll('button').forEach(b=>b.setAttribute('aria-current',b.dataset.nav===cur?'page':'false'));
 }
 $('fnav').addEventListener('click',e=>{if(e.target.closest('button[data-nav]')&&$('koView')&&$('koView').classList.contains('on')){$('koView').classList.remove('on');if(e.target.closest('button[data-nav]').dataset.nav==='home'&&!$('resultsView').classList.contains('on')&&typeof showHome==='function')showHome()}},true);
@@ -3575,7 +3575,7 @@ $('peCancel').onclick=()=>hideSheet();
 
 
 /* ================= home logo and updates ================= */
-const APP_VERSION='15.1';
+const APP_VERSION='1.6';
 document.querySelectorAll('.vlogo').forEach(i=>i.src=$('logo').src);
 function goHome(e){
   const el=e&&e.currentTarget;if(el){el.classList.remove('tap');void el.offsetWidth;el.classList.add('tap')}

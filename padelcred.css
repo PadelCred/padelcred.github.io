@@ -1659,3 +1659,8 @@ button{transition:transform .12s ease}
 .skchip.on{background:#6EE7B7;border-color:#6EE7B7;color:#0B1420}
 .done .skchip{border-color:rgba(255,255,255,.35)}
 body.hasnav #koView{padding-bottom:calc(110px + env(safe-area-inset-bottom,0px))}
+/* rating rows: name, stars and score on one line, the Stood out chips on their own line underneath */
+.rprow{flex-wrap:wrap;row-gap:6px}
+.rprow>b{flex:1 1 0}
+.rpsk{flex:1 0 100%;order:3;margin:0 0 4px}
+.rprow+.rprow{border-top:1px solid rgba(255,255,255,.08);padding-top:8px}
