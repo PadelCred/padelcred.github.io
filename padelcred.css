@@ -67,7 +67,7 @@ button{cursor:pointer;font-family:var(--heading)}
 .pip.big{width:auto;max-width:none;inset:16px;aspect-ratio:auto;height:auto}
 
 .done{position:absolute;inset:0;z-index:4;display:none;flex-direction:column;align-items:center;justify-content:center;
-  gap:12px;background:rgba(11,20,32,.82);text-align:center;padding:24px}
+  gap:12px;background:rgba(11,20,32,.96);text-align:center;padding:24px}
 .done.on{display:flex}
 .done h2{font-family:var(--display);font-weight:800;font-size:48px;margin:0;line-height:1;color:var(--lime);letter-spacing:-.02em}
 .done p{margin:0;font-size:19px;font-weight:600;color:var(--white)}
@@ -1644,3 +1644,17 @@ button{transition:transform .12s ease}
 .korunner{font-size:13px;color:#BAC9D3}
 .koacts{display:grid;gap:8px;margin-top:10px}
 .kodel{color:#FF8C80}
+.grid.duos{min-width:0;width:100%}
+.grid.duos td:first-child{white-space:normal}
+/* skill radar */
+.skcard{background:#142132;border:1.5px solid #334155;border-radius:20px;padding:14px 14px 10px;margin:14px 0 6px;text-align:center}
+.skttl{display:block;text-align:left;font-family:var(--heading);font-weight:700;font-size:18px;color:#F5F7FA}
+.sksub{margin:2px 0 4px;text-align:left;font-size:13px;color:#BAC9D3}
+.skradar{display:block;width:100%;max-width:340px;height:auto;margin:0 auto}
+.sktop{margin:2px 0 0;font-size:14.5px;color:#F5F7FA}.sktop b{color:#6EE7B7}
+.sknote{margin:4px 0 2px;font-size:12.5px;color:#BAC9D3}
+.rpsk{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:4px 0 2px}
+.rpsk>span{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#BAC9D3;margin-right:2px}
+.skchip{padding:5px 10px;border-radius:999px;border:1.5px solid #3F4E63;background:transparent;color:#F5F7FA;font-size:12.5px;font-weight:600}
+.skchip.on{background:#6EE7B7;border-color:#6EE7B7;color:#0B1420}
+.done .skchip{border-color:rgba(255,255,255,.35)}
