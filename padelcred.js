@@ -2997,12 +2997,13 @@ new MutationObserver(ms=>{for(const m of ms)for(const n of m.addedNodes){if(n.no
 function updateNav(){
   const nav=$('fnav');if(!nav)return;
   const blocking=document.querySelector('#obView.on,#tourView.on,#camView.on,#celView.on,#edView.on,#amerView.on,#dimView.on,#scanView.on,#yipView.on,#frView.on');
-  const home=$('homeView').classList.contains('on'),res=$('resultsView').classList.contains('on');
-  const show=!blocking&&(home||res);
+  const home=$('homeView').classList.contains('on'),res=$('resultsView').classList.contains('on'),ko=!!($('koView')&&$('koView').classList.contains('on'));
+  const show=!blocking&&(home||res||ko);
   nav.classList.toggle('hide',!show);document.body.classList.toggle('hasnav',show);
   const cur=home&&!res?'home':(typeof tab!=='undefined'?tab:'');
   nav.querySelectorAll('button').forEach(b=>b.setAttribute('aria-current',b.dataset.nav===cur?'page':'false'));
 }
+$('fnav').addEventListener('click',e=>{if(e.target.closest('button[data-nav]')&&$('koView')&&$('koView').classList.contains('on')){$('koView').classList.remove('on');if(e.target.closest('button[data-nav]').dataset.nav==='home'&&!$('resultsView').classList.contains('on')&&typeof showHome==='function')showHome()}},true);
 $('fnav').addEventListener('click',e=>{
   const b=e.target.closest('button[data-nav]');if(!b)return;const k=b.dataset.nav;
   if(k==='home'){if($('resultsView').classList.contains('on'))$('resultsBack').click();else if(typeof showHome==='function')showHome();}
@@ -3118,9 +3119,9 @@ function koAdvance(t){
   });
   const fin=t.rounds[t.rounds.length-1][0];t.done=fin.w!=null;t.champion=t.done?fin.w:null;t.runner=t.done?(fin.w===fin.a?fin.b:fin.a):null;
 }
-function openKo(id){hideSheet();if(typeof hideHome==='function')hideHome();KO.view=id||null;renderKo();$('koView').classList.add('on');$('koView').scrollTop=0}
+function openKo(id){hideSheet();if(typeof hideHome==='function')hideHome();KO.view=id||null;renderKo();$('koView').classList.add('on');$('koView').scrollTop=0;if(typeof updateNav==='function')updateNav()}
 document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('#koHome'))closeKo()});
-function closeKo(){$('koView').classList.remove('on');if(typeof showHome==='function')showHome()}
+function closeKo(){$('koView').classList.remove('on');if(typeof showHome==='function')showHome();if(typeof updateNav==='function')updateNav()}
 function koNamesList(){try{return computeLeague().map(p=>p.name)}catch(e){return[]}}
 function renderKo(){
   const box=$('koBody');if(!box)return;const t=KO.list.find(x=>x.id===KO.view);
@@ -3574,7 +3575,7 @@ $('peCancel').onclick=()=>hideSheet();
 
 
 /* ================= home logo and updates ================= */
-const APP_VERSION='15.0';
+const APP_VERSION='15.1';
 document.querySelectorAll('.vlogo').forEach(i=>i.src=$('logo').src);
 function goHome(e){
   const el=e&&e.currentTarget;if(el){el.classList.remove('tap');void el.offsetWidth;el.classList.add('tap')}
