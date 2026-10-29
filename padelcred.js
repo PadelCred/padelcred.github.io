@@ -593,7 +593,7 @@ function camMsg(t){$('camMsg').textContent=t||'';$('camMsg').classList.toggle('o
 function syncCamUi(){
   $('camQ').textContent=camPrefs.q==='1080'?'1080p':'720p';
   $('camQ').disabled=!!rec;$('camFlip').disabled=!!rec;
-  $('camView').classList.toggle('recording',!!rec);
+  $('camView').classList.toggle('recording',!!rec);if($('camMark'))$('camMark').classList.toggle('hide',!rec);
   $('camUsLbl').textContent='+ '+nm(0);$('camThemLbl').textContent='+ '+nm(1);
   $('camOverlayBtn').setAttribute('aria-pressed',String(!!M.cfg.overlay));
   $('camFootBtn').disabled=!!rec;updateFootBadge();
@@ -664,6 +664,8 @@ function clipThat(){
   try{navigator.vibrate&&navigator.vibrate([30,40,30])}catch(e){}
 }
 $('camClip').onclick=clipThat;
+if($('camMark'))$('camMark').onclick=()=>addMark('mark');
+{const _el=edLoad;edLoad=async function(blob){if(ED.marksBlob!==blob)ED.marks=[];const r=await _el.apply(this,arguments);try{edMarksRender()}catch(e){}return r}}
 
 function fmt(ms){const s=Math.floor(ms/1000),m=Math.floor(s/60);return String(m).padStart(2,'0')+':'+String(s%60).padStart(2,'0')}
 async function startRec(){
@@ -680,7 +682,7 @@ async function startRec(){
   try{rec=new MediaRecorder(out,mime?{mimeType:mime,videoBitsPerSecond:bps}:{videoBitsPerSecond:bps})}
   catch(e){try{rec=new MediaRecorder(out)}catch(e2){camMsg('This browser can\'t record video.');rec=null;return}}
   recMime=rec.mimeType||mime||'video/webm';
-  memChunks=[];writeChain=Promise.resolve();
+  memChunks=[];writeChain=Promise.resolve();recMarks=[];
   if(vdb.ok){try{await vdb.clear();await vdb.setMeta({mime:recMime,start:Date.now(),done:false})}catch(e){vdb.ok=false}}
   rec.ondataavailable=e=>{
     if(!e.data||!e.data.size)return;
@@ -705,8 +707,8 @@ async function finishRec(){
   if(!camOpen){if(raf)cancelAnimationFrame(raf);raf=null;stopCam()}
   letSleep();
   await writeChain;
-  if(vdb.ok){try{await vdb.setMeta({mime:recMime,start:t0,done:true,dur})}catch(e){}}
-  else if(memChunks.length){memMain={blob:new Blob(memChunks,{type:recMime.split(';')[0]}),dur}}
+  if(vdb.ok){try{await vdb.setMeta({mime:recMime,start:t0,done:true,dur,marks:recMarks})}catch(e){}}
+  else if(memChunks.length){memMain={blob:new Blob(memChunks,{type:recMime.split(';')[0]}),dur,marks:recMarks.slice()}}
   memChunks=[];
   setTimeout(async()=>{await clipWrites;loadFootage(true)},700);
 }
@@ -716,12 +718,12 @@ async function loadFootage(show){
   if(vdb.ok){
     try{
       const meta=await vdb.getMeta(),n=await vdb.count();
-      if(meta&&n){const parts=await vdb.all(),type=(meta.mime||'video/webm').split(';')[0];items.push({kind:'main',blob:new Blob(parts,{type}),type,dur:meta.dur||0,at:meta.start})}
+      if(meta&&n){const parts=await vdb.all(),type=(meta.mime||'video/webm').split(';')[0];items.push({kind:'main',blob:new Blob(parts,{type}),type,dur:meta.dur||0,at:meta.start,marks:meta.marks||[]})}
       else if(meta&&!n)await vdb.clear();
       (await vdb.clips()).forEach(c=>items.push(Object.assign({kind:'clip'},c)));
     }catch(e){}
   }
-  if(memMain)items.unshift({kind:'main',blob:memMain.blob,type:memMain.blob.type,dur:memMain.dur,at:t0});
+  if(memMain)items.unshift({kind:'main',blob:memMain.blob,type:memMain.blob.type,dur:memMain.dur,at:t0,marks:memMain.marks||[]});
   memClips.forEach(c=>items.push(Object.assign({kind:'clip',mem:true},c)));
   footage=items;
   if(!items.length){if(show&&stoppedByHide){stoppedByHide=false;toast('Nothing was recorded.')}return 0}
@@ -762,7 +764,7 @@ function renderFootage(){
         if(r==='saved'){it.saved=true;await removeItem(it);renderFootage();toast(savedMsg(name))}
         else if(r==='failed')toast('Couldn\'t save that video here.');
       }else if(b.dataset.act==='edit'){
-        hideSheet();openEditor(it.blob);
+        hideSheet();ED.marks=it.kind==='main'?(it.marks||[]):[];ED.marksBlob=it.blob;openEditor(it.blob);
       }else if(b.dataset.act==='share'){
         try{await navigator.share({files:[new File([it.blob],name,{type:it.type})],title:'PadelCred'})}catch(e){if(e&&e.name!=='AbortError')toast('Couldn\'t open sharing. Try Save instead.')}
       }else if(b.dataset.act==='del'){
@@ -1633,7 +1635,7 @@ async function edListFootage(){
   if(!footage.length){box.innerHTML='';return}
   let n=0;
   box.innerHTML='<p class="sh">From your PadelCred footage</p>'+footage.map((it,i)=>{const t=it.kind==='main'?'Full recording':'Clip '+(++n);return'<button class="linkrow" data-i="'+i+'"><span class="fthumb'+(it.kind==='main'?'':' c')+'" style="width:40px;height:40px;font-size:13px">'+(it.kind==='main'?'Full':'Clip')+'</span><span>'+t+'</span><span class="sc">'+fmt(it.dur||0)+'</span></button>'}).join('');
-  box.querySelectorAll('[data-i]').forEach(b=>b.onclick=()=>{const it=footage[+b.dataset.i];edLoad(it.blob,'')});
+  box.querySelectorAll('[data-i]').forEach(b=>b.onclick=()=>{const it=footage[+b.dataset.i];ED.marks=it.kind==='main'?(it.marks||[]):[];ED.marksBlob=it.blob;edLoad(it.blob,'')});
 }
 
 /* export */
@@ -2677,6 +2679,153 @@ document.addEventListener('click',e=>{
   saveSkills(row);
 });
 
+/* ================= v1.7: insights, seasons, challenges, planner, chemistry, moment markers ================= */
+function pcSide(r,key){if(members(r.cfg,0).some(n=>pkey(n)===key))return 0;if(members(r.cfg,1).some(n=>pkey(n)===key))return 1;return -1}
+function pcGames(r){let a=0,b=0;r.sets.forEach(s=>{if(s.g){a+=s.g[0]||0;b+=s.g[1]||0}else if(Array.isArray(s)){a+=s[0]||0;b+=s[1]||0}});return[a,b]}
+function pcRowsFor(key,days){const cut=days?Date.now()-days*864e5:0;return allRows().filter(r=>r.winner!==null&&r.date>=cut&&pcSide(r,key)>=0).sort((a,b)=>b.date-a.date)}
+function pcRating(L,n){const p=L.find(x=>x.key===pkey(n));return p?p.rating:seedFor(pkey(n))}
+
+/* --- partner chemistry: how a pair has actually done together --- */
+function duoRecord(n1,n2){try{const p=computeLeague().find(x=>x.key===pkey(n1));const d=p&&p.partners&&p.partners[pkey(n2)];return d?{p:d.p,w:d.w}:null}catch(e){return null}}
+function chemBonus(team){team=(team||[]).filter(Boolean);if(team.length<2)return 0;const d=duoRecord(team[0],team[1]);if(!d||d.p<3)return 0;return Math.max(-60,Math.min(60,(d.w/d.p-.5)*120))}
+function chemChance(a,b){a=(a||[]).filter(Boolean);b=(b||[]).filter(Boolean);if(!a.length||!b.length)return null;const ra=a.reduce((s,n)=>s+ratingFor(n),0)/a.length+chemBonus(a),rb=b.reduce((s,n)=>s+ratingFor(n),0)/b.length+chemBonus(b);return 1/(1+Math.pow(10,(rb-ra)/400))}
+function chemLines(a,b){const out=[];[a,b].forEach(t=>{t=(t||[]).filter(Boolean);if(t.length<2)return;const d=duoRecord(t[0],t[1]);if(d&&d.p)out.push(esc(t.join(' & '))+': '+d.w+'–'+(d.p-d.w)+' together')});return out}
+
+/* --- form insights: plain-English reasons behind your form --- */
+function formInsights(p){
+  if(!p)return[];const key=p.key,L=computeLeague(),out=[];
+  const all=pcRowsFor(key,0);if(all.length<3)return out;
+  const won=r=>r.winner===pcSide(r,key);
+  let st=0;for(const r of all){if(won(r))st++;else break}let ls=0;for(const r of all){if(!won(r))ls++;else break}
+  const last5=all.slice(0,5);if(last5.length===5&&!(st>=3)&&!(ls>=3)){const w=last5.filter(won).length;out.push(w>=4?'You\'ve won '+w+' of your last 5 matches.':w<=1?'Just '+w+' win'+(w===1?'':'s')+' in your last 5. A good night soon turns that round.':'You\'ve won '+w+' of your last 5 matches.')}
+  if(st>=3)out.push('You\'re on a '+st+'-match winning streak.');else if(ls>=3)out.push('You\'ve lost your last '+ls+'. Every streak ends.');
+  const strong=(rows)=>{let w=0,l=0;rows.forEach(r=>{const s=pcSide(r,key),mine=members(r.cfg,s),opp=members(r.cfg,1-s);const rm=mine.reduce((t,n)=>t+pcRating(L,n),0)/mine.length,ro=opp.reduce((t,n)=>t+pcRating(L,n),0)/opp.length;if(ro>rm+20){won(r)?w++:l++}});return[w,l]};
+  const now30=all.filter(r=>r.date>=Date.now()-30*864e5),prev30=all.filter(r=>r.date<Date.now()-30*864e5&&r.date>=Date.now()-60*864e5);
+  const [sw,sl]=strong(now30),[pw,pl]=strong(prev30);
+  if(sw+sl>=2){const nowR=sw/(sw+sl),prevR=pw+pl?pw/(pw+pl):null;out.push('Against stronger pairs in the last 30 days: '+sw+' win'+(sw===1?'':'s')+', '+sl+' loss'+(sl===1?'':'es')+(prevR!==null&&Math.abs(nowR-prevR)>=.15?(nowR>prevR?', better than the month before.':', down on the month before.'):'.'))}
+  const close=now30.filter(r=>{const[g1,g2]=pcGames(r);return Math.abs(g1-g2)<=2&&g1+g2>0});if(close.length>=2){const cw=close.filter(won).length;out.push('You\'ve won '+cw+' of '+close.length+' close matches recently.')}
+  const pw2={};now30.filter(won).forEach(r=>members(r.cfg,pcSide(r,key)).forEach(n=>{if(pkey(n)!==key){pw2[n]=(pw2[n]||0)+1}}));const best=Object.entries(pw2).sort((a,b)=>b[1]-a[1])[0];
+  if(best&&best[1]>=2)out.push('Best partner this month: '+esc(best[0])+' ('+best[1]+' wins together).');
+  return out.slice(0,4);
+}
+function formInsightsHtml(p){const ins=formInsights(p);if(!ins.length)return'';return'<section class="fincard"><b class="finttl">Behind your form</b><ul>'+ins.map(t=>'<li>'+t+'</li>').join('')+'</ul></section>'}
+
+/* --- seasons: monthly and seasonal tables from your existing results --- */
+const SEA={mode:store.get('db-season')||'month'};
+function seasonRange(mode,ref){const d=ref?new Date(ref):new Date();const y=d.getFullYear(),m=d.getMonth();
+  if(mode==='last'){return[new Date(y,m-1,1).getTime(),new Date(y,m,1).getTime(),new Date(y,m-1,1).toLocaleDateString('en-GB',{month:'long'})]}
+  if(mode==='season'){const s=m===11?11:m<2?-1:m<5?2:m<8?5:8;const start=new Date(y,s,1),end=new Date(y,s+3,1);const nm=['Winter','Spring','Summer','Autumn'][s===11||s===-1?0:s===2?1:s===5?2:3];return[start.getTime(),end.getTime(),nm+' Series']}
+  return[new Date(y,m,1).getTime(),new Date(y,m+1,1).getTime(),d.toLocaleDateString('en-GB',{month:'long'})]}
+function seasonTable(from,to,group){
+  const liveOnly=store.get('db-live-only')===true,T={};
+  allRows().filter(r=>r.winner!==null&&r.date>=from&&r.date<to&&(!group||groupOf(r.cfg).toLowerCase()===group.toLowerCase())&&!(liveOnly&&r.h.manual)).forEach(r=>{
+    [0,1].forEach(s=>members(r.cfg,s).forEach(n=>{const k=pkey(n);const t=T[k]=T[k]||{key:k,name:n,p:0,w:0,l:0,pts:0,gd:0};const[g1,g2]=pcGames(r);t.p++;if(r.winner===s){t.w++;t.pts+=3}else{t.l++;t.pts+=1}t.gd+=s===0?g1-g2:g2-g1}))});
+  return Object.values(T).sort((a,b)=>b.pts-a.pts||(b.w/b.p)-(a.w/a.p)||b.gd-a.gd);
+}
+function seasonHtml(group){
+  const[from,to,name]=seasonRange(SEA.mode),t=seasonTable(from,to,group),done=SEA.mode==='last'||(SEA.mode==='season'&&Date.now()>=to);
+  const chip=(v,l)=>'<button data-sea="'+v+'" aria-pressed="'+(SEA.mode===v)+'">'+l+'</button>';
+  const[,,thisM]=seasonRange('month'),[,,lastM]=seasonRange('last'),[,,serN]=seasonRange('season');
+  let h='<section class="seacard"><b class="seattl">Seasons</b><p class="seasub">A fresh table every month and season, from your normal results. 3 points for a win, 1 for a loss.</p><div class="seg seaseg">'+chip('month',thisM)+chip('last',lastM)+chip('season',serN)+'</div>';
+  if(!t.length)h+='<p class="seanone">No matches in '+esc(name)+' yet. The first result starts the table.</p>';
+  else{
+    if(done&&t[0])h+='<div class="seachamp"><span>🏆</span><b>'+esc(t[0].name)+'</b><em>'+esc(name)+' champion · '+t[0].pts+' pts</em></div>';
+    else if(t[0])h+='<p class="sealead">'+esc(t[0].name)+' leads '+esc(name)+' on '+t[0].pts+' points.</p>';
+    h+='<div class="tablewrap"><table class="grid seatable"><thead><tr><th>#</th><th>Player</th><th class="num">P</th><th class="num">W</th><th class="num">Pts</th></tr></thead><tbody>'+t.slice(0,10).map((x,i)=>'<tr><td>'+(i+1)+'</td><td>'+esc(x.name)+'</td><td class="num">'+x.p+'</td><td class="num">'+x.w+'</td><td class="num"><b>'+x.pts+'</b></td></tr>').join('')+'</tbody></table></div>';
+  }
+  // past monthly champions
+  const past=[];for(let i=1;i<=6;i++){const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-i);const f=new Date(d.getFullYear(),d.getMonth(),1).getTime(),e=new Date(d.getFullYear(),d.getMonth()+1,1).getTime();const tt=seasonTable(f,e,group);if(tt[0])past.push([d.toLocaleDateString('en-GB',{month:'short'}),tt[0].name])}
+  if(past.length)h+='<p class="seapast"><b>Past champions</b> '+past.map(x=>esc(x[0])+': '+esc(x[1])).join(' · ')+'</p>';
+  return h+'</section>';
+}
+document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-sea]');if(!b)return;SEA.mode=b.dataset.sea;store.set('db-season',SEA.mode);renderLeague()});
+{const _rl2=renderLeague;renderLeague=function(){_rl2.apply(this,arguments);Promise.resolve().then(()=>{try{const box=$('leagueBody');if(!box||box.querySelector('.seacard'))return;const anchor=box.querySelector('.lgavg')||box.querySelector('#lgRankBtn');const html=seasonHtml(RES.group);if(anchor)anchor.insertAdjacentHTML('afterend',html);else box.insertAdjacentHTML('afterbegin',html)}catch(e){}})}}
+
+/* --- rivalry challenges: first to N wins, or best of N, counted from your results --- */
+const CH={list:store.get('db-ch')||[]};
+function chSave(){store.set('db-ch',CH.list);if(typeof profChanged==='function')profChanged()}
+function mergeCh(arr){(arr||[]).forEach(c=>{const i=CH.list.findIndex(x=>x.id===c.id);if(i<0)CH.list.push(c);else if((c.u||0)>(CH.list[i].u||0))CH.list[i]=c});store.set('db-ch',CH.list)}
+function chTarget(c){return c.type==='best'?Math.ceil(c.n/2):c.n}
+function chScore(c){const me=meKey(),opp=c.opp;let a=0,b=0,last=null;
+  allRows().filter(r=>r.winner!==null&&r.date>=c.from).sort((x,y)=>x.date-y.date).forEach(r=>{const sm=pcSide(r,me),so=pcSide(r,opp);if(sm<0||so<0||sm===so)return;if(Math.max(a,b)>=chTarget(c))return;if(r.winner===sm)a++;else b++;last=r.date});
+  const t=chTarget(c);return{a,b,t,done:a>=t||b>=t,winner:a>=t?'me':b>=t?'opp':null,last}}
+function challengesHtml(){
+  const L=computeLeague(),me=meKey();const meName=(L.find(x=>x.key===me)||{name:PROF.name||'You'}).name;
+  const opts=L.filter(x=>x.key!==me).map(x=>'<option value="'+esc(x.key)+'">'+esc(x.name)+'</option>').join('');
+  let h='<section class="chcard"><div class="chhead"><b class="chttl">Rivalry challenges</b><button class="mini" id="chNewBtn">New challenge</button></div>';
+  h+='<div class="chform hide" id="chForm"><select id="chOpp" aria-label="Opponent">'+opts+'</select><select id="chType" aria-label="Challenge"><option value="first|5">First to 5 wins</option><option value="first|3">First to 3 wins</option><option value="first|10">First to 10 wins</option><option value="best|7">Best of 7</option><option value="best|5">Best of 5</option></select><button class="primary" id="chGo">Start the challenge</button><p class="help">Counts every match from today where you\'re on opposite sides.</p></div>';
+  if(!CH.list.length)h+='<p class="chnone">Pick a rival and a target. Your normal results count towards it automatically.</p>';
+  h+=CH.list.slice().sort((x,y)=>y.created-x.created).map(c=>{const s=chScore(c),opp=(L.find(x=>x.key===c.opp)||{name:c.oppName||'Rival'}).name;
+    const lab=c.type==='best'?'Best of '+c.n:'First to '+c.n+' wins';
+    const status=s.done?(s.winner==='me'?'You win the rivalry '+s.a+'–'+s.b:esc(opp)+' wins the rivalry '+s.b+'–'+s.a):(s.a===s.b?'All square at '+s.a+'–'+s.b:(s.a>s.b?'You lead ':esc(opp)+' leads ')+Math.max(s.a,s.b)+'–'+Math.min(s.a,s.b))+' · '+(s.t-Math.max(s.a,s.b))+' more win'+(s.t-Math.max(s.a,s.b)===1?'':'s')+' to take it';
+    return'<div class="chitem'+(s.done?' done':'')+'"><div class="chrow"><b>'+esc(meName)+'</b><span class="chsc">'+s.a+' – '+s.b+'</span><b>'+esc(opp)+'</b></div><div class="chbars"><i style="width:'+Math.round(s.a/s.t*100)+'%"></i><i class="o" style="width:'+Math.round(s.b/s.t*100)+'%"></i></div><p class="chst">'+lab+' · '+status+'</p><div class="chacts"><button class="mini" data-chshare="'+c.id+'">Share</button><button class="mini ghosty" data-chdel="'+c.id+'">Remove</button></div></div>'}).join('');
+  return h+'</section>';
+}
+document.addEventListener('click',async e=>{
+  const t=e.target;if(!t.closest)return;
+  if(t.closest('#chNewBtn')){$('chForm').classList.toggle('hide');return}
+  if(t.closest('#chGo')){const opp=$('chOpp').value;if(!opp){toast('Play a match with someone first, then challenge them.');return}const[type,n]=$('chType').value.split('|');const L=computeLeague();CH.list.push({id:'c'+Date.now().toString(36),opp,oppName:(L.find(x=>x.key===opp)||{}).name||'',type,n:+n,from:Date.now(),created:Date.now(),u:Date.now()});chSave();renderRivals();toast('Challenge on. Your next matches against them count.');return}
+  const sh=t.closest('[data-chshare]');if(sh){const c=CH.list.find(x=>x.id===sh.dataset.chshare);if(!c)return;const s=chScore(c),L=computeLeague(),opp=(L.find(x=>x.key===c.opp)||{name:c.oppName}).name,me=(L.find(x=>x.key===meKey())||{name:PROF.name||'Me'}).name;const txt='PadelCred rivalry: '+me+' '+s.a+'–'+s.b+' '+opp+' ('+(c.type==='best'?'best of '+c.n:'first to '+c.n+' wins')+').'+(s.done?' '+(s.winner==='me'?me:opp)+' takes it!':' Game on.');try{if(navigator.share){await navigator.share({text:txt});return}}catch(err){return}try{await navigator.clipboard.writeText(txt);toast('Copied. Paste it into your group chat.')}catch(err){toast(txt)}return}
+  const dl=t.closest('[data-chdel]');if(dl){if(!(await ask('Remove this challenge?','Your match results stay as they are.','Remove',true)))return;CH.list=CH.list.filter(x=>x.id!==dl.dataset.chdel);chSave();renderRivals()}
+});
+{const _rr=renderRivals;renderRivals=function(){_rr.apply(this,arguments);try{const box=$('rivalsBody');if(!box||box.querySelector('.chcard'))return;if(!computeLeague().length)return;box.insertAdjacentHTML('afterbegin',challengesHtml())}catch(e){}}}
+
+/* --- match night planner: invite, share to WhatsApp, calendar file, suggested teams --- */
+const PLAN={list:store.get('db-plans')||[],cur:null};
+function planSave(){store.set('db-plans',PLAN.list);if(typeof profChanged==='function')profChanged()}
+function mergePlans(arr){(arr||[]).forEach(c=>{const i=PLAN.list.findIndex(x=>x.id===c.id);if(i<0)PLAN.list.push(c);else if((c.u||0)>(PLAN.list[i].u||0))PLAN.list[i]=c});store.set('db-plans',PLAN.list)}
+function planWhen(p){const d=new Date(p.at);return d.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})+', '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}
+function nextPlan(){const now=Date.now()-3*36e5;return PLAN.list.filter(p=>p.at>=now).sort((a,b)=>a.at-b.at)[0]||null}
+function planText(p){const names=p.players.filter(Boolean);return'🎾 Padel: '+planWhen(p)+(p.venue?' at '+p.venue:'')+'\n'+(names.length?'Players: '+names.join(', ')+(names.length<4?' (+'+(4-names.length)+' needed)':'')+'\n':'')+(p.notes?p.notes+'\n':'')+'Reply to confirm. Planned with PadelCred.'}
+function planIcs(p){const z=n=>String(n).padStart(2,'0'),f=t=>{const d=new Date(t);return d.getUTCFullYear()+z(d.getUTCMonth()+1)+z(d.getUTCDate())+'T'+z(d.getUTCHours())+z(d.getUTCMinutes())+'00Z'};const esc2=s=>String(s||'').replace(/[,;\\]/g,m=>'\\'+m).replace(/\n/g,'\\n');
+  return['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//PadelCred//Match night//EN','BEGIN:VEVENT','UID:'+p.id+'@padelcred','DTSTAMP:'+f(Date.now()),'DTSTART:'+f(p.at),'DTEND:'+f(p.at+(p.mins||90)*6e4),'SUMMARY:'+esc2('Padel'+(p.venue?' at '+p.venue:'')),'LOCATION:'+esc2(p.venue),'DESCRIPTION:'+esc2(planText(p)),'END:VEVENT','END:VCALENDAR'].join('\r\n')}
+function renderPlan(){
+  const p=PLAN.cur;const box=$('planBody');if(!box)return;
+  const d=new Date(p.at),z=n=>String(n).padStart(2,'0');const dv=d.getFullYear()+'-'+z(d.getMonth()+1)+'-'+z(d.getDate()),tv=z(d.getHours())+':'+z(d.getMinutes());
+  const known=(()=>{try{return computeLeague().map(x=>x.name)}catch(e){return[]}})();
+  box.innerHTML='<div class="plgrid"><label class="field"><span class="lbl">Date</span><input type="date" id="plDate" value="'+dv+'"></label><label class="field"><span class="lbl">Time</span><input type="time" id="plTime" value="'+tv+'"></label></div>'+
+    '<label class="field"><span class="lbl">Venue</span><input type="text" id="plVenue" list="plVenues" maxlength="60" placeholder="Where you\'re playing" value="'+esc(p.venue||'')+'"></label><datalist id="plVenues">'+allVenues().map(v=>'<option value="'+esc(v)+'">').join('')+'</datalist>'+
+    '<p class="sh" style="margin-top:12px">Players</p><div id="plPlayers">'+p.players.map((n,i)=>'<div class="plp"><input type="text" list="plKnown" placeholder="Player '+(i+1)+'" value="'+esc(n||'')+'"><button class="plok'+(p.ok&&p.ok[i]?' on':'')+'" data-plok="'+i+'" aria-pressed="'+!!(p.ok&&p.ok[i])+'">'+(p.ok&&p.ok[i]?'In':'Tick when in')+'</button></div>').join('')+'</div><datalist id="plKnown">'+known.map(n=>'<option value="'+esc(n)+'">').join('')+'</datalist>'+
+    (p.players.length<8?'<button class="secondary" id="plAdd">Add a player</button>':'')+
+    '<label class="field" style="margin-top:12px"><span class="lbl">Notes (optional)</span><input type="text" id="plNotes" maxlength="120" placeholder="Bring balls, court 3" value="'+esc(p.notes||'')+'"></label>'+
+    '<div id="plTeams"></div>'+
+    '<div class="placts"><button class="primary" id="plShare">Share to WhatsApp</button><button class="secondary" id="plCal">Add to calendar</button><button class="secondary" id="plTeamsBtn">Suggest fair teams</button><button class="secondary" id="plStart">Start this match</button><button class="ghost kodel" id="plDel">Delete this plan</button></div>';
+}
+function planRead(){const p=PLAN.cur;const dv=$('plDate').value,tv=$('plTime').value||'19:00';if(dv){const[y,m,d]=dv.split('-').map(Number),[hh,mm]=tv.split(':').map(Number);p.at=new Date(y,m-1,d,hh,mm).getTime()}p.venue=canonicalVenue($('plVenue').value);p.notes=$('plNotes').value.trim();p.players=[...$('plPlayers').querySelectorAll('input')].map(i=>i.value.trim());p.u=Date.now();
+  const i=PLAN.list.findIndex(x=>x.id===p.id);if(i<0)PLAN.list.push(p);else PLAN.list[i]=p;planSave()}
+function openPlan(id){const ex=PLAN.list.find(x=>x.id===id);const t=new Date();t.setDate(t.getDate()+((4-t.getDay()+7)%7||7));t.setHours(19,0,0,0);
+  PLAN.cur=ex?JSON.parse(JSON.stringify(ex)):{id:'p'+Date.now().toString(36),at:t.getTime(),mins:90,venue:(allVenues()[0]||''),players:[PROF.name||'','','',''],ok:[true,false,false,false],notes:'',u:Date.now()};
+  renderPlan();showSheet('planSheet')}
+function planSuggest(){const n=PLAN.cur.players.filter(Boolean);if(n.length!==4){toast('Fair teams need exactly four players.');return null}const f=fairestSplit(n);const[x,y]=pctPair(f.p);$('plTeams').innerHTML='<div class="plsug"><b>Fairest teams</b><span>'+esc(f.a.join(' & '))+'  v  '+esc(f.b.join(' & '))+'</span><em>Predicted '+x+'–'+y+'</em></div>';return f}
+document.addEventListener('click',async e=>{
+  const t=e.target;if(!t.closest||!t.closest('#planSheet'))return;
+  if(t.closest('#plAdd')){planRead();PLAN.cur.players.push('');PLAN.cur.ok=(PLAN.cur.ok||[]).concat(false);renderPlan();return}
+  const ok=t.closest('[data-plok]');if(ok){const i=+ok.dataset.plok;planRead();PLAN.cur.ok=PLAN.cur.ok||[];PLAN.cur.ok[i]=!PLAN.cur.ok[i];planSave();renderPlan();if(PLAN.cur.players.filter(Boolean).length===4&&PLAN.cur.ok.slice(0,4).every(Boolean))planSuggest();return}
+  if(t.closest('#plShare')){planRead();const txt=planText(PLAN.cur);try{if(navigator.share){await navigator.share({text:txt});return}}catch(err){return}window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');return}
+  if(t.closest('#plCal')){planRead();const blob=new Blob([planIcs(PLAN.cur)],{type:'text/calendar'}),name='padel-'+new Date(PLAN.cur.at).toISOString().slice(0,10)+'.ics';
+    try{const file=new File([blob],name,{type:'text/calendar'});if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:'Padel'});return}}catch(err){}
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500);toast('Calendar file saved. Open it to add the match.');return}
+  if(t.closest('#plTeamsBtn')){planRead();planSuggest();return}
+  if(t.closest('#plStart')){planRead();const n=PLAN.cur.players.filter(Boolean);if(n.length<2){toast('Add at least two players first.');return}const f=n.length===4?fairestSplit(n):{a:[n[0],n[1]||''],b:[n[2]||'',n[3]||'']};const venue=PLAN.cur.venue;hideSheet();setTimeout(()=>{setupStarted=false;hideHome();openSetup();setupFromHome=true;const v=[f.a[0]||'',f.a[1]||'',f.b[0]||'',f.b[1]||''];['pA1','pA2','pB1','pB2'].forEach((id,i)=>{$(id).value=v[i];$(id).dispatchEvent(new Event('input',{bubbles:true}))});const vn=$('venue')||$('setVenue');if(vn&&venue){vn.value=venue;vn.dispatchEvent(new Event('input',{bubbles:true}))}},300);return}
+  if(t.closest('#plDel')){if(!(await ask('Delete this plan?','It\'s removed from PadelCred. Anything already shared stays in WhatsApp.','Delete',true)))return;PLAN.list=PLAN.list.filter(x=>x.id!==PLAN.cur.id);planSave();hideSheet();if(typeof renderHome==='function')renderHome();return}
+});
+document.addEventListener('change',e=>{if(e.target.closest&&e.target.closest('#planSheet')&&PLAN.cur){planRead();if(typeof renderHome==='function'&&$('homeView').classList.contains('on'))renderHome()}});
+
+/* --- rating preview and chemistry on the setup prediction --- */
+function predExtras(a,b,p){if(p==null)return'';const ses=false,k=ses?K/2:K,up=Math.round(k*(1-p)),down=Math.round(k*p);const ch=chemLines(a,b);
+  return'<p class="predchg">If '+esc(a.join(' & '))+' win: <b>+'+up+'</b> each · lose: <b>−'+down+'</b></p>'+(ch.length?'<p class="predchem">'+ch.join(' · ')+'</p>':'')}
+
+/* --- match moment markers: one tap while filming, shown on the clip editor's timeline --- */
+let recMarks=[];
+function addMark(kind){if(!rec||!t0)return;recMarks.push({t:Date.now()-t0,k:kind||'mark'});if(vdb.ok){vdb.getMeta().then(m=>{if(m)vdb.setMeta(Object.assign({},m,{marks:recMarks}))}).catch(()=>{})}
+  if(kind!=='set'&&kind!=='match'){try{navigator.vibrate&&navigator.vibrate(30)}catch(e){}toast('Moment marked at '+fmt(Date.now()-t0)+'.')}}
+{const _pt=point;point=function(w){const before=S.sets.length,wasDone=S.done;const r=_pt.apply(this,arguments);try{if(rec){if(S.done!==null&&wasDone===null)addMark('match');else if(S.sets.length>before)addMark('set')}}catch(e){}return r}}
+function edMarksRender(){const tl=$('tl'),row=$('edMarks');if(!tl||!row)return;tl.querySelectorAll('.tlmark').forEach(x=>x.remove());const ms=(ED.marks||[]).filter(m=>m.t/1000<=ED.dur+1);
+  if(!ms.length||!ED.dur){row.innerHTML='';row.classList.add('hide');return}
+  ms.forEach(m=>{const el=document.createElement('i');el.className='tlmark'+(m.k==='mark'?'':' auto');el.style.left=Math.min(100,m.t/1000/ED.dur*100)+'%';tl.appendChild(el)});
+  let n=0;row.classList.remove('hide');row.innerHTML='<span>Moments</span>'+ms.map((m,i)=>'<button class="mini" data-edmark="'+i+'">'+(m.k==='set'?'Set ':m.k==='match'?'Match point ':'★ ')+fmt(m.t)+'</button>').join('');
+  row.querySelectorAll('[data-edmark]').forEach(b=>b.onclick=()=>{const m=ms[+b.dataset.edmark],t=m.t/1000;ED.start=Math.max(0,t-8);ED.end=Math.min(ED.dur,t+4);ED.v.currentTime=ED.start;edTimeline();toast('Clip set around that moment. Adjust it if you need to.')})}
+
 /* ================= bug reports ================= */
 const appVersion=()=>((document.querySelector('meta[name="app-version"]')||{}).content||'');
 const bugDevice=()=>{const ua=navigator.userAgent;const os=/iPhone|iPad/.test(ua)?'iPhone':/Android/.test(ua)?'Android':/Mac/.test(ua)?'Mac':/Windows/.test(ua)?'Windows':'Other';const br=/SamsungBrowser/.test(ua)?'Samsung Internet':/CriOS|Chrome/.test(ua)?'Chrome':/Safari/.test(ua)?'Safari':/Firefox/.test(ua)?'Firefox':'Browser';return os+', '+br+(window.matchMedia('(display-mode: standalone)').matches?', home screen app':'')+(window.PadelCredNative?', Android app':'')+', '+innerWidth+'×'+innerHeight};
@@ -3020,7 +3169,7 @@ function winChance(a,b){a=(a||[]).filter(Boolean);b=(b||[]).filter(Boolean);if(!
 function pctPair(p){const a=Math.round(p*100);return[a,100-a]}
 // matchmaking: the fairest split of four players, keeping player 1 on team A
 function fairestSplit(n){const[a1,a2,b1,b2]=n;const opts=[[[a1,a2],[b1,b2]],[[a1,b1],[a2,b2]],[[a1,b2],[a2,b1]]];
-  return opts.map(o=>({a:o[0],b:o[1],p:winChance(o[0],o[1])})).sort((x,y)=>Math.abs(x.p-.5)-Math.abs(y.p-.5))[0]}
+  return opts.map(o=>({a:o[0],b:o[1],p:winChance(o[0],o[1]),q:chemChance(o[0],o[1])})).sort((x,y)=>Math.abs(x.q-.5)-Math.abs(y.q-.5))[0]}
 // matchmaking: ranked players near your level (pure, so it can be tested on its own)
 function nearLevel(rows,myOvr,myUid,range){range=range||6;return(rows||[]).filter(r=>r.uid!==myUid&&typeof r.ovr==='number'&&Math.abs(r.ovr-myOvr)<=range).sort((a,b)=>Math.abs(a.ovr-myOvr)-Math.abs(b.ovr-myOvr)||b.ovr-a.ovr)}
 window.PCX={winChance,fairestSplit,nearLevel,pctPair};
@@ -3033,7 +3182,7 @@ function updatePred(){
   if(!a.length||!b.length){box.classList.add('hide');return}
   const p=winChance(a,b),[pa,pb]=pctPair(p);
   let bal='';if(n.every(Boolean)){const f=fairestSplit(n);if(Math.abs(p-.5)-Math.abs(f.p-.5)>.04&&Math.abs(p-.5)>.08){const[fa,fb]=pctPair(f.p);bal='<button class="linkbtn inl" id="predBal">Balance teams</button><span class="predhint">'+esc(f.a.join(' & '))+' v '+esc(f.b.join(' & '))+' would be '+fa+'–'+fb+'</span>'}}
-  box.innerHTML='<p class="predttl">Prediction</p><div class="predbar"><i style="width:'+pa+'%"></i></div><div class="predrow"><span><b>'+pa+'%</b> '+esc(a.join(' & '))+'</span><span>'+esc(b.join(' & '))+' <b>'+pb+'%</b></span></div>'+(bal?'<p class="predbal">'+bal+'</p>':'');
+  box.innerHTML='<p class="predttl">Prediction</p><div class="predbar"><i style="width:'+pa+'%"></i></div><div class="predrow"><span><b>'+pa+'%</b> '+esc(a.join(' & '))+'</span><span>'+esc(b.join(' & '))+' <b>'+pb+'%</b></span></div>'+(bal?'<p class="predbal">'+bal+'</p>':'')+predExtras(a,b,p);
   box.classList.remove('hide');
   const bb=$('predBal');if(bb)bb.onclick=()=>{const f=fairestSplit(setupNames());const ids=['pA1','pA2','pB1','pB2'],v=[f.a[0],f.a[1],f.b[0],f.b[1]];
     ids.forEach((id,i)=>{$(id).value=v[i];$(id).dispatchEvent(new Event('input',{bubbles:true}))});const[x,y]=pctPair(f.p);toast('Teams balanced: '+x+'% v '+y+'%');updatePred()};
@@ -3475,7 +3624,7 @@ function renderProfile(){
     (PROF.bio?'<p class="bio">'+esc(PROF.bio)+'</p>':'')+
     (chips.length?'<div class="pchips">'+chips.map(c=>'<span>'+esc(c)+'</span>').join('')+'</div>':'')+
     (socials?'<div class="socials">'+socials+'</div>':'')+
-    ovrCard(overallFor(i>=0?p:{p:0,rating:seedFor(key),maxRating:seedFor(key)}),true)+rankLineHtml()+'<button class="secondary sharecardbtn" id="profShare">Share my Courtfolio</button>'+skillCardHtml(skillAgg(),true,PROF.name)+formCardHtml(i>=0?formData(p):null,PROF.name,true)+highlightsHtml(i>=0?p:null,true)+
+    ovrCard(overallFor(i>=0?p:{p:0,rating:seedFor(key),maxRating:seedFor(key)}),true)+rankLineHtml()+'<button class="secondary sharecardbtn" id="profShare">Share my Courtfolio</button>'+skillCardHtml(skillAgg(),true,PROF.name)+formCardHtml(i>=0?formData(p):null,PROF.name,true)+formInsightsHtml(i>=0?p:null)+highlightsHtml(i>=0?p:null,true)+
     (yipSeason()?'<button class="hmyip" id="profYip" style="margin-top:14px"><span><em>Your '+yipYear()+' in padel</em><b>Your year, wrapped.</b></span><i>Play</i></button>':'')+
     '<div class="frbox">'+friendsHtml()+'</div>'+
     badgesHtml(Object.assign({},p,{ex:myExclusive(),exMine:true}))+
@@ -3575,7 +3724,7 @@ $('peCancel').onclick=()=>hideSheet();
 
 
 /* ================= home logo and updates ================= */
-const APP_VERSION='1.6';
+const APP_VERSION='1.7';
 document.querySelectorAll('.vlogo').forEach(i=>i.src=$('logo').src);
 function goHome(e){
   const el=e&&e.currentTarget;if(el){el.classList.remove('tap');void el.offsetWidth;el.classList.add('tap')}
@@ -4967,11 +5116,11 @@ async function syncProfile(){
   if(r&&r.u>localU){
     try{const p=JSON.parse(r.profile||'{}');PROF=Object.assign({},PROF_DEF,PROF,p);saveProfRaw();syncAvatar()}catch(e){}
     try{const fr=JSON.parse(r.friends||'[]');fr.forEach(f=>{if(f&&f.key&&!friendOf(f.key))FRIENDS.push(f)});saveFriendsRaw()}catch(e){}
-    try{if(r.amer)mergeAmer(JSON.parse(r.amer))}catch(e){} try{if(r.ko)mergeKo(JSON.parse(r.ko))}catch(e){}
+    try{if(r.amer)mergeAmer(JSON.parse(r.amer))}catch(e){} try{if(r.ko)mergeKo(JSON.parse(r.ko))}catch(e){} try{if(r.plans)mergePlans(JSON.parse(r.plans))}catch(e){} try{if(r.ch)mergeCh(JSON.parse(r.ch))}catch(e){}
     store.set('db-prof-u',r.u);
   }else if(!r||localU>(r.u||0)){
     const u=localU||Date.now();
-    await ref.set({username:PROF.username||'',usernameLower:(PROF.username||'').toLowerCase(),profile:JSON.stringify(PROF),friends:JSON.stringify(FRIENDS),amer:JSON.stringify(AM.list.slice(0,60)),ko:JSON.stringify(KO.list.slice(0,30)),u},{merge:true});
+    await ref.set({username:PROF.username||'',usernameLower:(PROF.username||'').toLowerCase(),profile:JSON.stringify(PROF),friends:JSON.stringify(FRIENDS),amer:JSON.stringify(AM.list.slice(0,60)),ko:JSON.stringify(KO.list.slice(0,30)),plans:JSON.stringify(PLAN.list.slice(-40)),ch:JSON.stringify(CH.list.slice(0,30)),u},{merge:true});
     store.set('db-prof-u',u);
     publishProfile().catch(()=>{});
   }
@@ -5582,6 +5731,7 @@ function renderHome(){
   $('hmRules').onclick=()=>openRules();
   if($('hmAmer'))$('hmAmer').onclick=()=>openAmer();
   {const am=$('hmAmer');if(am&&!$('hmKo')){const cur=KO.list.find(x=>!x.done);am.insertAdjacentHTML('afterend','<button class="hmamer hmko" id="hmKo"><span class="hmamic"><svg viewBox="0 0 24 24"><path d="M7 4h10v4a5 5 0 0 1-10 0z"/><path d="M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3M12 13v4M8.5 20h7M10 17h4"/></svg></span><span><b>'+(cur?'Carry on: '+esc(cur.name):'Knockout')+'</b><em>'+(cur?'Your bracket is in progress':'A bracket for your group. Winners go through.')+'</em></span><i>'+(cur?'Open':'Set up')+'</i></button>');$('hmKo').onclick=()=>openKo(cur?cur.id:null)}}
+  {const kb=$('hmKo');if(kb&&!$('hmPlan')){const np=nextPlan();const inN=np?np.players.filter(Boolean).length:0,okN=np?(np.ok||[]).filter(Boolean).length:0;kb.insertAdjacentHTML('afterend','<button class="hmamer hmko" id="hmPlan"><span class="hmamic"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4M9 14.5l2 2 4-4"/></svg></span><span><b>'+(np?esc(planWhen(np)):'Plan a match night')+'</b><em>'+(np?esc((np.venue?np.venue+' · ':'')+okN+' of '+Math.max(4,inN)+' in'):'Pick a time, invite your group on WhatsApp')+'</em></span><i>'+(np?'Open':'Plan')+'</i></button>');$('hmPlan').onclick=()=>openPlan(np?np.id:null)}}
   if($('hmYip'))$('hmYip').onclick=()=>openYip();
   if($('hmAcc'))$('hmAcc').onclick=()=>{authMode='up';openAccount()};
   $('hmTour').onclick=()=>startTour();
