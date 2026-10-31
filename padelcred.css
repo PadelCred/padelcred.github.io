@@ -1723,3 +1723,10 @@ body.hasnav #koView{padding-bottom:calc(110px + env(safe-area-inset-bottom,0px))
 .qzres i svg{width:46px;height:46px;fill:none;stroke:#0B1420;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .qzres b{font-family:var(--display);font-size:28px;color:#F5F7FA;margin-top:6px}
 .qzres span{font-size:15px;color:#BAC9D3;max-width:300px}
+/* v1.9 */
+.legal h4{margin:16px 0 4px;font-size:16px;color:#F5F7FA}.legal p{margin:0 0 8px;font-size:14.5px;line-height:1.55;color:#BAC9D3}.legal .pv-lead{color:#F5F7FA;font-weight:600}.legal a{color:#6EE7B7}.legal .pv-date{font-size:12.5px;opacity:.8}
+.actos{margin:12px 2px 0;font-size:12.5px;text-align:center}
+.rptbtn{display:block;margin:16px auto 4px;color:#FF8C80;font-size:13.5px}
+.rpreasons{display:grid;gap:8px;margin-bottom:12px}
+.rpr{width:100%;text-align:left;padding:12px 14px;border-radius:12px;border:1.5px solid #334155;background:#142132;color:#F5F7FA;font-size:15px;font-weight:600}
+.rpr[aria-pressed=true]{border-color:#6EE7B7;background:#6EE7B7;color:#0B1420}

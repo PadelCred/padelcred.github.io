@@ -2860,6 +2860,29 @@ document.addEventListener('click',e=>{const t=e.target;if(!t.closest)return;
   if(t.closest('#peQuiz')){openQuiz('edit');return}
   if(t.closest('#stQuiz')){openQuiz('info');return}},true);
 
+
+/* ================= v1.9: legal pages, profile reports, near my level at any size ================= */
+$('termsBtn').onclick=()=>{hideSheet();setTimeout(()=>showSheet('termsSheet'),150)};$('termsClose').onclick=()=>hideSheet();
+$('acTerms').onclick=()=>{hideSheet();setTimeout(()=>showSheet('termsSheet'),150)};$('acPriv').onclick=()=>{hideSheet();setTimeout(()=>showSheet('privacySheet'),150)};
+const RP_REASONS=['Offensive photo','Offensive name or username','Pretending to be someone else','Fake or spam account','Something else'];
+const RPT={uid:null,name:'',user:''};
+function addReportBtn(uid,name,user){const box=$('playerBody');if(!box||!uid||!FB.user||uid===myUid()||box.querySelector('.rptbtn'))return;box.insertAdjacentHTML('beforeend','<button class="linkbtn rptbtn" data-report="'+esc(uid)+'" data-rname="'+esc(name||'')+'" data-ruser="'+esc(user||'')+'">Report this profile</button>')}
+document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-report]');if(!b)return;RPT.uid=b.dataset.report;RPT.name=b.dataset.rname;RPT.user=b.dataset.ruser;
+  $('rpReasons').innerHTML=RP_REASONS.map((r,i)=>'<button type="button" class="rpr" data-rpr="'+i+'" aria-pressed="false">'+r+'</button>').join('');$('rpText').value='';hideSheet();setTimeout(()=>showSheet('reportSheet'),150)});
+document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('.rpr');if(!b)return;$('rpReasons').querySelectorAll('.rpr').forEach(x=>x.setAttribute('aria-pressed',String(x===b)))});
+$('rpCancel').onclick=()=>hideSheet();
+$('rpSend').onclick=async()=>{const sel=$('rpReasons').querySelector('[aria-pressed="true"]');if(!sel){toast('Pick a reason first.');return}if(!FB.user){toast('Sign in to send a report.');return}
+  const reason=RP_REASONS[+sel.dataset.rpr],more=$('rpText').value.trim();$('rpSend').disabled=true;
+  try{await FB.db.collection('reports').doc(newId()).set({from:FB.user.uid,username:PROF.username||'',name:PROF.name||'',text:('PROFILE REPORT: '+(RPT.name||'Unknown')+(RPT.user?' (@'+RPT.user+')':'')+'\nReason: '+reason+(more?'\nDetails: '+more:'')).slice(0,1500),steps:('Reported account ID: '+RPT.uid).slice(0,800),version:appVersion(),device:'Profile report',theme:'dark',at:Date.now(),status:'new'});hideSheet();toast('Thanks. Your report has been sent.')}
+  catch(e){toast(fbError(e))}finally{$('rpSend').disabled=false}};
+{const _opp=openPublicProfile;openPublicProfile=async function(uid,pd){const r=await _opp.apply(this,arguments);try{const t=($('playerTitle').textContent||'').trim();const f=pd||{};addReportBtn(uid,t,(f.username||''))}catch(e){}return r}}
+{const _of=openFriend;openFriend=function(key){const r=_of.apply(this,arguments);try{const f=(typeof friendOf==='function')?friendOf(key):null;if(f&&f.uid)addReportBtn(f.uid,f.name,f.username)}catch(e){}return r}}
+// near my level: search every ranked player within 6 of your Overall, not just the top 20
+function nearRanks(myRank,myOvr,list){const above=myRank-1;return list.map(r=>{let k;if(r.ovr>myOvr)k=above-list.filter(x=>x.ovr>myOvr&&x.ovr<=r.ovr).length+1;else if(r.ovr<myOvr)k=above+list.filter(x=>x.ovr<=myOvr&&x.ovr>r.ovr).length+1;else k=myRank;return Object.assign({rk:Math.max(1,k)},r)})}
+async function loadNear(){const d=RANK.data;if(!FB.user||!d||!d.me)return null;if(RANK.near&&RANK.near.ovr===d.me.ovr&&Date.now()-RANK.near.at<20*60000)return RANK.near;
+  try{const s=await FB.db.collection('rankings').where('ovr','>=',d.me.ovr-6).where('ovr','<=',d.me.ovr+6).orderBy('ovr','desc').limit(80).get();const list=[];s.forEach(x=>list.push(Object.assign({uid:x.id},x.data())));
+    RANK.near={ovr:d.me.ovr,list,full:list.length<80,at:Date.now()};return RANK.near}catch(e){return null}}
+
 /* ================= bug reports ================= */
 const appVersion=()=>((document.querySelector('meta[name="app-version"]')||{}).content||'');
 const bugDevice=()=>{const ua=navigator.userAgent;const os=/iPhone|iPad/.test(ua)?'iPhone':/Android/.test(ua)?'Android':/Mac/.test(ua)?'Mac':/Windows/.test(ua)?'Windows':'Other';const br=/SamsungBrowser/.test(ua)?'Samsung Internet':/CriOS|Chrome/.test(ua)?'Chrome':/Safari/.test(ua)?'Safari':/Firefox/.test(ua)?'Firefox':'Browser';return os+', '+br+(window.matchMedia('(display-mode: standalone)').matches?', home screen app':'')+(window.PadelCredNative?', Android app':'')+', '+innerWidth+'×'+innerHeight};
@@ -3206,7 +3229,7 @@ function fairestSplit(n){const[a1,a2,b1,b2]=n;const opts=[[[a1,a2],[b1,b2]],[[a1
   return opts.map(o=>({a:o[0],b:o[1],p:winChance(o[0],o[1]),q:chemChance(o[0],o[1])})).sort((x,y)=>Math.abs(x.q-.5)-Math.abs(y.q-.5))[0]}
 // matchmaking: ranked players near your level (pure, so it can be tested on its own)
 function nearLevel(rows,myOvr,myUid,range){range=range||6;return(rows||[]).filter(r=>r.uid!==myUid&&typeof r.ovr==='number'&&Math.abs(r.ovr-myOvr)<=range).sort((a,b)=>Math.abs(a.ovr-myOvr)-Math.abs(b.ovr-myOvr)||b.ovr-a.ovr)}
-window.PCX={winChance,fairestSplit,nearLevel,pctPair};
+window.PCX={winChance,fairestSplit,nearLevel,pctPair,mergeProf:(a,b)=>mergeProf(a,b),nearRanks:(a,b,c)=>nearRanks(a,b,c)};
 
 /* the prediction on the setup screen, with a one-tap balance */
 function setupNames(){return['pA1','pA2','pB1','pB2'].map(i=>{const e=$(i);return e?(e.value||'').trim():''})}
@@ -3252,8 +3275,9 @@ let RANK_NEAR=false;
   seg.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String((b.dataset.v==='near')===RANK_NEAR)));
   if(!RANK_NEAR)return;
   if(!d||!d.me||typeof d.me.ovr!=='number'){list.innerHTML='<p class="help">Play your first match to see players near your level.</p>';return}
-  const near=nearLevel(d.top,d.me.ovr,FB.user&&FB.user.uid);
-  list.innerHTML=near.length?'<p class="help" style="margin:0 2px 8px">Players within 6 of your Overall ('+d.me.ovr+'). Tap anyone to see their profile and add them.</p>'+near.map(r=>rankRow(d.top.indexOf(r)+1,r)).join(''):'<p class="help">Nobody within 6 of your Overall ('+d.me.ovr+') yet. As more people join, they\'ll show up here.</p>';
+  list.innerHTML='<p class="help">Finding players near your level…</p>';
+  loadNear().then(nr=>{if(!RANK_NEAR)return;const src=nr?nr.list:d.top;const near=nearLevel(src,d.me.ovr,FB.user&&FB.user.uid);const ranked=nr&&nr.full?nearRanks(d.me.rank,d.me.ovr,near):near.map(r=>Object.assign({rk:(d.top.indexOf(r)+1)||'·'},r));
+    list.innerHTML=near.length?'<p class="help" style="margin:0 2px 8px">Players within 6 of your Overall ('+d.me.ovr+'). Tap anyone to see their profile and add them.</p>'+ranked.map(r=>rankRow(r.rk,r)).join(''):'<p class="help">Nobody within 6 of your Overall ('+d.me.ovr+') yet. As more people join, they\'ll show up here.</p>'});
 }catch(e){}}}
 
 
@@ -3620,7 +3644,13 @@ $('edCancel').addEventListener('click',()=>{reelCancel=true});
 const PROF_DEF={photo:'',name:'',username:'',bio:'',side:'',hand:'',level:'',club:'',racket:'',since:'',shot:'',ig:'',tiktok:'',x:'',yt:''};
 let PROF=Object.assign({},PROF_DEF,store.get('db-profile')||{});
 const saveProfRaw=()=>store.set('db-profile',PROF);
-const saveProf=()=>{saveProfRaw();if(typeof profChanged==='function')profChanged()};
+const saveProf=()=>{try{const prev=store.get('db-profile')||{},now=Date.now();PROF.ft=Object.assign({},PROF.ft||{});new Set(Object.keys(PROF).concat(Object.keys(prev))).forEach(k=>{if(k==='ft')return;if(JSON.stringify(prev[k]??'')!==JSON.stringify(PROF[k]??''))PROF.ft[k]=now})}catch(e){}saveProfRaw();if(typeof profChanged==='function')profChanged()};
+// two copies of a profile meet: each field keeps its most recent real edit, and a blank never wipes a filled-in field unless it was cleared on purpose
+const pEmpty=v=>v===undefined||v===null||v===''||(Array.isArray(v)&&!v.length);
+function mergeProf(a,b){a=a||{};b=b||{};const fa=a.ft||{},fb=b.ft||{},out={},ft={};
+  new Set(Object.keys(PROF_DEF).concat(Object.keys(a),Object.keys(b))).forEach(k=>{if(k==='ft')return;const ta=fa[k]||0,tb=fb[k]||0;
+    out[k]=ta>tb?a[k]:tb>ta?b[k]:(!pEmpty(a[k])?a[k]:b[k]);ft[k]=Math.max(ta,tb);if(out[k]===undefined)delete out[k];if(!ft[k])delete ft[k]});
+  out.ft=ft;return Object.assign({},PROF_DEF,out)}
 const LEVELS=['New to padel','Beginner','Improver','Intermediate','Advanced','Competitive'];
 const SHOTS=['Bandeja','Víbora','Smash','Por tres','Lob','Volley','Chiquita','Bajada'];
 const SOCIALS=[['ig','Instagram',h=>'https://instagram.com/'+encodeURIComponent(h)],['tiktok','TikTok',h=>'https://www.tiktok.com/@'+encodeURIComponent(h)],['x','X',h=>'https://x.com/'+encodeURIComponent(h)],['yt','YouTube',h=>'https://www.youtube.com/@'+encodeURIComponent(h)]];
@@ -3745,9 +3775,9 @@ $('peSave').onclick=()=>{
   if(nameFilterFail(['peName','peClub','peRacket']))return;
   if(badWords($('peBio').value)){toast('Your bio has a word that isn\'t allowed. Try rewording it.');$('peBio').focus();return}
   if(FRIENDS.some(f=>f.key===pkey(name))){toast('One of your friends already goes by '+name+'. Pick something that tells you apart.');return}
-  PROF={photo:draftPhoto,name,username:PROF.username||'',bio:$('peBio').value.replace(/\r/g,'').replace(/\n{3,}/g,'\n\n').trim().slice(0,160),
+  PROF=Object.assign({},PROF,{photo:draftPhoto,name,username:PROF.username||'',bio:$('peBio').value.replace(/\r/g,'').replace(/\n{3,}/g,'\n\n').trim().slice(0,160),
     side:segVal('peSide'),hand:segVal('peHand'),level:segVal('peLevel'),club:$('peClub').value.trim(),racket:$('peRacket').value.trim(),
-    since:($('peSince').value||'').replace(/\D/g,'').slice(0,4),shot:segVal('peShot'),style:(($('peStyle').querySelector('[aria-pressed="true"]')||{}).dataset||{}).v||'',country:'',ptLevel:cleanLevel($('peLevelPt').value),playtomic:cleanPlaytomic($('pePlaytomic').value),avatar:pendingAvatar||PROF.avatar||null};
+    since:($('peSince').value||'').replace(/\D/g,'').slice(0,4),shot:segVal('peShot'),style:(($('peStyle').querySelector('[aria-pressed="true"]')||{}).dataset||{}).v||'',country:'',ptLevel:cleanLevel($('peLevelPt').value),playtomic:cleanPlaytomic($('pePlaytomic').value),avatar:pendingAvatar||PROF.avatar||null});
   SOCIALS.forEach(([k])=>PROF[k]=cleanHandle($('pe_'+k).value));
   PROF.id=PROF.id||oldId||newId();
   try{saveProf()}catch(e){}
@@ -3758,7 +3788,7 @@ $('peCancel').onclick=()=>hideSheet();
 
 
 /* ================= home logo and updates ================= */
-const APP_VERSION='1.8';
+const APP_VERSION='1.9';
 document.querySelectorAll('.vlogo').forEach(i=>i.src=$('logo').src);
 function goHome(e){
   const el=e&&e.currentTarget;if(el){el.classList.remove('tap');void el.offsetWidth;el.classList.add('tap')}
@@ -5148,11 +5178,12 @@ async function syncProfile(){
   const ref=FB.db.collection('users').doc(FB.user.uid),snap=await ref.get(),r=snap.exists?snap.data():null;
   const localU=store.get('db-prof-u')||0;
   if(r&&r.u>localU){
-    try{const p=JSON.parse(r.profile||'{}');PROF=Object.assign({},PROF_DEF,PROF,p);saveProfRaw();syncAvatar()}catch(e){}
+    try{const p=JSON.parse(r.profile||'{}');PROF=mergeProf(PROF,p);saveProfRaw();syncAvatar()}catch(e){}
     try{const fr=JSON.parse(r.friends||'[]');fr.forEach(f=>{if(f&&f.key&&!friendOf(f.key))FRIENDS.push(f)});saveFriendsRaw()}catch(e){}
     try{if(r.amer)mergeAmer(JSON.parse(r.amer))}catch(e){} try{if(r.ko)mergeKo(JSON.parse(r.ko))}catch(e){} try{if(r.plans)mergePlans(JSON.parse(r.plans))}catch(e){} try{if(r.ch)mergeCh(JSON.parse(r.ch))}catch(e){}
     store.set('db-prof-u',r.u);
   }else if(!r||localU>(r.u||0)){
+    try{if(r&&r.profile){PROF=mergeProf(PROF,JSON.parse(r.profile));saveProfRaw();syncAvatar()}}catch(e){}
     const u=localU||Date.now();
     await ref.set({username:PROF.username||'',usernameLower:(PROF.username||'').toLowerCase(),profile:JSON.stringify(PROF),friends:JSON.stringify(FRIENDS),amer:JSON.stringify(AM.list.slice(0,60)),ko:JSON.stringify(KO.list.slice(0,30)),plans:JSON.stringify(PLAN.list.slice(-40)),ch:JSON.stringify(CH.list.slice(0,30)),u},{merge:true});
     store.set('db-prof-u',u);
