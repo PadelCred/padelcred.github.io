@@ -1250,7 +1250,7 @@ function renderLeague(){
 function renderPlayers(){
   const L=computeLeague(RES.group);
   if(!L.length){$('playersBody').innerHTML='<p class="empty">Players show up here once you add names to a match. Partners can change every game. Everyone keeps their own record.</p>';return}
-  $('playersBody').innerHTML='<div class="pgrid">'+L.map((p,i)=>'<button class="pcard" data-p="'+esc(p.key)+'" style="--i:'+i+'">'+(p.key===pkey(PROF.name||'\u0000')&&PROF.photo?'<img class="pav" src="'+PROF.photo+'" alt="">':friendOf(p.key)&&friendOf(p.key).photo?'<img class="pav" src="'+friendOf(p.key).photo+'" alt="">':'<span class="pav">'+esc(initials(p.name))+'</span>')+'<span class="pname">'+esc(p.name)+(flagFor(p.key)?' '+flagFor(p.key):'')+'</span>'+(styleFor(p.key)?'<span class="pstyle">'+styleSvg(styleFor(p.key))+'Playstyle: '+esc(STYLE[styleFor(p.key)][1])+'</span>':'')+(ptLevelFor(p.key)?'<span class="ptlvl">Level '+ptLevelFor(p.key)+'</span>':'')+'<span class="pmeta">'+Math.round(p.rating)+' rating, '+p.w+'–'+p.l+(Object.keys(p.badges||{}).length?', ★ '+Object.keys(p.badges).length:'')+(p.key===meKey()?' (you)':'')+'</span>'+formDots(p.form)+'</button>').join('')+'</div>';
+  $('playersBody').innerHTML='<div class="pgrid">'+L.map((p,i)=>'<button class="pcard" data-p="'+esc(p.key)+'" style="--i:'+i+'">'+(p.key===pkey(PROF.name||'\u0000')&&PROF.photo?'<img class="pav" src="'+PROF.photo+'" alt="">':friendOf(p.key)&&friendOf(p.key).photo?'<img class="pav" src="'+friendOf(p.key).photo+'" alt="">':'<span class="pav">'+esc(initials(p.name))+'</span>')+'<span class="pname">'+esc(p.name)+(flagFor(p.key)?' '+flagFor(p.key):'')+'</span>'+(styleFor(p.key)?'<span class="pstyle">'+styleSvg(styleFor(p.key))+'Archetype: '+esc(STYLE[styleFor(p.key)][1])+'</span>':'')+(ptLevelFor(p.key)?'<span class="ptlvl">Level '+ptLevelFor(p.key)+'</span>':'')+'<span class="pmeta">'+Math.round(p.rating)+' rating, '+p.w+'–'+p.l+(Object.keys(p.badges||{}).length?', ★ '+Object.keys(p.badges).length:'')+(p.key===meKey()?' (you)':'')+'</span>'+formDots(p.form)+'</button>').join('')+'</div>';
   $('playersBody').querySelectorAll('.pcard').forEach(b=>b.onclick=()=>openPlayer(b.dataset.p));
 }
 const initials=n=>n.split(/\s+|&/).filter(Boolean).slice(0,2).map(s=>s[0].toUpperCase()).join('');
@@ -2826,6 +2826,40 @@ function edMarksRender(){const tl=$('tl'),row=$('edMarks');if(!tl||!row)return;t
   let n=0;row.classList.remove('hide');row.innerHTML='<span>Moments</span>'+ms.map((m,i)=>'<button class="mini" data-edmark="'+i+'">'+(m.k==='set'?'Set ':m.k==='match'?'Match point ':'★ ')+fmt(m.t)+'</button>').join('');
   row.querySelectorAll('[data-edmark]').forEach(b=>b.onclick=()=>{const m=ms[+b.dataset.edmark],t=m.t/1000;ED.start=Math.max(0,t-8);ED.end=Math.min(ED.dur,t+4);ED.v.currentTime=ED.start;edTimeline();toast('Clip set around that moment. Adjust it if you need to.')})}
 
+/* ================= archetype quiz: five quick questions ================= */
+const QUIZ=[
+ ['A high ball is coming your way. You…',[['Smash it as hard as I can',{hammer:3}],['Hit a víbora with spin',{viper:3}],['Let it come off the glass, then attack',{glass:3}],['Lob it back, deep',{lob:3}]]],
+ ['Where are you happiest on court?',[['At the net, volleying',{nethawk:3,hammer:1}],['At the back, covering everything',{runner:2,iron:2}],['Building the point from the back',{chess:2,lob:1}],['Wherever the ball takes me',{wildcard:2,showman:1}]]],
+ ['How do you win most of your points?',[['Power. They can\'t handle it',{hammer:2,viper:1}],['Placement. Drops and angles',{surgeon:3}],['Patience. I wait for their mistake',{iron:3}],['Flair. Something they didn\'t see coming',{showman:3}]]],
+ ['Your opponents are camped at the net. You…',[['Lob over them',{lob:3}],['Drop it at their feet',{surgeon:2}],['Hit straight through them',{hammer:2}],['Move them side to side until a gap opens',{chess:3}]]],
+ ['Your partner would describe you as…',[['Relentless. I chase everything',{runner:3}],['Rock solid',{iron:2,nethawk:1}],['Clever',{chess:2,surgeon:1,glass:1}],['Entertaining',{showman:2,wildcard:2}]]]
+];
+const QZ={i:0,pts:{},from:null};
+function openQuiz(from){QZ.i=0;QZ.pts={};QZ.from=from||null;hideSheet();setTimeout(()=>{renderQuiz();showSheet('quizSheet')},from?250:0)}
+function quizResult(){const order=STYLES.map(s=>s[0]);return order.slice().sort((a,b)=>(QZ.pts[b]||0)-(QZ.pts[a]||0)||order.indexOf(a)-order.indexOf(b))[0]}
+function renderQuiz(){
+  const box=$('quizBody');if(!box)return;
+  if(QZ.i<QUIZ.length){const[q,opts]=QUIZ[QZ.i];
+    box.innerHTML='<p class="qzstep">Question '+(QZ.i+1)+' of '+QUIZ.length+'</p><div class="qzbar"><i style="width:'+Math.round(QZ.i/QUIZ.length*100)+'%"></i></div><h3 class="qzq">'+esc(q)+'</h3><div class="qzopts">'+opts.map((o,k)=>'<button class="qzopt" data-qz="'+k+'">'+esc(o[0])+'</button>').join('')+'</div>'+(QZ.i?'<button class="linkbtn qzback" id="qzBack">Back</button>':'');
+    return}
+  const id=quizResult(),s=STYLE[id];
+  box.innerHTML='<p class="qzstep">Your archetype</p><div class="qzres"><i>'+styleSvg(id)+'</i><b>'+esc(s[1])+'</b><span>'+esc(s[2])+'</span></div><div class="btns"><button class="primary" id="qzUse">'+(PROF.style===id?'That\'s already you':'Use this archetype')+'</button><button class="secondary" id="qzAgain">Retake the quiz</button></div>';
+}
+document.addEventListener('click',e=>{
+  const t=e.target;if(!t.closest||!t.closest('#quizSheet'))return;
+  const o=t.closest('[data-qz]');if(o){const opts=QUIZ[QZ.i][1],w=opts[+o.dataset.qz][1];QZ.hist=(QZ.hist||[]).slice(0,QZ.i);QZ.hist[QZ.i]=w;QZ.pts={};QZ.hist.forEach(h=>Object.entries(h).forEach(([k,v])=>QZ.pts[k]=(QZ.pts[k]||0)+v));QZ.i++;renderQuiz();return}
+  if(t.closest('#qzBack')){QZ.i=Math.max(0,QZ.i-1);QZ.hist=(QZ.hist||[]).slice(0,QZ.i);QZ.pts={};QZ.hist.forEach(h=>Object.entries(h).forEach(([k,v])=>QZ.pts[k]=(QZ.pts[k]||0)+v));renderQuiz();return}
+  if(t.closest('#qzAgain')){QZ.i=0;QZ.pts={};QZ.hist=[];renderQuiz();return}
+  if(t.closest('#qzUse')){const id=quizResult();PROF.style=id;saveProf();hideSheet();toast('You\'re '+STYLE[id][1]+'.');
+    if(QZ.from==='edit'){setTimeout(()=>{openProfEdit();setTimeout(()=>{const g=$('peStyle');if(g)g.scrollIntoView({block:'start'})},350)},250)}
+    else if(typeof renderProfile==='function'&&$('resultsView').classList.contains('on'))renderProfile();
+    if(typeof renderHome==='function'&&$('homeView').classList.contains('on'))renderHome();return}
+});
+document.addEventListener('click',e=>{const t=e.target;if(!t.closest)return;
+  if(t.closest('#findArch')){e.stopPropagation();openQuiz('profile');return}
+  if(t.closest('#peQuiz')){openQuiz('edit');return}
+  if(t.closest('#stQuiz')){openQuiz('info');return}},true);
+
 /* ================= bug reports ================= */
 const appVersion=()=>((document.querySelector('meta[name="app-version"]')||{}).content||'');
 const bugDevice=()=>{const ua=navigator.userAgent;const os=/iPhone|iPad/.test(ua)?'iPhone':/Android/.test(ua)?'Android':/Mac/.test(ua)?'Mac':/Windows/.test(ua)?'Windows':'Other';const br=/SamsungBrowser/.test(ua)?'Samsung Internet':/CriOS|Chrome/.test(ua)?'Chrome':/Safari/.test(ua)?'Safari':/Firefox/.test(ua)?'Firefox':'Browser';return os+', '+br+(window.matchMedia('(display-mode: standalone)').matches?', home screen app':'')+(window.PadelCredNative?', Android app':'')+', '+innerWidth+'×'+innerHeight};
@@ -3005,7 +3039,7 @@ async function profileCardBlob(){
   if(PROF.username){x.fillStyle=LIME;x.font='700 36px '+F;x.fillText('@'+PROF.username,NX,AY+142)}
   let py=AY+168;
   if(STYLE[PROF.style]){
-    const label='Playstyle: '+STYLE[PROF.style][1];x.font='700 30px '+F;const tw=x.measureText(label).width,pw=tw+84;
+    const label='Archetype: '+STYLE[PROF.style][1];x.font='700 30px '+F;const tw=x.measureText(label).width,pw=tw+84;
     x.fillStyle=LIME;rr(NX,py,pw,54,27);x.fill();
     const svg='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#0B1420" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">'+STYLE[PROF.style][3]+'</svg>';
     const ic=await loadImg('data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg));if(ic)x.drawImage(ic,NX+16,py+11,32,32);
@@ -3620,7 +3654,7 @@ function renderProfile(){
   const card=(v,l,n)=>'<div class="card" style="--i:'+n+'"><b>'+v+'</b><span>'+l+'</span></div>';
   const partner=Object.values(p.partners||{}).sort((a,b)=>(b.w/b.p)-(a.w/a.p)||b.p-a.p)[0];
   const nemesis=Object.values(p.opps||{}).filter(o=>o.l>0).sort((a,b)=>b.l-a.l)[0];
-  box.innerHTML='<div id="profAccount"></div><div class="profhero">'+(PROF.founder?'<span class="avwrap fnd" data-n="'+PROF.founder+'" title="Founding member #'+PROF.founder+'">'+avatar('pav big',PROF.name,PROF.photo)+'</span>':avatar('pav big',PROF.name,PROF.photo))+'<div class="phinfo"><h3>'+esc(PROF.name)+(PROF.country?' <span class="flag-e" title="'+esc(countryName(PROF.country))+'">'+flagOf(PROF.country)+'</span>':'')+'</h3>'+(PROF.username?'<span class="handle">@'+esc(PROF.username)+((typeof FB!=="undefined"&&FB.user)?'':' <em class="soff">Signed out</em>')+'</span>':'')+styleTag(PROF.style,true)+(PROF.founder?'<span class="fndline">Founding member #'+PROF.founder+'</span>':'')+'</div><button class="mini" id="profEdit">Edit</button></div>'+
+  box.innerHTML='<div id="profAccount"></div><div class="profhero">'+(PROF.founder?'<span class="avwrap fnd" data-n="'+PROF.founder+'" title="Founding member #'+PROF.founder+'">'+avatar('pav big',PROF.name,PROF.photo)+'</span>':avatar('pav big',PROF.name,PROF.photo))+'<div class="phinfo"><h3>'+esc(PROF.name)+(PROF.country?' <span class="flag-e" title="'+esc(countryName(PROF.country))+'">'+flagOf(PROF.country)+'</span>':'')+'</h3>'+(PROF.username?'<span class="handle">@'+esc(PROF.username)+((typeof FB!=="undefined"&&FB.user)?'':' <em class="soff">Signed out</em>')+'</span>':'')+(STYLE[PROF.style]?styleTag(PROF.style,true):'<button class="styletag findarch" id="findArch"><span class="stlab"><small>Archetype</small><b>Find yours in 30 seconds</b></span></button>')+(PROF.founder?'<span class="fndline">Founding member #'+PROF.founder+'</span>':'')+'</div><button class="mini" id="profEdit">Edit</button></div>'+
     (PROF.bio?'<p class="bio">'+esc(PROF.bio)+'</p>':'')+
     (chips.length?'<div class="pchips">'+chips.map(c=>'<span>'+esc(c)+'</span>').join('')+'</div>':'')+
     (socials?'<div class="socials">'+socials+'</div>':'')+
@@ -3657,15 +3691,15 @@ const STYLE_MORE={hammer:['The smash','lob'],surgeon:['The drop shot','hammer'],
 function openStyle(id,mine,who){
   const s=STYLE[id];if(!s)return;const m=STYLE_MORE[id]||['',''],pair=STYLE[m[1]];
   $('stIcon').innerHTML=styleSvg(id);$('stName').textContent=s[1];
-  $('stWho').textContent=mine?'Your playstyle':(who?who.split(' ')[0]+'\'s playstyle':'Playstyle');
+  $('stWho').textContent=mine?'Your archetype':(who?who.split(' ')[0]+'\'s archetype':'Archetype');
   $('stDesc').textContent=s[2];
   $('stMore').innerHTML=(m[0]?'<div><span>Signature shot</span><b>'+esc(m[0])+'</b></div>':'')+(pair?'<div><span>Pairs best with</span><b class="stpair">'+styleSvg(pair[0])+esc(pair[1])+'</b></div>':'');
-  $('stChange').classList.toggle('hide',!mine);
+  $('stChange').classList.toggle('hide',!mine);if($('stQuiz'))$('stQuiz').classList.toggle('hide',!mine);
   showSheet('styleSheet');
 }
 document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('.styletag[data-style]');if(!b)return;e.stopPropagation();const box=b.closest('#playerBody');openStyle(b.dataset.style,!!b.dataset.mine,box?($('playerTitle').textContent||'').replace(/[^\p{L}\s'-]/gu,'').trim():'')},true);
 const styleSvg=id=>STYLE[id]?'<svg viewBox="0 0 24 24" aria-hidden="true">'+STYLE[id][3]+'</svg>':'';
-const styleTag=(id,mine)=>STYLE[id]?'<button class="styletag" data-style="'+id+'"'+(mine?' data-mine="1"':'')+' aria-label="'+esc(STYLE[id][1])+', about this playing style">'+styleSvg(id)+'<span class="stlab"><small>Playstyle</small><b>'+esc(STYLE[id][1])+'</b></span><i class="stinfo" aria-hidden="true">i</i></button>':'';
+const styleTag=(id,mine)=>STYLE[id]?'<button class="styletag" data-style="'+id+'"'+(mine?' data-mine="1"':'')+' aria-label="'+esc(STYLE[id][1])+', about this archetype">'+styleSvg(id)+'<span class="stlab"><small>Archetype</small><b>'+esc(STYLE[id][1])+'</b></span><i class="stinfo" aria-hidden="true">i</i></button>':'';
 const styleFor=key=>{if(PROF.name&&key===pkey(PROF.name))return PROF.style||'';const f=friendOf(key);return f?(f.style||''):''};
 function seedHelpText(){
   return PROF.seed?'Your starting Overall was set from '+(PROF.seedLevel?'Playtomic level '+PROF.seedLevel:'the 0.5 starting point')+' when you played your first match. Changing this now only updates your profile, and your results move your Overall from here.':'Sets your starting Overall until you play your first match, then it locks. No level? You start from 0.5.';
@@ -3724,7 +3758,7 @@ $('peCancel').onclick=()=>hideSheet();
 
 
 /* ================= home logo and updates ================= */
-const APP_VERSION='1.7';
+const APP_VERSION='1.8';
 document.querySelectorAll('.vlogo').forEach(i=>i.src=$('logo').src);
 function goHome(e){
   const el=e&&e.currentTarget;if(el){el.classList.remove('tap');void el.offsetWidth;el.classList.add('tap')}

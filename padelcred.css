@@ -1708,3 +1708,18 @@ body.hasnav #koView{padding-bottom:calc(110px + env(safe-area-inset-bottom,0px))
 #planSheet .plp input:focus,#planSheet input[type=time]:focus,.chform select:focus{outline:none;border-color:#6EE7B7}
 .plok{height:48px}
 .plok{width:112px;text-align:center}
+/* archetype quiz */
+.qzentry{margin:0 0 10px;width:100%}
+.styletag.findarch{border-style:dashed}
+.qzstep{margin:0 0 6px;font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#6EE7B7}
+.qzbar{height:6px;border-radius:99px;background:#334155;overflow:hidden;margin-bottom:14px}.qzbar i{display:block;height:100%;background:#6EE7B7;border-radius:99px}
+.qzq{margin:0 0 14px;font-family:var(--heading);font-size:22px;line-height:1.25;color:#F5F7FA}
+.qzopts{display:grid;gap:10px}
+.qzopt{width:100%;text-align:left;padding:14px 16px;border-radius:14px;border:1.5px solid #334155;background:#142132;color:#F5F7FA;font-size:16px;font-weight:600;font-family:var(--body)}
+.qzopt:active{border-color:#6EE7B7;background:#1C2B3D}
+.qzback{margin-top:12px}
+.qzres{display:grid;justify-items:center;gap:6px;text-align:center;padding:18px 10px 20px}
+.qzres i{display:grid;place-items:center;width:84px;height:84px;border-radius:50%;background:#6EE7B7}
+.qzres i svg{width:46px;height:46px;fill:none;stroke:#0B1420;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.qzres b{font-family:var(--display);font-size:28px;color:#F5F7FA;margin-top:6px}
+.qzres span{font-size:15px;color:#BAC9D3;max-width:300px}

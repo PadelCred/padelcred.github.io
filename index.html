@@ -9,13 +9,13 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="PadelCred">
-<meta name="app-version" content="1.7">
+<meta name="app-version" content="1.8">
 <title>PadelCred</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="padelcred.css?v=1.7">
+<link rel="stylesheet" href="padelcred.css?v=1.8">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="64x64" href="favicon-64.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -278,7 +278,7 @@
   <div class="field"><span class="lbl">Side you play</span><div class="seg three" id="peSide"><button data-v="Left">Left</button><button data-v="Right">Right</button><button data-v="Either">Either</button></div></div>
   <div class="field"><span class="lbl">Playing hand</span><div class="seg" id="peHand"><button data-v="Right-handed">Right-handed</button><button data-v="Left-handed">Left-handed</button></div></div>
   <div class="field"><span class="lbl">Level</span><div class="optgrid" id="peLevel"></div></div>
-  <div class="field"><span class="lbl">Your playstyle</span><p class="help" style="margin:-2px 2px 8px">Pick the one that sounds most like you. You can change it any time.</p><div class="stylegrid" id="peStyle"></div></div>
+  <div class="field"><span class="lbl">Your archetype</span><p class="help" style="margin:-2px 2px 8px">Pick the one that sounds most like you. You can change it any time.</p><button class="secondary qzentry" id="peQuiz" type="button">Not sure? Take the 30-second quiz</button><div class="stylegrid" id="peStyle"></div></div>
   <div class="field"><span class="lbl">Favourite shot</span><div class="optgrid" id="peShot"></div></div>
   <div class="pair">
     <div class="field"><label for="peClub">Home club</label><input type="text" id="peClub" maxlength="40" placeholder="Where you play most"></div>
@@ -333,7 +333,7 @@
 <p>If you don't sign in, nothing leaves your phone unless you share it yourself, for example a share card or a video clip.</p>
 <h4>If you sign in</h4>
 <p>Signing in is optional. If you do, your results, profile and friends list are saved to your PadelCred account on Google Firebase, stored in London, so they sync between your devices.</p>
-<p>Your profile is public to other signed-in PadelCred users. That means your name, username, photo, bio, padel details, socials, playing style, stats, achievements, Overall, ranking and your last 10 results (score, date, venue, and who you played with and against). Matches you play with connected friends are also sent to them, and matches tagged with a shared group are shared with its members, along with live scores while you play.</p>
+<p>Your profile is public to other signed-in PadelCred users. That means your name, username, photo, bio, padel details, socials, archetype, stats, achievements, Overall, ranking and your last 10 results (score, date, venue, and who you played with and against). Matches you play with connected friends are also sent to them, and matches tagged with a shared group are shared with its members, along with live scores while you play.</p>
 <p>Your email address is never shown to anyone. It's only used to sign you in.</p>
 <p>You can hide yourself from the rankings in Your data, and delete your account and everything in it at any time from Account and sync.</p>
 <h4>Other services the app uses</h4>
@@ -482,11 +482,11 @@
   <div class="btns"><button class="primary" id="invYes">Invite them</button><button class="secondary" id="invNo">Not now</button></div>
 </section>
 
-<section class="sheet" id="styleSheet" aria-label="Playing style">
+<section class="sheet" id="styleSheet" aria-label="Archetype">
   <div class="sthead"><i id="stIcon"></i><div><p class="stwho" id="stWho"></p><h3 id="stName"></h3></div></div>
   <p class="stdesc" id="stDesc"></p>
   <div class="stmore" id="stMore"></div>
-  <div class="btns"><button class="primary" id="stChange">Change style</button><button class="secondary" id="stClose">Close</button></div>
+  <div class="btns"><button class="primary" id="stChange">Change archetype</button><button class="secondary" id="stQuiz">Retake the quiz</button><button class="secondary" id="stClose">Close</button></div>
 </section>
 
 <section class="sheet" id="amScoreSheet" aria-label="Court score">
@@ -597,7 +597,7 @@
     <button class="secondary" id="privacyBtn">Privacy</button>
     <button class="secondary" id="dataUpdate">Check for updates</button>
   </div>
-  <p class="help" style="text-align:center;margin:14px 0 0">PadelCred v1.7<br><span class="copyr">© 2026 Raza Rebuilt. All rights reserved.</span></p>
+  <p class="help" style="text-align:center;margin:14px 0 0">PadelCred v1.8<br><span class="copyr">© 2026 Raza Rebuilt. All rights reserved.</span></p>
 </section>
 
 <section class="camview" id="camView" aria-label="Camera">
@@ -630,6 +630,10 @@
 <section class="sheet" id="planSheet" aria-label="Plan a match night">
   <h3>Match night</h3>
   <div id="planBody"></div>
+</section>
+
+<section class="sheet" id="quizSheet" aria-label="Archetype quiz">
+  <div id="quizBody"></div>
 </section>
 
 <section class="sheet" id="exportSheet" aria-label="Export results">
@@ -791,7 +795,7 @@
 <canvas class="fx" id="fx"></canvas>
 <div class="toast" id="toast" role="status"></div>
 
-<script src="padelcred.js?v=1.7"></script>
+<script src="padelcred.js?v=1.8"></script>
 <script>if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol))addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));</script>
 </body>
 </html>
