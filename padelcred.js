@@ -3130,6 +3130,18 @@ function matchWeight(r){if(r&&r.h&&r.h.session)return .5;const c=(r&&r.cfg)||{};
   if(c.bestOf){if(c.race)return .5;if(c.games===4)return c.bestOf>=3?.75:.5;if(c.bestOf===1)return .75;return 1}
   const s=(r&&r.sets)||[];if(s.length>=2)return 1;const g=s[0]&&s[0].g?Math.max(s[0].g[0]||0,s[0].g[1]||0):6;return g>=6?.75:.5}
 
+
+/* ================= admin reference: every achievement and how to unlock it ================= */
+function adminAchievementsHtml(){
+  const sec=(title,rows)=>'<p class="sh">'+title+' <span class="muted">'+rows.length+'</span></p><table class="grid adachtbl"><tbody>'+rows.map(r=>'<tr><td><b>'+esc(r[0])+'</b></td><td>'+esc(r[1])+'</td></tr>').join('')+'</tbody></table>';
+  const tierName={1:'Bronze',2:'Silver',3:'Gold',4:'Elite'};
+  return sec('Exclusive',[['Founding member','One of the first 50 accounts. Numbered.'],['Founding group','Started one of the first '+FGROUP_LIMIT+' shared groups. Numbered.'],['Group starter','Create a shared group that reaches 8 members.'],['Recruiter','Connect with 5 friends on PadelCred.'],['Bug hunter','Awarded by you for a real bug report. Can be given more than once.']])+
+    sec('Secret',SECRET_ONE.map(s=>[s[1],s[2]+'.']))+
+    sec('Seasonal (every year)',SEASONAL.map(s=>[s[1],s[4]+'.']))+
+    sec('Match achievements',BADGES.map(b=>[b[1]+(tierName[b[2]]?' · '+tierName[b[2]]:''),b[3]+'.']));
+}
+document.addEventListener('toggle',e=>{const d=e.target;if(d&&d.classList&&d.classList.contains('adach')&&d.open){const box=$('adAchList');if(box&&!box.innerHTML)box.innerHTML=adminAchievementsHtml()}},true);
+
 /* ================= bug reports ================= */
 const appVersion=()=>((document.querySelector('meta[name="app-version"]')||{}).content||'');
 const bugDevice=()=>{const ua=navigator.userAgent;const os=/iPhone|iPad/.test(ua)?'iPhone':/Android/.test(ua)?'Android':/Mac/.test(ua)?'Mac':/Windows/.test(ua)?'Windows':'Other';const br=/SamsungBrowser/.test(ua)?'Samsung Internet':/CriOS|Chrome/.test(ua)?'Chrome':/Safari/.test(ua)?'Safari':/Firefox/.test(ua)?'Firefox':'Browser';return os+', '+br+(window.matchMedia('(display-mode: standalone)').matches?', home screen app':'')+(window.PadelCredNative?', Android app':'')+', '+innerWidth+'×'+innerHeight};
@@ -4050,7 +4062,7 @@ $('peCancel').onclick=()=>hideSheet();
 
 
 /* ================= home logo and updates ================= */
-const APP_VERSION='2.5';
+const APP_VERSION='2.5.1';
 document.querySelectorAll('.vlogo').forEach(i=>i.src=$('logo').src);
 function goHome(e){
   const el=e&&e.currentTarget;if(el){el.classList.remove('tap');void el.offsetWidth;el.classList.add('tap')}

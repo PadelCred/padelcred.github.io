@@ -1773,3 +1773,7 @@ img:not([src]),img[src=""]{visibility:hidden}
 .setcustbtn{display:block;margin:10px 2px 0;font-size:14px}
 #setCustomNote:empty{display:none}
 .setcustom{display:none}.setcustom.open{display:block}
+.adach{margin-top:14px;border:1.5px solid #334155;border-radius:14px;padding:10px 12px}
+.adach summary{font-weight:700;cursor:pointer;color:#F5F7FA}
+.adachtbl{min-width:0;width:100%}.adachtbl td{vertical-align:top;font-size:13.5px}.adachtbl td:first-child{width:42%}
+.adachtbl{table-layout:fixed}.adachtbl td{white-space:normal!important;overflow-wrap:anywhere;line-height:1.4}.adach .sh{margin-top:12px}
