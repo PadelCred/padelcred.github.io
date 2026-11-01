@@ -3775,7 +3775,7 @@ function renderProfile(){
   const card=(v,l,n)=>'<div class="card" style="--i:'+n+'"><b>'+v+'</b><span>'+l+'</span></div>';
   const partner=Object.values(p.partners||{}).sort((a,b)=>(b.w/b.p)-(a.w/a.p)||b.p-a.p)[0];
   const nemesis=Object.values(p.opps||{}).filter(o=>o.l>0).sort((a,b)=>b.l-a.l)[0];
-  box.innerHTML='<div id="profAccount"></div><div class="profhero">'+(PROF.founder?'<span class="avwrap fnd" data-n="'+PROF.founder+'" title="Founding member #'+PROF.founder+'">'+avatar('pav big',PROF.name,PROF.photo)+'</span>':avatar('pav big',PROF.name,PROF.photo))+'<div class="phinfo"><h3>'+esc(PROF.name)+(PROF.country?' <span class="flag-e" title="'+esc(countryName(PROF.country))+'">'+flagOf(PROF.country)+'</span>':'')+'</h3>'+(PROF.username?'<span class="handle">@'+esc(PROF.username)+((typeof FB!=="undefined"&&FB.user)?'':' <em class="soff">Signed out</em>')+'</span>':'')+(STYLE[PROF.style]?styleTag(PROF.style,true):'<button class="styletag findarch" id="findArch"><span class="stlab"><small>Archetype</small><b>Find yours in 30 seconds</b></span></button>')+(PROF.founder?'<span class="fndline">Founding member #'+PROF.founder+'</span>':'')+'</div><button class="mini" id="profEdit">Edit</button></div>'+
+  box.innerHTML='<div id="profAccount"></div><div class="profhero">'+(PROF.founder?'<span class="avwrap fnd" data-n="'+PROF.founder+'" title="Founding member #'+PROF.founder+'">'+avatar('pav big',PROF.name,PROF.photo)+'</span>':avatar('pav big',PROF.name,PROF.photo))+'<div class="phinfo"><h3>'+esc(PROF.name)+(PROF.country?' <span class="flag-e" title="'+esc(countryName(PROF.country))+'">'+flagOf(PROF.country)+'</span>':'')+'</h3>'+(PROF.username?'<span class="handle">@'+esc(PROF.username)+(seemsIn()?'':' <em class="soff">Signed out</em>')+'</span>':'')+(STYLE[PROF.style]?styleTag(PROF.style,true):'<button class="styletag findarch" id="findArch"><span class="stlab"><small>Archetype</small><b>Find yours in 30 seconds</b></span></button>')+(PROF.founder?'<span class="fndline">Founding member #'+PROF.founder+'</span>':'')+'</div><button class="mini" id="profEdit">Edit</button></div>'+
     (PROF.bio?'<p class="bio">'+esc(PROF.bio)+'</p>':'')+
     (chips.length?'<div class="pchips">'+chips.map(c=>'<span>'+esc(c)+'</span>').join('')+'</div>':'')+
     (socials?'<div class="socials">'+socials+'</div>':'')+
@@ -3879,7 +3879,7 @@ $('peCancel').onclick=()=>hideSheet();
 
 
 /* ================= home logo and updates ================= */
-const APP_VERSION='2.0.1';
+const APP_VERSION='2.0.2';
 document.querySelectorAll('.vlogo').forEach(i=>i.src=$('logo').src);
 function goHome(e){
   const el=e&&e.currentTarget;if(el){el.classList.remove('tap');void el.offsetWidth;el.classList.add('tap')}
@@ -5201,14 +5201,16 @@ function fbInit(){
       if(APPCHECK_KEY){try{if(!firebase.appCheck)await loadScript(FB_BASE+'firebase-app-check-compat.js');firebase.appCheck().activate(APPCHECK_KEY,true)}catch(e){}}
       FB.auth=firebase.auth();FB.db=firebase.firestore();
       try{await FB.db.enablePersistence({synchronizeTabs:true})}catch(e){}
-      FB.auth.onAuthStateChanged(u=>{FB.user=u||null;onAuthChange()});
+      FB.auth.onAuthStateChanged(u=>{FB.user=u||null;const first=!FB.authKnown;FB.authKnown=true;onAuthChange();if(first&&!u){try{if(typeof homeOn==='function'&&homeOn())renderHome();else if($('resultsView').classList.contains('on')&&typeof tab!=='undefined'&&tab==='profile')renderProfile()}catch(e){}}});
       FB.ready=true;return true;
     }catch(e){FB.loading=null;return false}
   })();
   return FB.loading;
 }
 // start quietly in the background so a returning user is signed straight back in
-if(store.get('db-signed-in'))setTimeout(fbInit,800);
+if(store.get('db-signed-in'))setTimeout(fbInit,150);
+// until the sign-in check answers, someone who was signed in last time is treated as signed in, so no sign-up prompts flash up
+function seemsIn(){return!!(typeof FB!=='undefined'&&(FB.user||(!FB.authKnown&&store.get('db-signed-in'))))}
 
 /* --- what's synced: each match as a JSON string (Firestore can't store nested lists) --- */
 function strHash(s){let h=0;for(let i=0;i<s.length;i++){h=(h*31+s.charCodeAt(i))|0}return String(h)}
@@ -5371,7 +5373,7 @@ async function onAuthChange(){
 }
 function syncAccountBits(){
   const el=$('profAccount');if(!el)return;
-  el.innerHTML=FB.user?'<div class="acmini"><span class="dot on"></span><div><b>Synced to your account</b><span id="profSync"></span></div><button class="mini" id="profAcBtn">Account</button></div>'
+  el.innerHTML=seemsIn()?'<div class="acmini"><span class="dot on"></span><div><b>Synced to your account</b><span id="profSync"></span></div><button class="mini" id="profAcBtn">Account</button></div>'
     :'<div class="acmini"><span class="dot"></span><div><b>Not backed up</b><span>Sign in to keep your results safe on any phone.</span></div><button class="mini lime" id="profAcBtn">Sign in</button></div>';
   setSyncLabel();$('profAcBtn').onclick=openAccount;
 }
@@ -5861,12 +5863,12 @@ function renderHome(){
   const lastTeams=last?(last.a+' v '+last.b):'';
   let h='<div class="hmhead"><div><span class="hmhi">'+greeting()+(first?', '+esc(first):'')+'</span><b>Ready to play?</b></div></div>';
   if(yipSeason()&&(()=>{const S=yipStats(yipYear());return S&&!S.few})())h+='<button class="hmyip" id="hmYip"><span><em>Your '+yipYear()+' in padel</em><b>It\'s ready. Take a look.</b></span><i>Play</i></button>';
-  if(!(typeof FB!=='undefined'&&FB.user))h+='<button class="hmacc" id="hmAcc"><span><b>Create your free account</b><em>Keep your results safe, add friends and share a league.</em></span><i>Sign up</i></button>';
+  if(!seemsIn())h+='<button class="hmacc" id="hmAcc"><span><b>Create your free account</b><em>Keep your results safe, add friends and share a league.</em></span><i>Sign up</i></button>';
   if(inProgress){
     const L2=labels(S,M.cfg);
     h+='<button class="hmcard hmcarry" id="hmCarry"><span class="hmtag"><span class="livedot"></span>Match in progress</span><b>'+esc(nm(0))+' v '+esc(nm(1))+'</b><span class="hmscore">'+esc((setLine(S)||'0–0')+', '+L2[0]+'–'+L2[1])+'</span><span class="hmgo">Carry on</span></button>';
   }
-  h+='<button class="hmcard hmstart'+(inProgress?' sec':'')+'" id="hmStart"><b>'+(inProgress?'Start a new match':'Start a match')+'</b><span>'+esc(fmtLine)+(lastTeams&&!inProgress?'<br>Last time: '+esc(lastTeams):'')+(!(typeof FB!=='undefined'&&FB.user)?'<em class="hmwarn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2.5 20h19z"/><path d="M12 9.5v5M12 17.4v.1"/></svg>Your results won\'t be backed up without an account.</em>':'')+'</span><span class="hmgo">'+(inProgress?'New':'Let\'s play')+'</span></button>';
+  h+='<button class="hmcard hmstart'+(inProgress?' sec':'')+'" id="hmStart"><b>'+(inProgress?'Start a new match':'Start a match')+'</b><span>'+esc(fmtLine)+(lastTeams&&!inProgress?'<br>Last time: '+esc(lastTeams):'')+(!seemsIn()?'<em class="hmwarn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2.5 20h19z"/><path d="M12 9.5v5M12 17.4v.1"/></svg>Your results won\'t be backed up without an account.</em>':'')+'</span><span class="hmgo">'+(inProgress?'New':'Let\'s play')+'</span></button>';
   {const cur=amCur();h+='<button class="hmamer" id="hmAmer"><span class="hmamic"><svg viewBox="0 0 24 24"><circle cx="7" cy="7" r="2.6"/><circle cx="17" cy="7" r="2.6"/><circle cx="7" cy="17" r="2.6"/><circle cx="17" cy="17" r="2.6"/><path d="M9.6 7h4.8M7 9.6v4.8M17 9.6v4.8M9.6 17h4.8"/></svg></span><span><b>'+(cur?'Carry on: '+(cur.type==="americano"?"Americano":"Mexicano")+', round '+(cur.at+1):'Americano night')+'</b><em>'+(cur?cur.players.length+' players, '+(cur.venue?esc(cur.venue):cur.pts+' points per match'):'Rotating partners, points scoring, a leaderboard at the end')+'</em></span><i>'+(cur?'Open':'Set up')+'</i></button>'}
   if(live.length){const r=live[0],st=r.st;
     h+='<button class="hmcard hmlive" id="hmLive"><span class="hmtag"><span class="livedot'+(r.ended?' off':'')+'"></span>'+(r.ended?'Just finished':'Live now')+', '+esc(r.g)+'</span><b>'+esc(st.us.name)+' v '+esc(st.them.name)+'</b><span class="hmscore">'+(r.ended?esc(st.winner+' won '+st.score):esc((st.score?st.score+', ':'')+st.us.points+'–'+st.them.points))+'</span></button>'}

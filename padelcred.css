@@ -1742,3 +1742,5 @@ body.hasnav #boxView{padding-bottom:calc(110px + env(safe-area-inset-bottom,0px)
 .cfbtns{display:flex;gap:8px}.cfbtns .mini{flex:1}
 .cfok{background:#6EE7B7!important;color:#0B1420!important;border-color:#6EE7B7!important}
 .cfline{margin:0 0 8px;font-size:13.5px;font-weight:600}.cfline.ok{color:#6EE7B7}.cfline.no{color:#FF8C80}
+/* images stay invisible until their picture is set, so no broken-image icon flashes up while the app loads */
+img:not([src]),img[src=""]{visibility:hidden}
