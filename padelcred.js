@@ -1,3 +1,103 @@
+/* PadelCred: contents
+   - state & actions
+   - render
+   - stats
+   - in-app confirmation (works everywhere, unlike browser pop-ups)
+   - toast & sheets
+   - setup
+   - screen wake lock
+   - watch controls
+   - filming
+   - results database
+   - players
+   - league (Elo-style ratings)
+   - awards
+   - momentum
+   - match cards
+   - results hub tabs
+   - your data: where things live, backup, restore
+   - clip editor
+   - who's serving, by name
+   - change of ends
+   - a unique icon for every achievement (24 x 24 line drawings)
+   - founding member: the first 100 accounts, numbered in order
+   - exclusive and seasonal badges (bonus, never part of the 50)
+   - secret achievements: hidden until found
+   - the match wrap-up: achievements and invites on the end screen
+   - achievement pop-up: a proper moment, after the match celebration
+   - invite players who aren't on PadelCred yet
+   - Year in padel: once a year, story style
+   - Americano and Mexicano nights
+   - venue search, powered by OpenStreetMap
+   - venues
+   - rate your game
+   - peer ratings and your Overall
+   - skill radar: friends pick what stood out (up to two), shown as a radar on profiles
+   - v1.7: insights, seasons, challenges, planner, chemistry, moment markers
+   - archetype quiz: five quick questions
+   - v1.9: legal pages, profile reports, near my level at any size
+   - v2.0: result confirmation and box leagues
+   - bug reports
+   - sync check
+   - rankings
+   - shareable player card
+   - form
+   - floating nav
+   - predictions, duos, averages and matchmaking
+   - highlights: favourite teammate, arch rival, nemesis, best matchup
+   - knockout tournaments
+   - achievements
+   - this is me
+   - weekly recap
+   - highlight reel
+   - your profile
+   - home logo and updates
+   - profile button in the header
+   - friends (no server: everything travels in links)
+   - first-open welcome
+   - guided tour
+   - end a match early
+   - storage space for filming
+   - backup reminders
+   - iPhone support
+   - privacy
+   - accessibility
+   - celebration effects
+   - the match celebration
+   - sounds
+   - groups
+   - rivals: head to head, counted by sets
+   - swap partners between sets
+   - names: tidy, spot near-duplicates, rename and merge
+   - the same match, twice
+   - safer storage for results
+   - scoring lock: press and hold to score
+   - outdoor mode
+   - battery
+   - who serves first in each set
+   - picking filming back up after an interruption
+   - native bridge: lets the Android wrapper and the watch app drive the scoring
+   - back button: close what's on top instead of leaving the app
+   - how ratings work
+   - identity: a hidden ID behind every profile, so names can't collide
+   - sessions: a whole evening of rotating rounds
+   - fix the score: set games and points directly
+   - speed: remember results between screens
+   - quick pick players
+   - padel rules cheat sheet
+   - recaps for any period
+   - session card
+   - progress charts on profiles
+   - avatar maker
+   - country flags
+   - accounts and sync (Firebase, free plan)
+   - stage two: friends by username and results that send themselves
+   - stage three: shared groups and live scores
+   - opening screen: matches the splash, then hands over
+   - home screen
+   - richer friend profiles
+   - go
+*/
 (function(){
 const $=id=>document.getElementById(id);
 const root=document.documentElement;
@@ -154,7 +254,7 @@ function recordHistory(){
   }
   saveH();
 }
-function point(w){
+function point(w){const __pcSets=S.sets.length,__pcDone=S.done;try{
   if(S.done!==null)return;
   if(typeof homeOn==='function'&&homeOn())hideHome();
   if(!M.start)M.start=Date.now();
@@ -174,7 +274,8 @@ function point(w){
   tickSound('point');
   const el=w===0?$('halfUs'):$('halfThem');el.classList.remove('flash');void el.offsetWidth;el.classList.add('flash');
   try{navigator.vibrate&&navigator.vibrate(S.done!==null?[60,60,60]:30)}catch(e){}
-}
+
+}finally{(()=>{try{if(rec){if(S.done!==null&&__pcDone===null)addMark('match');else if(S.sets.length>__pcSets)addMark('set')}}catch(e){}})()}}
 function undo(){
   if(M.preFix&&M.pts.length===M.fixLen){M.pts=M.preFix.pts;M.cfg.setFirst=M.preFix.setFirst;M.adjusted=M.preFix.adjusted;delete M.preFix;delete M.fixLen;S=replay(M.cfg,M.pts);prevL=null;prevGames='';saveM();recordHistory();render();toast('Score fix undone.');return}
   if(!M.pts.length){toast('Nothing to undo yet.');return}
@@ -330,7 +431,7 @@ let tt;
 function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),3200)}
 let openSheet=null;
 let lastFocus=null;
-function showSheet(id){
+function showSheet(id){try{
   // Repeated opens and restricted sheets must never leave two active overlays behind.
   if(openSheet&&openSheet.id===id){openSheet.scrollTop=0;return}
   hideSheet();
@@ -340,7 +441,8 @@ function showSheet(id){
   document.querySelectorAll('.sheet.on').forEach(s=>s.classList.remove('on'));
   openSheet=next;openSheet.scrollTop=0;openSheet.classList.add('on');$('scrim').classList.add('on');
   setTimeout(()=>{if(openSheet===next){const h=next.querySelector('h3');if(h)h.focus({preventScroll:true})}},40);
-}
+
+}finally{(()=>{if(id==='setup')setTimeout(updatePred,60);})()}}
 function hideSheet(){if(openSheet&&openSheet.id==='usernameSheet'&&typeof unameRequired!=='undefined'&&unameRequired&&needsUsername()){toast('Pick a username to carry on.');return}
   const was=!!openSheet;const wasSetup=openSheet&&openSheet.id==='setup';if(wasSetup&&setupFromHome&&!setupStarted&&!M.pts.length&&typeof showHome==='function')setTimeout(()=>{if(!openSheet&&!$('resultsView').classList.contains('on'))showHome()},50);if(wasSetup){setupStarted=false;setupFromHome=false}if(openSheet)openSheet.classList.remove('on');openSheet=null;document.querySelectorAll('.sheet.on').forEach(s=>s.classList.remove('on'));$('scrim').classList.remove('on');if(was&&lastFocus&&document.body.contains(lastFocus)){try{lastFocus.focus({preventScroll:true})}catch(e){}}lastFocus=null}
 $('scrim').onclick=()=>{if(openSheet&&openSheet.id==='clipSheet')return;hideSheet()};
@@ -665,7 +767,7 @@ function clipThat(){
 }
 $('camClip').onclick=clipThat;
 if($('camMark'))$('camMark').onclick=()=>addMark('mark');
-{const _el=edLoad;edLoad=async function(blob){if(ED.marksBlob!==blob)ED.marks=[];const r=await _el.apply(this,arguments);try{edMarksRender()}catch(e){}return r}}
+/* edLoad: built into the function itself */
 
 function fmt(ms){const s=Math.floor(ms/1000),m=Math.floor(s/60);return String(m).padStart(2,'0')+':'+String(s%60).padStart(2,'0')}
 async function startRec(){
@@ -976,7 +1078,7 @@ document.querySelectorAll('#segFilter button').forEach(b=>b.onclick=()=>{RES.fil
 
 /* match detail */
 let rowId=null;
-function openRow(id){
+function openRow(id){try{
   const h=history.find(x=>x.id===id);if(!h)return;
   const r=rowOf(h);rowId=id;
   $('rowTitle').textContent=r.unfinished?(r.h.leader===0?r.a+' led '+r.b:r.h.leader===1?r.b+' led '+r.a:r.a+' v '+r.b):r.winner===0?r.a+' beat '+r.b:r.winner===1?r.b+' beat '+r.a:r.a+' v '+r.b;
@@ -988,7 +1090,8 @@ function openRow(id){
   $('rowNotes').value=r.notes;
   $('rowEdit').style.display=h.manual?'':'none';
   showSheet('rowSheet');
-}
+
+}finally{(()=>{try{const h=history.find(x=>x.id===id);if(!h)return;let line='';if(h.conf){const yes=Object.values(h.conf).filter(c=>c&&c.ok).map(c=>c.n||'A friend'),no=Object.values(h.conf).filter(c=>c&&c.ok===false).map(c=>c.n||'A friend');if(yes.length)line+='<p class="cfline ok">✓ Confirmed by '+esc(yes.join(', '))+'</p>';if(no.length)line+='<p class="cfline no">'+esc(no.join(' and '))+' says this result isn\'t right'+(h.disputeOk?' (kept anyway)':'')+'.</p>'}if(h.cs==='yes')line+='<p class="cfline ok">✓ You confirmed this result</p>';if(h.cs==='no')line+='<p class="cfline no">You said this result isn\'t right, so it doesn\'t count for you.</p>';if(line)$('rowBody').insertAdjacentHTML('afterbegin',line)}catch(e){}})()}}
 $('rowSave').onclick=()=>{const h=history.find(x=>x.id===rowId);if(h){h.notes=$('rowNotes').value.trim();saveH();renderResults();hideSheet();toast('Notes saved.')}};
 $('rowDelete').onclick=async()=>{
   if(!(await ask('Delete this match?','It comes off your results, the league and player records.','Delete match',true)))return;
@@ -1236,7 +1339,7 @@ function computeLeagueRaw(group){
   return Object.values(P).sort((a,b)=>b.rating-a.rating||b.w-a.w);
 }
 const formDots=f=>'<span class="form">'+f.slice(-5).map(x=>'<i class="'+(x==='W'?'w':x==='D'?'d':'l')+'">'+x+'</i>').join('')+'</span>';
-function renderLeague(){
+function renderLeague(){try{
   const L=computeLeague(RES.group);
   if(!L.length){$('leagueBody').innerHTML='<p class="empty">Add player names when you set up a match and the league takes it from there. Ratings move after every result.</p>';return}
   $('leagueBody').innerHTML='<details class="howto"><summary>How the league works</summary><p>Your rating starts from your Playtomic level, or from 0.5 if you don\'t have one. Win and it goes up, lose and it goes down. Beating a higher-rated pair earns you more. A round in a swapped-partners session counts for half.'+(store.get('db-live-only')===true?' Only matches scored live are counted (change this in Your data).':'')+' <button class="linkbtn inl" id="rateHelp">More on ratings</button></p></details>'+
@@ -1246,7 +1349,8 @@ function renderLeague(){
   $('leagueBody').querySelectorAll('tbody tr').forEach(tr=>tr.onclick=()=>openPlayer(tr.dataset.p));
   $('rateHelp').onclick=openRatingHelp;
 
-}
+
+}finally{(()=>{(()=>{try{const box=$('leagueBody');const how=box.querySelector('details.howto');const btn='<button class="secondary lgrankbtn" id="lgRankBtn">'+(FB.user?'See the PadelCred rankings':'Sign in to see the PadelCred rankings')+'</button>';if(how)how.insertAdjacentHTML('afterend',btn);else box.insertAdjacentHTML('afterbegin',btn);const rb=$('lgRankBtn');if(rb)rb.onclick=()=>{if(FB.user)openRankings();else{authMode='in';openAccount()}};const L=computeLeague(RES.group);if(!L.length)return;rb.insertAdjacentHTML('afterend',leagueAvgLine(L));box.insertAdjacentHTML('beforeend',duosHtml(L))}catch(e){}})();(()=>{try{const box=$('leagueBody');if(!box||box.querySelector('.seacard'))return;const anchor=box.querySelector('.lgavg')||box.querySelector('#lgRankBtn');const html=seasonHtml(RES.group);if(anchor)anchor.insertAdjacentHTML('afterend',html);else box.insertAdjacentHTML('afterbegin',html)}catch(e){}})();})()}}
 function renderPlayers(){
   const L=computeLeague(RES.group);
   if(!L.length){$('playersBody').innerHTML='<p class="empty">Players show up here once you add names to a match. Partners can change every game. Everyone keeps their own record.</p>';return}
@@ -1566,7 +1670,7 @@ async function openEditor(blob,name){
   $('edLogoRow').classList.toggle('hide',!brandOn());
 }
 function edShowStep(s){$('edPick').classList.toggle('hide',s!=='load');$('edWork').classList.toggle('hide',s!=='edit')}
-async function edLoad(blob,name){
+async function edLoad(blob,name){if(ED.marksBlob!==blob)ED.marks=[];try{
   if(ED.srcUrl)URL.revokeObjectURL(ED.srcUrl);
   ED.src=blob;ED.srcUrl=URL.createObjectURL(blob);
   const v=ED.v;v.src=ED.srcUrl;v.playsInline=true;v.preload='auto';
@@ -1583,7 +1687,8 @@ async function edLoad(blob,name){
   edShowStep('edit');edLayout();
   $('edScore').value=$('edScore').value||lastMatchLine();
   cancelAnimationFrame(ED.raf);edLoop();
-}
+
+}finally{(()=>{try{edMarksRender()}catch(e){}})()}}
 function closeEditor(){
   ED.open=false;cancelAnimationFrame(ED.raf);ED.v.pause();
   $('edView').classList.remove('on');
@@ -2739,7 +2844,7 @@ function seasonHtml(group){
   return h+'</section>';
 }
 document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-sea]');if(!b)return;SEA.mode=b.dataset.sea;store.set('db-season',SEA.mode);renderLeague()});
-{const _rl2=renderLeague;renderLeague=function(){_rl2.apply(this,arguments);Promise.resolve().then(()=>{try{const box=$('leagueBody');if(!box||box.querySelector('.seacard'))return;const anchor=box.querySelector('.lgavg')||box.querySelector('#lgRankBtn');const html=seasonHtml(RES.group);if(anchor)anchor.insertAdjacentHTML('afterend',html);else box.insertAdjacentHTML('afterbegin',html)}catch(e){}})}}
+/* renderLeague: built into the function itself */
 
 /* --- rivalry challenges: first to N wins, or best of N, counted from your results --- */
 const CH={list:store.get('db-ch')||[]};
@@ -2768,7 +2873,7 @@ document.addEventListener('click',async e=>{
   const sh=t.closest('[data-chshare]');if(sh){const c=CH.list.find(x=>x.id===sh.dataset.chshare);if(!c)return;const s=chScore(c),L=computeLeague(),opp=(L.find(x=>x.key===c.opp)||{name:c.oppName}).name,me=(L.find(x=>x.key===meKey())||{name:PROF.name||'Me'}).name;const txt='PadelCred rivalry: '+me+' '+s.a+'–'+s.b+' '+opp+' ('+(c.type==='best'?'best of '+c.n:'first to '+c.n+' wins')+').'+(s.done?' '+(s.winner==='me'?me:opp)+' takes it!':' Game on.');try{if(navigator.share){await navigator.share({text:txt});return}}catch(err){return}try{await navigator.clipboard.writeText(txt);toast('Copied. Paste it into your group chat.')}catch(err){toast(txt)}return}
   const dl=t.closest('[data-chdel]');if(dl){if(!(await ask('Remove this challenge?','Your match results stay as they are.','Remove',true)))return;CH.list=CH.list.filter(x=>x.id!==dl.dataset.chdel);chSave();renderRivals()}
 });
-{const _rr=renderRivals;renderRivals=function(){_rr.apply(this,arguments);try{const box=$('rivalsBody');if(!box||box.querySelector('.chcard'))return;if(!computeLeague().length)return;box.insertAdjacentHTML('afterbegin',challengesHtml())}catch(e){}}}
+/* renderRivals: built into the function itself */
 
 /* --- match night planner: invite, share to WhatsApp, calendar file, suggested teams --- */
 const PLAN={list:store.get('db-plans')||[],cur:null};
@@ -2819,7 +2924,7 @@ function predExtras(a,b,p){if(p==null)return'';const ses=false,k=ses?K/2:K,up=Ma
 let recMarks=[];
 function addMark(kind){if(!rec||!t0)return;recMarks.push({t:Date.now()-t0,k:kind||'mark'});if(vdb.ok){vdb.getMeta().then(m=>{if(m)vdb.setMeta(Object.assign({},m,{marks:recMarks}))}).catch(()=>{})}
   if(kind!=='set'&&kind!=='match'){try{navigator.vibrate&&navigator.vibrate(30)}catch(e){}toast('Moment marked at '+fmt(Date.now()-t0)+'.')}}
-{const _pt=point;point=function(w){const before=S.sets.length,wasDone=S.done;const r=_pt.apply(this,arguments);try{if(rec){if(S.done!==null&&wasDone===null)addMark('match');else if(S.sets.length>before)addMark('set')}}catch(e){}return r}}
+/* point: built into the function itself */
 function edMarksRender(){const tl=$('tl'),row=$('edMarks');if(!tl||!row)return;tl.querySelectorAll('.tlmark').forEach(x=>x.remove());const ms=(ED.marks||[]).filter(m=>m.t/1000<=ED.dur+1);
   if(!ms.length||!ED.dur){row.innerHTML='';row.classList.add('hide');return}
   ms.forEach(m=>{const el=document.createElement('i');el.className='tlmark'+(m.k==='mark'?'':' auto');el.style.left=Math.min(100,m.t/1000/ED.dur*100)+'%';tl.appendChild(el)});
@@ -2875,8 +2980,8 @@ $('rpSend').onclick=async()=>{const sel=$('rpReasons').querySelector('[aria-pres
   const reason=RP_REASONS[+sel.dataset.rpr],more=$('rpText').value.trim();$('rpSend').disabled=true;
   try{await FB.db.collection('reports').doc(newId()).set({from:FB.user.uid,username:PROF.username||'',name:PROF.name||'',text:('PROFILE REPORT: '+(RPT.name||'Unknown')+(RPT.user?' (@'+RPT.user+')':'')+'\nReason: '+reason+(more?'\nDetails: '+more:'')).slice(0,1500),steps:('Reported account ID: '+RPT.uid).slice(0,800),version:appVersion(),device:'Profile report',theme:'dark',at:Date.now(),status:'new'});hideSheet();toast('Thanks. Your report has been sent.')}
   catch(e){toast(fbError(e))}finally{$('rpSend').disabled=false}};
-{const _opp=openPublicProfile;openPublicProfile=async function(uid,pd){const r=await _opp.apply(this,arguments);try{const t=($('playerTitle').textContent||'').trim();const f=pd||{};addReportBtn(uid,t,(f.username||''))}catch(e){}return r}}
-{const _of=openFriend;openFriend=function(key){const r=_of.apply(this,arguments);try{const f=(typeof friendOf==='function')?friendOf(key):null;if(f&&f.uid)addReportBtn(f.uid,f.name,f.username)}catch(e){}return r}}
+/* openPublicProfile: built into the function itself */
+/* openFriend: built into the function itself */
 // near my level: search every ranked player within 6 of your Overall, not just the top 20
 function nearRanks(myRank,myOvr,list){const above=myRank-1;return list.map(r=>{let k;if(r.ovr>myOvr)k=above-list.filter(x=>x.ovr>myOvr&&x.ovr<=r.ovr).length+1;else if(r.ovr<myOvr)k=above+list.filter(x=>x.ovr<=myOvr&&x.ovr>r.ovr).length+1;else k=myRank;return Object.assign({rk:Math.max(1,k)},r)})}
 async function loadNear(){const d=RANK.data;if(!FB.user||!d||!d.me)return null;if(RANK.near&&RANK.near.ovr===d.me.ovr&&Date.now()-RANK.near.at<20*60000)return RANK.near;
@@ -2901,11 +3006,8 @@ document.addEventListener('click',async e=>{const t=e.target;if(!t.closest)retur
   if(no){const h=history.find(x=>x.id===no.dataset.cfno);if(!h)return;if(!(await ask('This result isn\'t right?','It stops counting for you, and '+(h.recvName||'your friend')+' is asked to check it.','Not right',true)))return;h.cs='no';saveH();sendConf(h,false);toast('Thanks. They\'ll be asked to check it.');renderHome();return}
   if(op){openRow(op.dataset.cfopen);return}
   if(kp){const h=history.find(x=>x.id===kp.dataset.cfkeep);if(!h)return;if(!(await ask('Keep this result?','It counts again, even though a friend disagreed.','Keep it',false)))return;h.disputeOk=true;saveH();renderHome();return}});
-{const _rh=renderHome;renderHome=function(){_rh.apply(this,arguments);try{const st=$('hmStart');if(st&&!$('cfCard')){const html=confCardsHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}}}
-{const _or=openRow;openRow=function(id){_or.apply(this,arguments);try{const h=history.find(x=>x.id===id);if(!h)return;let line='';
-  if(h.conf){const yes=Object.values(h.conf).filter(c=>c&&c.ok).map(c=>c.n||'A friend'),no=Object.values(h.conf).filter(c=>c&&c.ok===false).map(c=>c.n||'A friend');if(yes.length)line+='<p class="cfline ok">✓ Confirmed by '+esc(yes.join(', '))+'</p>';if(no.length)line+='<p class="cfline no">'+esc(no.join(' and '))+' says this result isn\'t right'+(h.disputeOk?' (kept anyway)':'')+'.</p>'}
-  if(h.cs==='yes')line+='<p class="cfline ok">✓ You confirmed this result</p>';if(h.cs==='no')line+='<p class="cfline no">You said this result isn\'t right, so it doesn\'t count for you.</p>';
-  if(line)$('rowBody').insertAdjacentHTML('afterbegin',line)}catch(e){}}}
+/* renderHome: built into the function itself */
+/* openRow: built into the function itself */
 
 // --- box leagues: everyone plays everyone, a table, a champion ---
 const BOX={list:store.get('db-box')||[],view:null};
@@ -3087,7 +3189,7 @@ function rankLineHtml(){
   if(!d||!d.me)return'<p class="ovrrank">Play a match to get ranked on PadelCred. <button class="linkbtn inl" id="rankOpen">See rankings</button></p>';
   return'<p class="ovrrank"><b>Ranked '+ordinal(d.me.rank)+'</b> on PadelCred, out of '+d.total+' player'+(d.total===1?'':'s')+'. <button class="linkbtn inl" id="rankOpen">See rankings</button></p>';
 }
-function fillRankList(){
+function fillRankList(){try{
   const d=RANK.data;
   const rows=(d&&d.top)||[];let prev=null,prevRank=0;
   const ranked=rows.map((r,i)=>{const rk=prev===r.ovr?prevRank:i+1;prev=r.ovr;prevRank=rk;return Object.assign({rk},r)});
@@ -3095,7 +3197,18 @@ function fillRankList(){
   if(d&&d.me&&!rows.some(r=>r.uid===FB.user.uid))h+='<p class="rkgap">…</p>'+rankRow(d.me.rank,{uid:FB.user.uid,name:PROF.name,username:PROF.username,ovr:d.me.ovr});
   $('rankList').innerHTML=h||'<p class="help">Nobody is ranked yet. Players appear after their first match.</p>';
   $('rankIntro').textContent=d&&d.total?d.total+' ranked player'+(d.total===1?'':'s')+' on PadelCred, by Overall.':'Ranked by Overall.';
-}
+
+}finally{(()=>{try{
+  const sheet=$('rankSheet'),d=RANK.data,list=$('rankList');if(!sheet||!list)return;
+  let seg=$('rankSeg');if(!seg){list.insertAdjacentHTML('beforebegin','<div class="seg" id="rankSeg" style="margin:4px 0 10px"><button data-v="all">Everyone</button><button data-v="near">Near my level</button></div>');seg=$('rankSeg');
+    seg.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;RANK_NEAR=b.dataset.v==='near';fillRankList()})}
+  seg.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String((b.dataset.v==='near')===RANK_NEAR)));
+  if(!RANK_NEAR)return;
+  if(!d||!d.me||typeof d.me.ovr!=='number'){list.innerHTML='<p class="help">Play your first match to see players near your level.</p>';return}
+  list.innerHTML='<p class="help">Finding players near your level…</p>';
+  loadNear().then(nr=>{if(!RANK_NEAR)return;const src=nr?nr.list:d.top;const near=nearLevel(src,d.me.ovr,FB.user&&FB.user.uid);const ranked=nr&&nr.full?nearRanks(d.me.rank,d.me.ovr,near):near.map(r=>Object.assign({rk:(d.top.indexOf(r)+1)||'·'},r));
+    list.innerHTML=near.length?'<p class="help" style="margin:0 2px 8px">Players within 6 of your Overall ('+d.me.ovr+'). Tap anyone to see their profile and add them.</p>'+ranked.map(r=>rankRow(r.rk,r)).join(''):'<p class="help">Nobody within 6 of your Overall ('+d.me.ovr+') yet. As more people join, they\'ll show up here.</p>'});
+}catch(e){}})()}}
 function openRankings(){
   hideSheet();fillRankList();setTimeout(()=>showSheet('rankSheet'),200);
   loadRanking(true).then(fillRankList);
@@ -3335,7 +3448,7 @@ function updatePred(){
   const bb=$('predBal');if(bb)bb.onclick=()=>{const f=fairestSplit(setupNames());const ids=['pA1','pA2','pB1','pB2'],v=[f.a[0],f.a[1],f.b[0],f.b[1]];
     ids.forEach((id,i)=>{$(id).value=v[i];$(id).dispatchEvent(new Event('input',{bubbles:true}))});const[x,y]=pctPair(f.p);toast('Teams balanced: '+x+'% v '+y+'%');updatePred()};
 }
-{const _ss=showSheet;showSheet=function(id){_ss.apply(this,arguments);if(id==='setup')setTimeout(updatePred,60)}}
+/* showSheet: built into the function itself */
 ['pA1','pA2','pB1','pB2'].forEach(i=>{const e=$(i);if(e){e.addEventListener('input',updatePred);e.addEventListener('change',updatePred)}});
 // say the prediction as the match starts
 $('startBtn').addEventListener('click',()=>{const n=setupNames(),a=[n[0],n[1]].filter(Boolean),b=[n[2],n[3]].filter(Boolean);const p=winChance(a,b);if(p==null)return;
@@ -3352,24 +3465,14 @@ function duosHtml(L){
     list.map(r=>'<tr><td>'+esc(r.a)+' & '+esc(r.b)+'</td><td class="num"><b>'+r.avg+'</b></td><td class="num">'+r.w+'–'+(r.p-r.w)+'</td><td class="num">'+Math.round(r.w/r.p*100)+'%</td></tr>').join('')+'</tbody></table></div>';
 }
 function leagueAvgLine(L){if(!L.length)return'';const avg=Math.round(L.reduce((s,p)=>s+p.rating,0)/L.length);return'<p class="lgavg">League average: <b>'+avg+'</b> rating across '+L.length+' player'+(L.length===1?'':'s')+'.</p>'}
-{const _rl=renderLeague;renderLeague=function(){_rl.apply(this,arguments);try{const box=$('leagueBody');const how=box.querySelector('details.howto');const btn='<button class="secondary lgrankbtn" id="lgRankBtn">'+(FB.user?'See the PadelCred rankings':'Sign in to see the PadelCred rankings')+'</button>';if(how)how.insertAdjacentHTML('afterend',btn);else box.insertAdjacentHTML('afterbegin',btn);const rb=$('lgRankBtn');if(rb)rb.onclick=()=>{if(FB.user)openRankings();else{authMode='in';openAccount()}};const L=computeLeague(RES.group);if(!L.length)return;rb.insertAdjacentHTML('afterend',leagueAvgLine(L));box.insertAdjacentHTML('beforeend',duosHtml(L))}catch(e){}}}
+/* renderLeague: built into the function itself */
 
 /* shared groups: each group's average rating */
-{const _rg=renderGroupsSheet;renderGroupsSheet=function(){_rg.apply(this,arguments);try{document.querySelectorAll('#grList .grbox').forEach(box=>{const L=computeLeague(box.dataset.g);if(!L.length)return;const avg=Math.round(L.reduce((s,p)=>s+p.rating,0)/L.length);const sp=box.querySelector('.grrow span');if(sp&&!sp.querySelector('.gravg'))sp.insertAdjacentHTML('beforeend','<em class="gravg"> · Avg rating '+avg+'</em>')})}catch(e){}}}
+/* renderGroupsSheet: built into the function itself */
 
 /* rankings: Everyone, or just players near your level */
 let RANK_NEAR=false;
-{const _fr=fillRankList;fillRankList=function(){_fr.apply(this,arguments);try{
-  const sheet=$('rankSheet'),d=RANK.data,list=$('rankList');if(!sheet||!list)return;
-  let seg=$('rankSeg');if(!seg){list.insertAdjacentHTML('beforebegin','<div class="seg" id="rankSeg" style="margin:4px 0 10px"><button data-v="all">Everyone</button><button data-v="near">Near my level</button></div>');seg=$('rankSeg');
-    seg.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;RANK_NEAR=b.dataset.v==='near';fillRankList()})}
-  seg.querySelectorAll('button').forEach(b=>b.setAttribute('aria-pressed',String((b.dataset.v==='near')===RANK_NEAR)));
-  if(!RANK_NEAR)return;
-  if(!d||!d.me||typeof d.me.ovr!=='number'){list.innerHTML='<p class="help">Play your first match to see players near your level.</p>';return}
-  list.innerHTML='<p class="help">Finding players near your level…</p>';
-  loadNear().then(nr=>{if(!RANK_NEAR)return;const src=nr?nr.list:d.top;const near=nearLevel(src,d.me.ovr,FB.user&&FB.user.uid);const ranked=nr&&nr.full?nearRanks(d.me.rank,d.me.ovr,near):near.map(r=>Object.assign({rk:(d.top.indexOf(r)+1)||'·'},r));
-    list.innerHTML=near.length?'<p class="help" style="margin:0 2px 8px">Players within 6 of your Overall ('+d.me.ovr+'). Tap anyone to see their profile and add them.</p>'+ranked.map(r=>rankRow(r.rk,r)).join(''):'<p class="help">Nobody within 6 of your Overall ('+d.me.ovr+') yet. As more people join, they\'ll show up here.</p>'});
-}catch(e){}}}
+/* fillRankList: built into the function itself */
 
 
 /* ================= highlights: favourite teammate, arch rival, nemesis, best matchup ================= */
@@ -3879,7 +3982,7 @@ $('peCancel').onclick=()=>hideSheet();
 
 
 /* ================= home logo and updates ================= */
-const APP_VERSION='2.0.3';
+const APP_VERSION='2.1';
 document.querySelectorAll('.vlogo').forEach(i=>i.src=$('logo').src);
 function goHome(e){
   const el=e&&e.currentTarget;if(el){el.classList.remove('tap');void el.offsetWidth;el.classList.add('tap')}
@@ -4151,7 +4254,7 @@ function openFriendSheet(key,refreshing){
   $('frRemove').onclick=()=>removeFriend(key);bindConnect(f);
   if(!refreshing)showSheet('playerSheet');
 }
-async function openPublicProfile(uid,pd){
+async function openPublicProfile(uid,pd){try{
   if(!FB.user)return;
   const known=friendByUid(uid);if(known){openFriend(known.key);return}
   if(uid===myUid()){hideSheet();setTimeout(()=>{openResults();setTab('profile')},200);return}
@@ -4165,8 +4268,10 @@ async function openPublicProfile(uid,pd){
   if($('pubAdd'))$('pubAdd').onclick=async()=>{const bt=$('pubAdd');bt.disabled=true;await sendRequest(uid,pd);bt.outerHTML='<p class="help">Friend request sent.</p>'};
   if($('pubAcc'))$('pubAcc').onclick=async()=>{await acceptRequest(link);hideSheet()};
   hideSheet();setTimeout(()=>showSheet('playerSheet'),200);
-}
-function openFriend(key){openFriendSheet(key);const f=friendOf(key);if(f)refreshFriend(f,key)}
+
+}finally{(()=>{try{const t=($('playerTitle').textContent||'').trim();const f=pd||{};addReportBtn(uid,t,(f.username||''))}catch(e){}})()}}
+function openFriend(key){try{openFriendSheet(key);const f=friendOf(key);if(f)refreshFriend(f,key)
+}finally{(()=>{try{const f=(typeof friendOf==='function')?friendOf(key):null;if(f&&f.uid)addReportBtn(f.uid,f.name,f.username)}catch(e){}})()}}
 async function removeFriend(key){
   const f=friendOf(key);if(!f)return;
   if(!(await ask('Remove '+f.name+'?','They\'ll come off your friends list. Your matches together stay in your results.','Remove friend',true)))return;
@@ -4503,7 +4608,7 @@ function rivalsFor(key){
   return{vs:Object.values(vs),with:Object.values(w),sets,won};
 }
 let rivalKey='';
-function renderRivals(){
+function renderRivals(){try{
   const names=computeLeague(RES.group).map(p=>({key:p.key,name:p.name}));
   const box=$('rivalsBody');
   if(!names.length){box.innerHTML='<p class="empty">Add player names when you set up a match and your head to heads build up here, set by set.</p>';return}
@@ -4522,7 +4627,8 @@ function renderRivals(){
     table('Against',R.vs,'Opponent')+table('Alongside',R.with,'Partner');
   $('rivalPick').onchange=e=>{rivalKey=e.target.value;renderRivals()};
   box.querySelectorAll('tbody tr').forEach(tr=>tr.onclick=()=>openFriend(tr.dataset.p));
-}
+
+}finally{(()=>{try{const box=$('rivalsBody');if(!box||box.querySelector('.chcard'))return;if(!computeLeague().length)return;box.insertAdjacentHTML('afterbegin',challengesHtml())}catch(e){}})()}}
 
 /* ================= swap partners between sets ================= */
 function fourPlayers(cfg){const a=teamPlayers(cfg,0),b=teamPlayers(cfg,1);if(a.length!==2||b.length!==2)return null;const all=[...a,...b];return new Set(all.map(pkey)).size===4?all:null}
@@ -5743,7 +5849,7 @@ async function leaveGroup(g){
   }catch(e){toast(fbError(e))}
 }
 function openGroups(){if(!FB.user){toast('Sign in to create or join shared groups.');openAccount();return}hideSheet();renderGroupsSheet();showSheet('groupsSheet')}
-function renderGroupsSheet(){
+function renderGroupsSheet(){try{
   const me=FB.user?FB.user.uid:null;
   $('grList').innerHTML=GRP.list.length?GRP.list.map(g=>{
     const admin=(g.admins||[]).includes(me),others=(g.members||[]).filter(u=>u!==me);
@@ -5755,7 +5861,8 @@ function renderGroupsSheet(){
     const rs=r.querySelector('[data-a="reset"]');if(rs)rs.onclick=()=>resetInvite(g);
     r.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>removeMember(g,b.dataset.rm))});
   $('grLive').checked=liveOn();
-}
+
+}finally{(()=>{try{document.querySelectorAll('#grList .grbox').forEach(box=>{const L=computeLeague(box.dataset.g);if(!L.length)return;const avg=Math.round(L.reduce((s,p)=>s+p.rating,0)/L.length);const sp=box.querySelector('.grrow span');if(sp&&!sp.querySelector('.gravg'))sp.insertAdjacentHTML('beforeend','<em class="gravg"> · Avg rating '+avg+'</em>')})}catch(e){}})()}}
 
 /* --- matches shared with the group --- */
 async function groupSend(h){
@@ -5849,7 +5956,7 @@ function showHome(){
   renderHome();$('homeView').classList.add('on');$('homeView').scrollTop=0;
 }
 function hideHome(){$('homeView').classList.remove('on')}
-function renderHome(){
+function renderHome(){try{
   const box=$('homeBody');if(!box)return;
   const first=(PROF.name||'').split(' ')[0];
   const inProgress=M.pts.length>0&&S.done===null;
@@ -5899,7 +6006,8 @@ function renderHome(){
   if($('hmAcc'))$('hmAcc').onclick=()=>{authMode='up';openAccount()};
   $('hmTour').onclick=()=>startTour();
   syncHomeAvatar();
-}
+
+}finally{(()=>{try{const st=$('hmStart');if(st&&!$('cfCard')){const html=confCardsHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}})()}}
 setTimeout(()=>{try{lockSeed()}catch(e){}},1500);
 function syncHomeAvatar(){const b=$('hmAv');if(!b)return;b.innerHTML=$('avBtn').innerHTML;b.className=$('avBtn').className;b.id='hmAv';b.setAttribute('data-n',$('avBtn').getAttribute('data-n')||'')}
 
