@@ -2053,10 +2053,6 @@ async function checkAwards(){
   if(FB.admin)loadBugs(true);
 }
 // seasonal: celebrate the first time a season is collected this year
-function checkSecrets(){
-  const s=seasonalFor(meKey()),y=new Date().getFullYear();
-  SEASONAL.forEach(([id,name])=>{if((s[id]||[]).includes(y))celebrateEx(id+y,'Seasonal badge collected: '+name+' '+y+'.')});
-}
 // the admin screen, only for you
 let awardTarget=null;
 function openAward(){$('awFind').value='';$('awResult').innerHTML='';awardTarget=null;hideSheet();showSheet('awardSheet');renderBugs();loadBugs()}
@@ -2918,7 +2914,7 @@ document.addEventListener('click',async e=>{
     try{const file=new File([blob],name,{type:'text/calendar'});if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:'Padel'});return}}catch(err){}
     const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500);toast('Calendar file saved. Open it to add the match.');return}
   if(t.closest('#plTeamsBtn')){planRead();planSuggest();return}
-  if(t.closest('#plStart')){planRead();const n=PLAN.cur.players.filter(Boolean);if(n.length<2){toast('Add at least two players first.');return}const f=n.length===4?fairestSplit(n):{a:[n[0],n[1]||''],b:[n[2]||'',n[3]||'']};const venue=PLAN.cur.venue;hideSheet();setTimeout(()=>{setupStarted=false;hideHome();openSetup();setupFromHome=true;const v=[f.a[0]||'',f.a[1]||'',f.b[0]||'',f.b[1]||''];['pA1','pA2','pB1','pB2'].forEach((id,i)=>{$(id).value=v[i];$(id).dispatchEvent(new Event('input',{bubbles:true}))});const vn=$('venue')||$('setVenue');if(vn&&venue){vn.value=venue;vn.dispatchEvent(new Event('input',{bubbles:true}))}},300);return}
+  if(t.closest('#plStart')){planRead();const n=PLAN.cur.players.filter(Boolean);if(n.length<2){toast('Add at least two players first.');return}const f=n.length===4?fairestSplit(n):{a:[n[0],n[1]||''],b:[n[2]||'',n[3]||'']};const venue=PLAN.cur.venue;hideSheet();setTimeout(()=>{setupStarted=false;hideHome();openSetup();setupFromHome=true;const v=[f.a[0]||'',f.a[1]||'',f.b[0]||'',f.b[1]||''];['pA1','pA2','pB1','pB2'].forEach((id,i)=>{$(id).value=v[i];$(id).dispatchEvent(new Event('input',{bubbles:true}))});const vn=$('inVenue');if(vn&&venue){vn.value=venue;vn.dispatchEvent(new Event('input',{bubbles:true}))}},300);return}
   if(t.closest('#plDel')){if(!(await ask('Delete this plan?','It\'s removed from PadelCred. Anything already shared stays in WhatsApp.','Delete',true)))return;PLAN.list=PLAN.list.filter(x=>x.id!==PLAN.cur.id);planSave();hideSheet();if(typeof renderHome==='function')renderHome();return}
 });
 document.addEventListener('change',e=>{if(e.target.closest&&e.target.closest('#planSheet')&&PLAN.cur){planRead();if(typeof renderHome==='function'&&$('homeView').classList.contains('on'))renderHome()}});
@@ -3294,7 +3290,12 @@ async function profileCardBlob(){
   const ph=await loadImg(photoFor(PROF.name));
   if(ph){const s=Math.max(AS/ph.width,AS/ph.height);x.drawImage(ph,AX+(AS-ph.width*s)/2,AY+(AS-ph.height*s)/2,ph.width*s,ph.height*s)}
   else{x.fillStyle=LIME;x.fillRect(AX,AY,AS,AS);x.fillStyle=NAVY;x.textAlign='center';x.font='800 120px '+F;x.fillText((PROF.name||'?').trim()[0].toUpperCase(),AX+AS/2,AY+AS/2+42)}
-  x.restore();x.lineWidth=8;x.strokeStyle=LIME;x.beginPath();x.arc(AX+AS/2,AY+AS/2,AS/2-4,0,Math.PI*2);x.stroke();
+  x.restore();
+  // founding members get the gold ring and numbered medallion, as on their profile
+  if(PROF.founder){const gr=x.createLinearGradient(AX,AY,AX+AS,AY+AS);gr.addColorStop(0,'#F7E08A');gr.addColorStop(.5,'#E9C46A');gr.addColorStop(1,'#C9A227');x.lineWidth=12;x.strokeStyle=gr;x.beginPath();x.arc(AX+AS/2,AY+AS/2,AS/2-6,0,Math.PI*2);x.stroke();
+    const mx=AX+AS-34,my=AY+AS-34,mr=36;x.beginPath();x.arc(mx,my,mr,0,Math.PI*2);x.fillStyle=gr;x.fill();x.lineWidth=6;x.strokeStyle=NAVY;x.stroke();
+    const num='#'+PROF.founder;let fs=30;x.font='800 '+fs+'px '+F;while(x.measureText(num).width>mr*1.6&&fs>18){fs-=2;x.font='800 '+fs+'px '+F}x.fillStyle=NAVY;x.textAlign='center';x.fillText(num,mx,my+fs*.36)}
+  else{x.lineWidth=8;x.strokeStyle=LIME;x.beginPath();x.arc(AX+AS/2,AY+AS/2,AS/2-4,0,Math.PI*2);x.stroke()}
   // name, username, style
   const NX=AX+AS+44;x.textAlign='left';x.fillStyle=ICE;
   let fs=88;x.font='800 '+fs+'px '+F;while(x.measureText(PROF.name||'').width>W-NX-64&&fs>48){fs-=4;x.font='800 '+fs+'px '+F}
@@ -4027,7 +4028,7 @@ $('peCancel').onclick=()=>hideSheet();
 
 
 /* ================= home logo and updates ================= */
-const APP_VERSION='2.4.1';
+const APP_VERSION='2.4.3';
 document.querySelectorAll('.vlogo').forEach(i=>i.src=$('logo').src);
 function goHome(e){
   const el=e&&e.currentTarget;if(el){el.classList.remove('tap');void el.offsetWidth;el.classList.add('tap')}
@@ -4478,16 +4479,8 @@ async function spaceGuard(){
 }
 
 /* ================= backup reminders ================= */
-function backupNudge(){return;
-  const last=store.get('db-backup')||{n:0,t:0},nag=store.get('db-backup-nag')||0;
-  const since=history.length-last.n;
-  if(since<10||Date.now()-nag<3*86400000)return;
-  store.set('db-backup-nag',Date.now());
-  setTimeout(async()=>{
-    if(document.querySelector('.sheet.on')||$('askWrap').classList.contains('on'))return;
-    if(await ask('Back up your results?','You\'ve played '+since+' matches since your last backup. It takes a second and keeps everything safe if you change phones.','Save a backup',false,'Not now'))return;
-  },3500);
-}
+// backup reminders are switched off: signed-in accounts sync automatically
+function backupNudge(){}
 
 /* ================= iPhone support ================= */
 const isIOS=/iP(hone|ad|od)/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
@@ -4926,7 +4919,6 @@ if(NATIVE){
 })();
 
 /* ================= how ratings work ================= */
-$('ratingHelpBtnHolder')&&0;
 function openRatingHelp(){hideSheet();setTimeout(()=>showSheet('howRateSheet'),200)}
 $('ratingClose').onclick=()=>hideSheet();
 
@@ -5647,7 +5639,7 @@ async function publishProfile(){
   const pub={username:PROF.username||'',name:PROF.name||'',photo,bio:PROF.bio||'',country:'',side:PROF.side||'',hand:PROF.hand||'',level:PROF.level||'',club:PROF.club||'',racket:PROF.racket||'',since:PROF.since||'',shot:PROF.shot||'',ig:PROF.ig||'',tiktok:PROF.tiktok||'',x:PROF.x||'',yt:PROF.yt||'',ptLevel:PROF.ptLevel||'',seed:PROF.seed||0,playtomic:PROF.playtomic||'',style:PROF.style||'',founder:PROF.founder||0,excl:myExclusive(),stats:myStats(),u:Date.now()};
   await FB.db.collection('profiles').doc(FB.user.uid).set(pub);
 }
-const pubToFriend=(uid,p)=>({uid,id:uid,key:pkey(p.name||p.username),name:p.name||p.username,username:p.username||'',bio:p.bio||'',country:p.country||'',side:p.side||'',hand:p.hand||'',level:p.level||'',club:p.club||'',racket:p.racket||'',since:p.since||'',shot:p.shot||'',ptLevel:p.ptLevel||'',seed:p.seed||0,playtomic:p.playtomic||'',style:p.style||'',ig:p.ig||'',tiktok:p.tiktok||'',x:p.x||'',yt:p.yt||'',photo:p.photo||'',founder:p.founder||0,excl:p.excl||(p.x&&typeof p.x==='object'?p.x:null),x:typeof p.x==='string'?p.x:'',stats:p.stats||null});
+const pubToFriend=(uid,p)=>({uid,id:uid,key:pkey(p.name||p.username),name:p.name||p.username,username:p.username||'',bio:p.bio||'',country:p.country||'',side:p.side||'',hand:p.hand||'',level:p.level||'',club:p.club||'',racket:p.racket||'',since:p.since||'',shot:p.shot||'',ptLevel:p.ptLevel||'',seed:p.seed||0,playtomic:p.playtomic||'',style:p.style||'',ig:p.ig||'',tiktok:p.tiktok||'',yt:p.yt||'',photo:p.photo||'',founder:p.founder||0,excl:p.excl||(p.x&&typeof p.x==='object'?p.x:null),x:typeof p.x==='string'?p.x:'',stats:p.stats||null});
 
 /* --- live listeners while signed in --- */
 function startSocial(){
