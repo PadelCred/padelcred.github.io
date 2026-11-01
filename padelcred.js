@@ -3331,19 +3331,27 @@ async function profileCardBlob(){
     x.fillStyle=ICE;let f2=48;x.font='800 '+f2+'px '+F;while(x.measureText(s[1]).width>CW-52&&f2>30){f2-=4;x.font='800 '+f2+'px '+F}x.fillText(s[1],cx+26,cy+100)});
   // highlights: the badges worth showing off
   let hy=1112;x.textAlign='left';x.fillStyle=SKY;x.font='700 26px '+F;x.fillText('HIGHLIGHTS',64,hy);
-  if(!hl.filter(q=>q[0]!=='founder').length){x.fillStyle='rgba(245,247,250,.7)';x.font='600 30px '+F;x.fillText('First badge still to unlock',64,hy+52)}
-  else{let hx=64;const HC={gold:['#F7E08A','#C9A227'],purple:['#CDBEFF','#6E4AA0'],t1:['#BAC9D3','#BAC9D3'],t2:['#3F4E63','#334155'],t3:['#6EE7B7','#6EE7B7'],t4:['#6EE7B7','#F5F7FA']};
-    for(const h of hl.filter(q=>q[0]!=='founder').slice(0,4)){
-      x.font='700 26px '+F;const tw=x.measureText(h[1]).width,cw=tw+86;if(hx+cw>W-64)break;
-      x.fillStyle='rgba(245,247,250,.08)';rr(hx,hy+18,cw,60,30);x.fill();x.strokeStyle='rgba(245,247,250,.18)';x.lineWidth=2;x.stroke();
-      const cc=HC[h[2]]||HC.t1,gm=x.createLinearGradient(hx+10,0,hx+52,0);gm.addColorStop(0,cc[0]);gm.addColorStop(1,cc[1]);x.fillStyle=gm;x.beginPath();x.arc(hx+34,hy+48,22,0,Math.PI*2);x.fill();
-      const stroke=h[2]==='t2'?'#F5F7FA':'#0B1420',ic=await loadImg('data:image/svg+xml;charset=utf-8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="'+stroke+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+badgeSvg(h[0])+'</svg>'));
-      if(ic)x.drawImage(ic,hx+20,hy+34,28,28);
-      x.fillStyle=ICE;x.fillText(h[1],hx+66,hy+57);hx+=cw+12;
-    }}
-  // best partner and biggest rival
-  let ly=1236;
-  const line=(lab,val)=>{if(!val)return;x.fillStyle=SKY;x.font='700 26px '+F;x.fillText(lab.toUpperCase(),64,ly);x.fillStyle=ICE;x.font='700 34px '+F;x.fillText(val,330,ly);ly+=52};
+  // every achievement is shown: chips wrap onto a second row, with '+N more' if they still don't all fit
+  let chipBottom=hy+52;
+  if(!hl.length){x.fillStyle='rgba(245,247,250,.7)';x.font='600 30px '+F;x.fillText('First badge still to unlock',64,hy+52)}
+  else{const HC={gold:['#F7E08A','#C9A227'],purple:['#CDBEFF','#6E4AA0'],t1:['#BAC9D3','#BAC9D3'],t2:['#3F4E63','#334155'],t3:['#6EE7B7','#6EE7B7'],t4:['#6EE7B7','#F5F7FA']};
+    const CH=54,GAP=10,MAXR=2,left=64,right=W-64;x.font='700 24px '+F;
+    const wOf=t=>x.measureText(t).width+78;const rows=[[]];let hx=left;
+    for(let n=0;n<hl.length;n++){const cw=wOf(hl[n][1]);if(hx+cw>right){if(rows.length===MAXR)break;rows.push([]);hx=left}rows[rows.length-1].push(n);hx+=cw+GAP}
+    let shown=rows.flat().length;if(shown<hl.length){const last=rows[rows.length-1];const more=()=>'+'+(hl.length-shown)+' more';
+      while(last.length){const used=last.reduce((s,n)=>s+wOf(hl[n][1])+GAP,left);if(used+x.measureText(more()).width+40<=right)break;last.pop();shown--}}
+    for(let r=0;r<rows.length;r++){let cx=left;const cy=hy+18+r*(CH+GAP);
+      for(const n of rows[r]){const h=hl[n];x.font='700 24px '+F;const cw=wOf(h[1]);
+        x.fillStyle='rgba(245,247,250,.08)';rr(cx,cy,cw,CH,CH/2);x.fill();x.strokeStyle='rgba(245,247,250,.18)';x.lineWidth=2;x.stroke();
+        const cc=HC[h[2]]||HC.t1,gm=x.createLinearGradient(cx+8,0,cx+48,0);gm.addColorStop(0,cc[0]);gm.addColorStop(1,cc[1]);x.fillStyle=gm;x.beginPath();x.arc(cx+30,cy+CH/2,20,0,Math.PI*2);x.fill();
+        const stroke=h[2]==='t2'?'#F5F7FA':'#0B1420',ic=await loadImg('data:image/svg+xml;charset=utf-8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="'+stroke+'" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'+badgeSvg(h[0])+'</svg>'));
+      if(ic)x.drawImage(ic,cx+17,cy+CH/2-13,26,26);
+        x.fillStyle=ICE;x.textAlign='left';x.font='700 24px '+F;x.fillText(h[1],cx+60,cy+CH/2+9);cx+=cw+GAP}
+      if(r===rows.length-1&&shown<hl.length){const t='+'+(hl.length-shown)+' more';x.font='700 24px '+F;const cw=x.measureText(t).width+40;x.fillStyle='rgba(110,231,183,.14)';rr(cx,cy,cw,CH,CH/2);x.fill();x.fillStyle='#6EE7B7';x.fillText(t,cx+20,cy+CH/2+9)}}
+    chipBottom=hy+18+rows.length*(CH+GAP)-GAP}
+  // best partner and biggest rival sit below the badges and never run off the card
+  let ly=Math.max(1236,chipBottom+52);
+  const line=(lab,val)=>{if(!val||ly>H-24)return;x.fillStyle=SKY;x.font='700 26px '+F;x.fillText(lab.toUpperCase(),64,ly);x.fillStyle=ICE;x.font='700 34px '+F;x.fillText(val,330,ly);ly+=52};
   line('Best partner',partner?partner.name+' ('+partner.w+' of '+partner.p+' won)':'');
   line('Biggest rival',rival?rival.name+' ('+rival.w+'–'+rival.l+')':'');
   return await new Promise(r=>c.toBlob(r,'image/png'));
@@ -4019,7 +4027,7 @@ $('peCancel').onclick=()=>hideSheet();
 
 
 /* ================= home logo and updates ================= */
-const APP_VERSION='2.4';
+const APP_VERSION='2.4.1';
 document.querySelectorAll('.vlogo').forEach(i=>i.src=$('logo').src);
 function goHome(e){
   const el=e&&e.currentTarget;if(el){el.classList.remove('tap');void el.offsetWidth;el.classList.add('tap')}
