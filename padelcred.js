@@ -4028,7 +4028,7 @@ $('peCancel').onclick=()=>hideSheet();
 
 
 /* ================= home logo and updates ================= */
-const APP_VERSION='2.4.3';
+const APP_VERSION='2.4.4';
 document.querySelectorAll('.vlogo').forEach(i=>i.src=$('logo').src);
 function goHome(e){
   const el=e&&e.currentTarget;if(el){el.classList.remove('tap');void el.offsetWidth;el.classList.add('tap')}
@@ -4883,7 +4883,7 @@ if(NATIVE){
 
 /* ================= back button: close what's on top instead of leaving the app ================= */
 (function(){
-  const LAYERS=['askWrap','tourView','celView','dimView','scanView','edView','camView','resultsView'];
+  const LAYERS=['askWrap','tourView','celView','dimView','scanView','edView','camView','resultsView','koView','boxView'];
   let guard=false,skip=0,t=null;
   const sheetOpen=()=>document.querySelector('.sheet.on');
   const anyOpen=()=>!!sheetOpen()||LAYERS.some(id=>$(id).classList.contains('on'))||(onboarded()&&!$('homeView').classList.contains('on')&&!$('obView').classList.contains('on'));
@@ -4904,8 +4904,10 @@ if(NATIVE){
     if(s){if(s.id==='clipSheet')$('footClose').click();else hideSheet();return}
     if($('edView').classList.contains('on')){if(ED.busy){toast('Your clip is still being made. Nearly there.');return}closeEditor();return}
     if($('camView').classList.contains('on')){closeCam();return}
-    if($('resultsView').classList.contains('on')){$('resultsView').classList.remove('on');return}
+    if($('resultsView').classList.contains('on')){$('resultsView').classList.remove('on');if(!$('homeView').classList.contains('on')&&!['amerView','koView','boxView','app'].some(v=>$(v)&&$(v).classList.contains('on')))showHome();if(typeof updateNav==='function')updateNav();return}
     if($('amerView').classList.contains('on')){closeAmer();return}
+    if($('koView').classList.contains('on')){closeKo();return}
+    if($('boxView').classList.contains('on')){closeBox();return}
     if(!$('homeView').classList.contains('on'))showHome();
   }
   window.addEventListener('popstate',()=>{
