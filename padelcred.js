@@ -911,7 +911,7 @@ function rowOf(h){
   return{id:h.id,h,cfg,date:date||0,a:cfg.a||'Us',b:cfg.b||'Them',sets,winner,sw,gw,pf,pa,dur,score,
     source:h.manual?'Added':h.unfinished?'Ended early':'Scored live',notes:h.notes||'',st,unfinished:!!h.unfinished};
 }
-function allRows(){if(memo.rows&&memo.hv===HV)return memo.rows;memo.hv=HV;return memo.rows=history.map(rowOf).filter(r=>r.sets.length)}
+function allRows(){if(memo.rows&&memo.hv===HV)return memo.rows;memo.hv=HV;return memo.rows=history.filter(h=>!hDisputed(h)).map(rowOf).filter(r=>r.sets.length)}
 function filteredRows(){
   const q=RES.q.trim().toLowerCase();
   const rows=allRows().filter(r=>{
@@ -2883,6 +2883,96 @@ async function loadNear(){const d=RANK.data;if(!FB.user||!d||!d.me)return null;i
   try{const s=await FB.db.collection('rankings').where('ovr','>=',d.me.ovr-6).where('ovr','<=',d.me.ovr+6).orderBy('ovr','desc').limit(80).get();const list=[];s.forEach(x=>list.push(Object.assign({uid:x.id},x.data())));
     RANK.near={ovr:d.me.ovr,list,full:list.length<80,at:Date.now()};return RANK.near}catch(e){return null}}
 
+/* ================= v2.0: result confirmation and box leagues ================= */
+// --- result confirmation: friends confirm the matches you record with them ---
+function hDisputed(h){if(!h)return false;if(h.cs==='no')return true;if(h.disputeOk)return false;return!!(h.conf&&Object.values(h.conf).some(c=>c&&c.ok===false))}
+function confReceived(e,it){const h=history.find(x=>x.id===e.id);if(!h)return;h.conf=Object.assign({},h.conf||{},{[it.from]:{ok:!!e.ok,n:it.fromName||'',at:Date.now()}});if(e.ok===false)h.disputeOk=false;saveH();
+  const r=rowOf(h),who=it.fromName||'A friend';toast(e.ok?who+' confirmed '+r.a+' v '+r.b+'.':who+' says '+r.a+' v '+r.b+' isn\'t right. Check it on Home.');if(typeof homeOn==='function'&&homeOn())renderHome()}
+async function sendConf(h,ok){if(!FB.user||!h||!h.recv)return;try{await FB.db.collection('inbox').doc(h.recv).collection('items').doc('c_'+h.id+'_'+myUid()).set({from:myUid(),fromName:PROF.name||'',j:JSON.stringify({type:'conf',id:h.id,ok:!!ok}),createdAt:Date.now()})}catch(e){toast('Couldn\'t send that. It\'ll need your signal.')}}
+function confCardsHtml(){
+  const now=Date.now(),ask=history.filter(h=>h.cs==='ask'&&now-(h.date||h.start||0)<45*864e5).slice(0,3),bad=history.filter(h=>h.conf&&Object.values(h.conf).some(c=>c&&c.ok===false)&&!h.disputeOk&&h.cs!=='no').slice(0,3);
+  if(!ask.length&&!bad.length)return'';let s='<section class="cfcard" id="cfCard">';
+  if(ask.length){s+='<b class="cfttl">Confirm '+(ask.length===1?'this result':'these results')+'</b><p class="cfsub">Friends recorded these with you. Confirming keeps everyone\'s ratings honest.</p>'+ask.map(h=>{const r=rowOf(h);return'<div class="cfrow"><span><b>'+esc(r.winner===0?r.a+' beat '+r.b:r.winner===1?r.b+' beat '+r.a:r.a+' v '+r.b)+'</b><em>'+esc(r.score)+' · '+dShort(r.date)+(h.recvName?' · from '+esc(h.recvName):'')+'</em></span><div class="cfbtns"><button class="mini cfok" data-cfok="'+h.id+'">Confirm</button><button class="mini" data-cfno="'+h.id+'">Not right</button></div></div>'}).join('')}
+  if(bad.length){s+='<b class="cfttl" style="margin-top:'+(ask.length?'14px':'0')+'">Results to check</b>'+bad.map(h=>{const r=rowOf(h),who=Object.values(h.conf).filter(c=>c&&c.ok===false).map(c=>c.n||'A friend').join(' and ');return'<div class="cfrow"><span><b>'+esc(r.a+' v '+r.b)+'</b><em>'+esc(who)+' says this isn\'t right. It doesn\'t count until it\'s sorted.</em></span><div class="cfbtns"><button class="mini" data-cfopen="'+h.id+'">Check it</button><button class="mini" data-cfkeep="'+h.id+'">Keep it</button></div></div>'}).join('')}
+  return s+'</section>'}
+document.addEventListener('click',async e=>{const t=e.target;if(!t.closest)return;
+  const ok=t.closest('[data-cfok]'),no=t.closest('[data-cfno]'),op=t.closest('[data-cfopen]'),kp=t.closest('[data-cfkeep]');
+  if(ok){const h=history.find(x=>x.id===ok.dataset.cfok);if(!h)return;h.cs='yes';saveH();sendConf(h,true);toast('Confirmed. Thanks.');renderHome();return}
+  if(no){const h=history.find(x=>x.id===no.dataset.cfno);if(!h)return;if(!(await ask('This result isn\'t right?','It stops counting for you, and '+(h.recvName||'your friend')+' is asked to check it.','Not right',true)))return;h.cs='no';saveH();sendConf(h,false);toast('Thanks. They\'ll be asked to check it.');renderHome();return}
+  if(op){openRow(op.dataset.cfopen);return}
+  if(kp){const h=history.find(x=>x.id===kp.dataset.cfkeep);if(!h)return;if(!(await ask('Keep this result?','It counts again, even though a friend disagreed.','Keep it',false)))return;h.disputeOk=true;saveH();renderHome();return}});
+{const _rh=renderHome;renderHome=function(){_rh.apply(this,arguments);try{const st=$('hmStart');if(st&&!$('cfCard')){const html=confCardsHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}}}
+{const _or=openRow;openRow=function(id){_or.apply(this,arguments);try{const h=history.find(x=>x.id===id);if(!h)return;let line='';
+  if(h.conf){const yes=Object.values(h.conf).filter(c=>c&&c.ok).map(c=>c.n||'A friend'),no=Object.values(h.conf).filter(c=>c&&c.ok===false).map(c=>c.n||'A friend');if(yes.length)line+='<p class="cfline ok">✓ Confirmed by '+esc(yes.join(', '))+'</p>';if(no.length)line+='<p class="cfline no">'+esc(no.join(' and '))+' says this result isn\'t right'+(h.disputeOk?' (kept anyway)':'')+'.</p>'}
+  if(h.cs==='yes')line+='<p class="cfline ok">✓ You confirmed this result</p>';if(h.cs==='no')line+='<p class="cfline no">You said this result isn\'t right, so it doesn\'t count for you.</p>';
+  if(line)$('rowBody').insertAdjacentHTML('afterbegin',line)}catch(e){}}}
+
+// --- box leagues: everyone plays everyone, a table, a champion ---
+const BOX={list:store.get('db-box')||[],view:null};
+function boxSave(){store.set('db-box',BOX.list);if(typeof profChanged==='function')profChanged()}
+function mergeBox(arr){(arr||[]).forEach(c=>{const i=BOX.list.findIndex(x=>x.id===c.id);if(i<0)BOX.list.push(c);else if((c.u||0)>(BOX.list[i].u||0))BOX.list[i]=c});BOX.list.sort((a,b)=>b.created-a.created);store.set('db-box',BOX.list)}
+function boxLabel(b,i){const t=b.teams[i];return t?t.pa.filter(Boolean).join(' & '):''}
+function boxFixtures(n){const f=[];for(let i=0;i<n;i++)for(let j=i+1;j<n;j++)f.push({a:i,b:j,sa:null,sb:null,hid:null});
+  // spread them so nobody plays twice in a row where possible
+  const out=[];const left=f.slice();let last=new Set();while(left.length){let k=left.findIndex(x=>!last.has(x.a)&&!last.has(x.b));if(k<0)k=0;const x=left.splice(k,1)[0];out.push(x);last=new Set([x.a,x.b])}return out}
+function boxTable(b){const T=b.teams.map((t,i)=>({i,p:0,w:0,l:0,gf:0,ga:0,pts:0}));b.fx.forEach(f=>{if(f.sa==null)return;const A=T[f.a],B=T[f.b];A.p++;B.p++;A.gf+=f.sa;A.ga+=f.sb;B.gf+=f.sb;B.ga+=f.sa;if(f.sa>f.sb){A.w++;B.l++;A.pts+=3}else{B.w++;A.l++;B.pts+=3}});
+  return T.sort((x,y)=>y.pts-x.pts||(y.gf-y.ga)-(x.gf-x.ga)||y.gf-x.gf)}
+function openBox(id){hideSheet();if(typeof hideHome==='function')hideHome();BOX.view=id||null;renderBox();$('boxView').classList.add('on');$('boxView').scrollTop=0;if(typeof updateNav==='function')updateNav()}
+function closeBox(){$('boxView').classList.remove('on');if(typeof showHome==='function')showHome();if(typeof updateNav==='function')updateNav()}
+function boxShareText(b){const t=boxTable(b),done=b.fx.every(f=>f.sa!=null);return'🎾 '+b.name+(done?': final table':': table so far')+'\n'+t.map((x,k)=>(k+1)+'. '+boxLabel(b,x.i)+'  '+x.pts+' pts ('+x.w+'–'+x.l+')').join('\n')+(done?'\n🏆 Champions: '+boxLabel(b,t[0].i):'\n'+b.fx.filter(f=>f.sa==null).length+' matches to play')+'\nRun with PadelCred.'}
+
+// the box table as a branded image, in the same style as the Americano leaderboard
+async function boxShareImage(b){
+  const t=boxTable(b),done=b.fx.every(f=>f.sa!=null),c=document.createElement('canvas');c.width=1080;c.height=1350;const x=c.getContext('2d');
+  try{await document.fonts.load('800 80px Manrope');await document.fonts.load('700 40px Manrope')}catch(e){}
+  const g=x.createLinearGradient(0,0,1080,1350);g.addColorStop(0,'#0B1420');g.addColorStop(1,'#334155');x.fillStyle=g;x.fillRect(0,0,1080,1350);
+  const fit=(txt,max,size,weight)=>{let s=size;x.font=weight+' '+s+'px Manrope, sans-serif';while(x.measureText(txt).width>max&&s>24){s-=2;x.font=weight+' '+s+'px Manrope, sans-serif'}return s};
+  x.textAlign='center';x.fillStyle='#BAC9D3';x.font='700 46px Manrope, sans-serif';x.fillText('BOX LEAGUE',540,120);
+  x.fillStyle='#F5F7FA';fit(b.name,900,40,'700');x.fillText(b.name,540,178);
+  if(done&&t[0]){x.fillStyle='#6EE7B7';fit(boxLabel(b,t[0].i),960,104,'800');x.fillText(boxLabel(b,t[0].i),540,320);x.fillStyle='#F5F7FA';x.font='700 40px Manrope, sans-serif';x.fillText('CHAMPIONS WITH '+t[0].pts+' POINTS',540,385)}
+  else{x.fillStyle='#6EE7B7';x.font='800 96px Manrope, sans-serif';x.fillText('Table so far',540,310);x.fillStyle='#F5F7FA';x.font='700 38px Manrope, sans-serif';const left=b.fx.filter(f=>f.sa==null).length;x.fillText(left+' MATCH'+(left===1?'':'ES')+' TO PLAY',540,375)}
+  x.fillStyle='#BAC9D3';x.font='700 30px Manrope, sans-serif';x.textAlign='right';x.fillText('W',800,455);x.fillText('PTS',930,455);
+  let y=540;t.slice(0,6).forEach((s,i)=>{x.fillStyle=i===0?'rgba(110,231,183,.16)':'rgba(255,255,255,.07)';x.beginPath();x.roundRect?x.roundRect(110,y-64,860,92,22):x.rect(110,y-64,860,92);x.fill();
+    x.textAlign='left';x.fillStyle=i===0?'#6EE7B7':'#F5F7FA';x.font='800 54px Manrope, sans-serif';x.fillText(String(i+1),150,y);
+    x.fillStyle='#F5F7FA';fit(boxLabel(b,s.i),500,44,'700');x.fillText(boxLabel(b,s.i),225,y);
+    x.textAlign='right';x.fillStyle='#BAC9D3';x.font='700 44px Manrope, sans-serif';x.fillText(String(s.w),800,y);x.fillStyle='#6EE7B7';x.font='800 54px Manrope, sans-serif';x.fillText(String(s.pts),930,y);y+=108});
+  if(logoImg.complete&&logoImg.naturalWidth){const lw=260,lh=lw*logoImg.naturalHeight/logoImg.naturalWidth;x.drawImage(logoImg,540-lw/2,1350-lh-40,lw,lh)}
+  const blob=await new Promise(r=>c.toBlob(r,'image/png')),name='padelcred-'+(b.name||'box').toLowerCase().replace(/[^a-z0-9]+/g,'-')+'.png',f=new File([blob],name,{type:'image/png'});
+  if(navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f],title:b.name,text:boxShareText(b)})}catch(e){}return true}
+  await saveBlob(blob,name);toast(savedMsg(name));return true}
+function renderBox(){
+  const box=$('boxBody');if(!box)return;const b=BOX.list.find(x=>x.id===BOX.view);
+  if(!b){const known=(()=>{try{return computeLeague().map(p=>p.name)}catch(e){return[]}})(),m=new Date().toLocaleDateString('en-GB',{month:'long'});
+    box.innerHTML='<p class="help">Everyone plays everyone, once. A win is worth 3 points, and ties are split by games. Every match counts towards your League and ratings.</p>'+
+      '<div class="field"><span class="lbl">Name</span><input type="text" id="bxName" maxlength="40" placeholder="'+esc(m)+' box"></div><p class="sh" style="margin-top:14px">Pairs (2 to 6)</p><div id="bxTeams"></div><button class="secondary" id="bxAdd">Add a pair</button>'+
+      '<button class="primary" id="bxCreate" style="margin-top:12px">Create the box</button><datalist id="bxKnown">'+known.map(n=>'<option value="'+esc(n)+'">').join('')+'</datalist>'+
+      (BOX.list.length?'<p class="sh" style="margin-top:22px">Your boxes</p>'+BOX.list.map(x=>{const done=x.fx.every(f=>f.sa!=null),t=boxTable(x);return'<button class="kopast" data-box="'+x.id+'"><b>'+esc(x.name)+'</b><span>'+x.teams.length+' pairs · '+(done?'Won by '+esc(boxLabel(x,t[0].i)):x.fx.filter(f=>f.sa!=null).length+' of '+x.fx.length+' played')+'</span></button>'}).join(''):'');
+    const addRow=(a,c)=>{const w=$('bxTeams');const n=w.children.length+1;w.insertAdjacentHTML('beforeend','<div class="koteam"><span>'+n+'</span><input type="text" list="bxKnown" placeholder="Player" value="'+esc(a||'')+'"><input type="text" list="bxKnown" placeholder="Player" value="'+esc(c||'')+'"></div>')};
+    for(let i=0;i<4;i++)addRow();
+    $('bxAdd').onclick=()=>{if($('bxTeams').children.length>=6){toast('Six pairs is the most for one box.');return}addRow()};
+    $('bxCreate').onclick=()=>{const teams=[...$('bxTeams').children].map(r=>({pa:[...r.querySelectorAll('input')].map(i=>i.value.trim())})).filter(t=>t.pa[0]||t.pa[1]);
+      if(teams.length<2){toast('Add at least 2 pairs.');return}if(teams.some(t=>!t.pa[0]||!t.pa[1])){toast('Each pair needs two players.');return}
+      const all=teams.flatMap(t=>t.pa.map(n=>pkey(n)));if(new Set(all).size!==all.length){toast('Each player can only be in one pair.');return}
+      const nb={id:'b'+Date.now().toString(36),name:$('bxName').value.trim()||($('bxName').placeholder),created:Date.now(),u:Date.now(),teams,fx:boxFixtures(teams.length)};BOX.list.unshift(nb);boxSave();BOX.view=nb.id;renderBox();$('boxView').scrollTop=0};
+    box.querySelectorAll('[data-box]').forEach(x=>x.onclick=()=>{BOX.view=x.dataset.box;renderBox();$('boxView').scrollTop=0});return}
+  const t=boxTable(b),done=b.fx.every(f=>f.sa!=null),played=b.fx.filter(f=>f.sa!=null).length;
+  let h=done?'<div class="kochamp"><span class="kotrophy">🏆</span><b>'+esc(boxLabel(b,t[0].i))+'</b><em>'+esc(b.name)+' champions</em><span class="korunner">'+t[0].pts+' points from '+t[0].p+' matches</span></div>':'<p class="help">'+played+' of '+b.fx.length+' matches played. Tap a match to enter the score.</p>';
+  h+='<div class="tablewrap"><table class="grid bxtable"><thead><tr><th>#</th><th>Pair</th><th class="num">P</th><th class="num">W</th><th class="num">+/−</th><th class="num">Pts</th></tr></thead><tbody>'+t.map((x,k)=>'<tr'+(done&&k===0?' class="bxwin"':'')+'><td>'+(k+1)+'</td><td>'+esc(boxLabel(b,x.i))+'</td><td class="num">'+x.p+'</td><td class="num">'+x.w+'</td><td class="num">'+((x.gf-x.ga)>0?'+':'')+(x.gf-x.ga)+'</td><td class="num"><b>'+x.pts+'</b></td></tr>').join('')+'</tbody></table></div>';
+  h+='<p class="sh" style="margin-top:16px">Matches</p>'+b.fx.map((f,k)=>'<div class="komatch'+(f.sa==null?' open':'')+'" data-bx="'+k+'"><div class="koline'+(f.sa!=null&&f.sa>f.sb?' win':'')+'"><span>'+esc(boxLabel(b,f.a))+'</span><b>'+(f.sa==null?'':f.sa)+'</b></div><div class="koline'+(f.sa!=null&&f.sb>f.sa?' win':'')+'"><span>'+esc(boxLabel(b,f.b))+'</span><b>'+(f.sb==null?'':f.sb)+'</b></div><button class="koedit" data-bxedit="'+k+'">'+(f.sa==null?'Enter score':'Change score')+'</button></div>').join('');
+  h+='<div class="koacts"><button class="primary" id="bxShare">Share the table</button>'+(done?'<button class="secondary" id="bxNext">Start next month\'s box</button>':'')+'<button class="secondary" id="bxBack">All boxes</button><button class="ghost kodel" id="bxDel">Delete this box</button></div>';
+  box.innerHTML=h;
+  $('bxBack').onclick=()=>{BOX.view=null;renderBox();$('boxView').scrollTop=0};
+  $('bxDel').onclick=async()=>{if(!(await ask('Delete this box?','The table is removed. Match results it added stay in your results.','Delete',true)))return;BOX.list=BOX.list.filter(x=>x.id!==b.id);boxSave();BOX.view=null;renderBox()};
+  $('bxShare').onclick=async()=>{try{await boxShareImage(b);return}catch(err){}const txt=boxShareText(b);try{if(navigator.share){await navigator.share({text:txt});return}}catch(err){return}try{await navigator.clipboard.writeText(txt);toast('Copied. Paste it into your group chat.')}catch(err){window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank')}};
+  if($('bxNext'))$('bxNext').onclick=()=>{const d=new Date();d.setMonth(d.getMonth()+1);const nm=d.toLocaleDateString('en-GB',{month:'long'})+' box';const order=t.map(x=>b.teams[x.i]);const nb={id:'b'+Date.now().toString(36),name:nm,created:Date.now(),u:Date.now(),teams:order.map(x=>({pa:x.pa.slice()})),fx:boxFixtures(order.length)};BOX.list.unshift(nb);boxSave();BOX.view=nb.id;renderBox();$('boxView').scrollTop=0;toast(nm+' is ready.')};
+  box.querySelectorAll('[data-bxedit]').forEach(x=>x.onclick=()=>{const k=+x.dataset.bxedit,f=b.fx[k],card=x.closest('.komatch');x.remove();
+    card.insertAdjacentHTML('beforeend','<div class="koform"><input type="number" inputmode="numeric" min="0" max="99" id="bxSa" value="'+(f.sa==null?'':f.sa)+'" aria-label="Games for '+esc(boxLabel(b,f.a))+'"><span>–</span><input type="number" inputmode="numeric" min="0" max="99" id="bxSb" value="'+(f.sb==null?'':f.sb)+'" aria-label="Games for '+esc(boxLabel(b,f.b))+'"><button class="primary" id="bxOk">Save</button></div>');$('bxSa').focus();
+    $('bxOk').onclick=()=>{const a=parseInt($('bxSa').value,10),c=parseInt($('bxSb').value,10);if(isNaN(a)||isNaN(c)||a<0||c<0){toast('Enter the games for both pairs, like 6 and 4.');return}if(a===c){toast('Box matches need a winner. The scores can\'t be level.');return}
+      const ta=b.teams[f.a],tb=b.teams[f.b],now=Date.now();const cfg={pa:ta.pa.slice(),pb:tb.pa.slice(),an:'',bn:'',group:'',venue:'',a:teamNameFrom('',ta.pa[0],ta.pa[1],'Us'),b:teamNameFrom('',tb.pa[0],tb.pa[1],'Them')};
+      const ex=f.hid?history.findIndex(e=>e.id===f.hid):-1;if(ex>=0){history[ex].sets=[[a,c]];history[ex].added=now}else{const id='m'+now.toString(36)+'x';history.unshift({id,manual:true,date:now,added:now,sets:[[a,c]],notes:'Box league: '+b.name,cfg});f.hid=id}
+      saveH();f.sa=a;f.sb=c;b.u=now;boxSave();renderBox();if(b.fx.every(z=>z.sa!=null))toast(boxLabel(b,boxTable(b)[0].i)+' win '+b.name+'!')}})}
+document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('#boxHome'))closeBox()});
+
 /* ================= bug reports ================= */
 const appVersion=()=>((document.querySelector('meta[name="app-version"]')||{}).content||'');
 const bugDevice=()=>{const ua=navigator.userAgent;const os=/iPhone|iPad/.test(ua)?'iPhone':/Android/.test(ua)?'Android':/Mac/.test(ua)?'Mac':/Windows/.test(ua)?'Windows':'Other';const br=/SamsungBrowser/.test(ua)?'Samsung Internet':/CriOS|Chrome/.test(ua)?'Chrome':/Safari/.test(ua)?'Safari':/Firefox/.test(ua)?'Firefox':'Browser';return os+', '+br+(window.matchMedia('(display-mode: standalone)').matches?', home screen app':'')+(window.PadelCredNative?', Android app':'')+', '+innerWidth+'×'+innerHeight};
@@ -2987,7 +3077,7 @@ async function loadRanking(force){
     let total=0;try{const c=await col.count().get();total=c.data().count}catch(e){const all=await col.get();total=all.size}
     let me=null;const mine=top.find(r=>r.uid===FB.user.uid);
     const myDoc=mine||(await col.doc(FB.user.uid).get().then(d=>d.exists?Object.assign({uid:d.id},d.data()):null).catch(()=>null));
-    if(myDoc){const above=await col.where('ovr','>',myDoc.ovr).get();me={rank:above.size+1,ovr:myDoc.ovr}}
+    if(myDoc){let n;try{const c=await col.where('ovr','>',myDoc.ovr).count().get();n=c.data().count}catch(e){const above=await col.where('ovr','>',myDoc.ovr).get();n=above.size}me={rank:n+1,ovr:myDoc.ovr}}
     RANK.data={top,total,me,at:Date.now()};store.set('db-rank',RANK.data);return RANK.data;
   }catch(e){return RANK.data}
 }
@@ -3203,12 +3293,13 @@ new MutationObserver(ms=>{for(const m of ms)for(const n of m.addedNodes){if(n.no
 function updateNav(){
   const nav=$('fnav');if(!nav)return;
   const blocking=document.querySelector('#obView.on,#tourView.on,#camView.on,#celView.on,#edView.on,#amerView.on,#dimView.on,#scanView.on,#yipView.on,#frView.on');
-  const home=$('homeView').classList.contains('on'),res=$('resultsView').classList.contains('on'),ko=!!($('koView')&&$('koView').classList.contains('on'));
+  const home=$('homeView').classList.contains('on'),res=$('resultsView').classList.contains('on'),ko=!!($('koView')&&$('koView').classList.contains('on'))||!!($('boxView')&&$('boxView').classList.contains('on'));
   const show=!blocking&&(home||res||ko);
   nav.classList.toggle('hide',!show);document.body.classList.toggle('hasnav',show);
   const cur=ko&&!res?'home':home&&!res?'home':(typeof tab!=='undefined'?tab:'');
   nav.querySelectorAll('button').forEach(b=>b.setAttribute('aria-current',b.dataset.nav===cur?'page':'false'));
 }
+$('fnav').addEventListener('click',e=>{if(e.target.closest('button[data-nav]')&&$('boxView')&&$('boxView').classList.contains('on')){$('boxView').classList.remove('on');if(e.target.closest('button[data-nav]').dataset.nav==='home'&&!$('resultsView').classList.contains('on')&&typeof showHome==='function')showHome()}},true);
 $('fnav').addEventListener('click',e=>{if(e.target.closest('button[data-nav]')&&$('koView')&&$('koView').classList.contains('on')){$('koView').classList.remove('on');if(e.target.closest('button[data-nav]').dataset.nav==='home'&&!$('resultsView').classList.contains('on')&&typeof showHome==='function')showHome()}},true);
 $('fnav').addEventListener('click',e=>{
   const b=e.target.closest('button[data-nav]');if(!b)return;const k=b.dataset.nav;
@@ -3788,7 +3879,7 @@ $('peCancel').onclick=()=>hideSheet();
 
 
 /* ================= home logo and updates ================= */
-const APP_VERSION='1.9';
+const APP_VERSION='2.0.1';
 document.querySelectorAll('.vlogo').forEach(i=>i.src=$('logo').src);
 function goHome(e){
   const el=e&&e.currentTarget;if(el){el.classList.remove('tap');void el.offsetWidth;el.classList.add('tap')}
@@ -4064,7 +4155,7 @@ async function openPublicProfile(uid,pd){
   if(!FB.user)return;
   const known=friendByUid(uid);if(known){openFriend(known.key);return}
   if(uid===myUid()){hideSheet();setTimeout(()=>{openResults();setTab('profile')},200);return}
-  try{if(!pd){const d=await FB.db.collection('profiles').doc(uid).get();if(!d.exists){toast('Couldn\'t find that profile.');return}pd=d.data()}}catch(e){toast('Couldn\'t load that profile. Check your signal.');return}
+  try{if(!pd){const d=await profCached(uid);if(!d.exists){toast('Couldn\'t find that profile.');return}pd=d.data()}}catch(e){toast('Couldn\'t load that profile. Check your signal.');return}
   const f=pubToFriend(uid,pd),key=f.key;
   const link=SOC.links.find(l=>l.id===linkId(myUid(),uid));
   const state=!link?'none':link.status==='accepted'?'friends':link.from===myUid()?'sent':'incoming';
@@ -5171,6 +5262,8 @@ let syncT=null;
 function queueSync(){if(!FB.user)return;clearTimeout(syncT);syncT=setTimeout(()=>syncNow(true),3000)}
 window.addEventListener('online',()=>queueSync());
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&FB.user&&Date.now()-FB.last>60000)syncNow(true)});
+// live scores: stop listening while the app is off screen, start again on return
+document.addEventListener('visibilitychange',()=>{try{if(document.visibilityState==='hidden'){Object.values(GRP.liveUnsubs).forEach(u=>{try{u()}catch(e){}});GRP.liveUnsubs={}}else if(FB.user&&GRP.list.length)watchLive()}catch(e){}});
 
 /* --- profile and friends travel with the account --- */
 async function syncProfile(){
@@ -5180,12 +5273,12 @@ async function syncProfile(){
   if(r&&r.u>localU){
     try{const p=JSON.parse(r.profile||'{}');PROF=mergeProf(PROF,p);saveProfRaw();syncAvatar()}catch(e){}
     try{const fr=JSON.parse(r.friends||'[]');fr.forEach(f=>{if(f&&f.key&&!friendOf(f.key))FRIENDS.push(f)});saveFriendsRaw()}catch(e){}
-    try{if(r.amer)mergeAmer(JSON.parse(r.amer))}catch(e){} try{if(r.ko)mergeKo(JSON.parse(r.ko))}catch(e){} try{if(r.plans)mergePlans(JSON.parse(r.plans))}catch(e){} try{if(r.ch)mergeCh(JSON.parse(r.ch))}catch(e){}
+    try{if(r.amer)mergeAmer(JSON.parse(r.amer))}catch(e){} try{if(r.ko)mergeKo(JSON.parse(r.ko))}catch(e){} try{if(r.plans)mergePlans(JSON.parse(r.plans))}catch(e){} try{if(r.ch)mergeCh(JSON.parse(r.ch))}catch(e){} try{if(r.box)mergeBox(JSON.parse(r.box))}catch(e){}
     store.set('db-prof-u',r.u);
   }else if(!r||localU>(r.u||0)){
     try{if(r&&r.profile){PROF=mergeProf(PROF,JSON.parse(r.profile));saveProfRaw();syncAvatar()}}catch(e){}
     const u=localU||Date.now();
-    await ref.set({username:PROF.username||'',usernameLower:(PROF.username||'').toLowerCase(),profile:JSON.stringify(PROF),friends:JSON.stringify(FRIENDS),amer:JSON.stringify(AM.list.slice(0,60)),ko:JSON.stringify(KO.list.slice(0,30)),plans:JSON.stringify(PLAN.list.slice(-40)),ch:JSON.stringify(CH.list.slice(0,30)),u},{merge:true});
+    await ref.set({username:PROF.username||'',usernameLower:(PROF.username||'').toLowerCase(),profile:JSON.stringify(PROF),friends:JSON.stringify(FRIENDS),amer:JSON.stringify(AM.list.slice(0,60)),ko:JSON.stringify(KO.list.slice(0,30)),plans:JSON.stringify(PLAN.list.slice(-40)),ch:JSON.stringify(CH.list.slice(0,30)),box:JSON.stringify(BOX.list.slice(0,20)),u},{merge:true});
     store.set('db-prof-u',u);
     publishProfile().catch(()=>{});
   }
@@ -5512,11 +5605,13 @@ function receiveResults(items){
   const me=myUid();let added=0,updated=0;const from=new Set();
   items.forEach(it=>{
     let e;try{e=JSON.parse(it.j)}catch(err){return}
+    if(e&&e.type==='conf'){try{confReceived(e,it)}catch(err){}FB.db.collection('inbox').doc(me).collection('items').doc(it._id).delete().catch(()=>{});return}
     if(e.uids){const map={};Object.entries(e.uids).forEach(([n,u])=>{if(u===me&&PROF.name)map[pkey(n)]=PROF.name;else{const f=friendByUid(u);if(f)map[pkey(n)]=f.name}});
       const c=Object.assign({},e.cfg),fix=l=>(l||[]).map(n=>map[pkey(n||'')]||n);c.pa=fix(c.pa);c.pb=fix(c.pb);
       if(!c.an&&c.pa.filter(Boolean).length)c.a=joinNames(c.pa);if(!c.bn&&c.pb.filter(Boolean).length)c.b=joinNames(c.pb);e=Object.assign({},e,{cfg:c})}
     delete e.uids;
     const meK=meKey();if(meK&&members(e.cfg,1).some(n=>pkey(n)===meK)&&!members(e.cfg,0).some(n=>pkey(n)===meK))e=flipEntry(e);
+    e.recv=it.from;e.recvName=it.fromName||'';e.cs='ask';
     const i=history.findIndex(h=>h.id===e.id);
     if(i>=0){if(JSON.stringify(history[i].pts)!==JSON.stringify(e.pts)||JSON.stringify(history[i].sets)!==JSON.stringify(e.sets)){history[i]=e;updated++}}
     else if(!findDuplicate(e)){history.push(e);added++}
@@ -5797,6 +5892,7 @@ function renderHome(){
   if($('hmAmer'))$('hmAmer').onclick=()=>openAmer();
   {const am=$('hmAmer');if(am&&!$('hmKo')){const cur=KO.list.find(x=>!x.done);am.insertAdjacentHTML('afterend','<button class="hmamer hmko" id="hmKo"><span class="hmamic"><svg viewBox="0 0 24 24"><path d="M7 4h10v4a5 5 0 0 1-10 0z"/><path d="M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3M12 13v4M8.5 20h7M10 17h4"/></svg></span><span><b>'+(cur?'Carry on: '+esc(cur.name):'Knockout')+'</b><em>'+(cur?'Your bracket is in progress':'A bracket for your group. Winners go through.')+'</em></span><i>'+(cur?'Open':'Set up')+'</i></button>');$('hmKo').onclick=()=>openKo(cur?cur.id:null)}}
   {const kb=$('hmKo');if(kb&&!$('hmPlan')){const np=nextPlan();const inN=np?np.players.filter(Boolean).length:0,okN=np?(np.ok||[]).filter(Boolean).length:0;kb.insertAdjacentHTML('afterend','<button class="hmamer hmko" id="hmPlan"><span class="hmamic"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4M9 14.5l2 2 4-4"/></svg></span><span><b>'+(np?esc(planWhen(np)):'Plan a match night')+'</b><em>'+(np?esc((np.venue?np.venue+' · ':'')+okN+' of '+Math.max(4,inN)+' in'):'Pick a time, invite your group on WhatsApp')+'</em></span><i>'+(np?'Open':'Plan')+'</i></button>');$('hmPlan').onclick=()=>openPlan(np?np.id:null)}}
+  {const pb=$('hmPlan');if(pb&&!$('hmBox')){const cur=BOX.list.find(x=>x.fx.some(f=>f.sa==null));pb.insertAdjacentHTML('afterend','<button class="hmamer hmko" id="hmBox"><span class="hmamic"><svg viewBox="0 0 24 24"><rect x="3.5" y="4" width="17" height="16" rx="2.5"/><path d="M3.5 9.5h17M3.5 14.5h17M9.5 4v16"/></svg></span><span><b>'+(cur?'Carry on: '+esc(cur.name):'Box league')+'</b><em>'+(cur?cur.fx.filter(f=>f.sa!=null).length+' of '+cur.fx.length+' matches played':'Everyone plays everyone. A table and a champion.')+'</em></span><i>'+(cur?'Open':'Set up')+'</i></button>');$('hmBox').onclick=()=>openBox(cur?cur.id:null)}}
   if($('hmYip'))$('hmYip').onclick=()=>openYip();
   if($('hmAcc'))$('hmAcc').onclick=()=>{authMode='up';openAccount()};
   $('hmTour').onclick=()=>startTour();
@@ -5853,10 +5949,13 @@ function myStatsBase(){
   const myForm=packForm(formData(p));
   return{fm:myForm,recent,ovr:ov?{v:ov.v,perf:ov.perf,peer:ov.peer.ready?{ready:true,avg:Math.round(ov.peer.avg*10)/10,raters:ov.peer.raters}:{ready:false}}:null,played:p.p,w:p.w,l:p.l,rating:Math.round(p.rating),form:p.form.slice(-5),badges:Object.keys(p.badges||{}).length,top,bmap:Object.assign({},p.badges||{},PROF.founder?{founder:PROF.founderAt}:{}),prog,first:dates[0]||0,last:dates[dates.length-1]||0,best:p.bestStreak||0,u:Date.now()};
 }
+// other players' public profiles are remembered for a day, to save database reads
+function profCached(uid,maxAge){const c=store.get('db-pcache')||{},e=c[uid];if(e&&Date.now()-e.at<(maxAge||864e5))return Promise.resolve({exists:e.x,data:()=>e.d});
+  return FB.db.collection('profiles').doc(uid).get().then(d=>{const all=store.get('db-pcache')||{};all[uid]={at:Date.now(),x:d.exists,d:d.exists?d.data():null};const keys=Object.keys(all).sort((a,b)=>all[b].at-all[a].at);keys.slice(80).forEach(k=>delete all[k]);store.set('db-pcache',all);return d})}
 async function refreshFriend(f,key){
   if(!f||!f.uid||!FB.user)return;
   try{
-    const d=await FB.db.collection('profiles').doc(f.uid).get();if(!d.exists)return;
+    const d=await profCached(f.uid);if(!d.exists)return;
     const p=d.data(),fresh=pubToFriend(f.uid,p);
     Object.assign(f,fresh,{name:f.name,key:f.key});saveFriendsRaw();
     if(openSheet&&openSheet.id==='playerSheet'&&$('playerBody').dataset.key===key){const y=$('playerSheet').scrollTop;openFriendSheet(key,true);$('playerSheet').scrollTop=y}

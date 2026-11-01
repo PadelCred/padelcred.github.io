@@ -1730,3 +1730,15 @@ body.hasnav #koView{padding-bottom:calc(110px + env(safe-area-inset-bottom,0px))
 .rpreasons{display:grid;gap:8px;margin-bottom:12px}
 .rpr{width:100%;text-align:left;padding:12px 14px;border-radius:12px;border:1.5px solid #334155;background:#142132;color:#F5F7FA;font-size:15px;font-weight:600}
 .rpr[aria-pressed=true]{border-color:#6EE7B7;background:#6EE7B7;color:#0B1420}
+/* v2.0 */
+#boxView{overflow-y:auto}
+body.hasnav #boxView{padding-bottom:calc(110px + env(safe-area-inset-bottom,0px))}
+.grid.bxtable{min-width:0;width:100%}.bxtable tr.bxwin td{color:#E9C46A;font-weight:700}
+.cfcard{background:#142132;border:1.5px solid #6EE7B7;border-radius:20px;padding:14px;margin:0 0 12px}
+.cfttl{display:block;font-family:var(--heading);font-weight:700;font-size:17px;color:#F5F7FA}
+.cfsub{margin:2px 0 8px;font-size:13px;color:#BAC9D3}
+.cfrow{display:grid;gap:8px;padding:10px 0;border-top:1px solid #334155}.cfrow:first-of-type{border-top:0}
+.cfrow span{display:grid;gap:2px}.cfrow b{font-size:14.5px;color:#F5F7FA}.cfrow em{font-style:normal;font-size:12.5px;color:#BAC9D3}
+.cfbtns{display:flex;gap:8px}.cfbtns .mini{flex:1}
+.cfok{background:#6EE7B7!important;color:#0B1420!important;border-color:#6EE7B7!important}
+.cfline{margin:0 0 8px;font-size:13.5px;font-weight:600}.cfline.ok{color:#6EE7B7}.cfline.no{color:#FF8C80}
