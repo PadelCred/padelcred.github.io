@@ -905,7 +905,6 @@ $('camFootBtn').onclick=async()=>{
 $('filmBtn').onclick=openCam;
 
 let dl=null;
-(async()=>{try{if(window.claude&&claude.use)dl=await claude.use('downloads')}catch(e){dl=null}})();
 function savedMsg(name,lead){return window.__nativeSave?(lead||'Saved')+' to your phone.':isIOS?(lead||'Saved')+'.':(lead?lead+' to Downloads as ':'Saved to Downloads as ')+name+'.'}
 async function saveBlob(blob,filename){
   if(window.__nativeSave){try{const r=await window.__nativeSave(blob,filename);return r===false||r==='failed'?'failed':'saved'}catch(e){return'failed'}}
@@ -1343,8 +1342,8 @@ function renderLeague(){try{
   const L=computeLeague(RES.group);
   if(!L.length){$('leagueBody').innerHTML='<p class="empty">Add player names when you set up a match and the league takes it from there. Ratings move after every result.</p>';return}
   $('leagueBody').innerHTML='<details class="howto"><summary>How the league works</summary><p>Your rating starts from your Playtomic level, or from 0.5 if you don\'t have one. Win and it goes up, lose and it goes down. Beating a higher-rated pair earns you more. A round in a swapped-partners session counts for half.'+(store.get('db-live-only')===true?' Only matches scored live are counted (change this in Your data).':'')+' <button class="linkbtn inl" id="rateHelp">More on ratings</button></p></details>'+
-  '<div class="tablewrap"><table class="grid"><thead><tr><th>#</th><th>Player</th><th>Rating</th><th>Played</th><th>Won</th><th>Lost</th><th>Win rate</th><th>Form</th><th>Last match</th></tr></thead><tbody>'+
-  L.map((p,i)=>'<tr data-p="'+esc(p.key)+'"><td class="rank r'+(i+1)+'">'+(i+1)+'</td><td><b>'+esc(p.name)+'</b>'+(flagFor(p.key)?' '+flagFor(p.key):'')+'</td><td class="num"><b>'+Math.round(p.rating)+'</b></td><td class="num">'+p.p+'</td><td class="num">'+p.w+'</td><td class="num">'+p.l+'</td><td class="num">'+Math.round(p.w/Math.max(1,p.p)*100)+'%</td><td>'+formDots(p.form)+'</td><td class="num '+(p.delta>=0?'up':'down')+'">'+(p.delta>=0?'+':'')+Math.round(p.delta)+'</td></tr>').join('')+
+  '<div class="tablewrap"><table class="grid"><thead><tr><th>#</th><th>Player</th><th>Overall</th><th>Played</th><th>Won</th><th>Lost</th><th>Win rate</th><th>Form</th><th>Last match</th></tr></thead><tbody>'+
+  L.map((p,i)=>'<tr data-p="'+esc(p.key)+'"><td class="rank r'+(i+1)+'">'+(i+1)+'</td><td><b>'+esc(p.name)+'</b>'+(flagFor(p.key)?' '+flagFor(p.key):'')+'</td><td class="num"><b>'+perfScore(p.rating)+'</b></td><td class="num">'+p.p+'</td><td class="num">'+p.w+'</td><td class="num">'+p.l+'</td><td class="num">'+Math.round(p.w/Math.max(1,p.p)*100)+'%</td><td>'+formDots(p.form)+'</td><td class="num '+(p.delta>=0?'up':'down')+'">'+(()=>{const d=perfScore(p.rating)-perfScore(p.rating-p.delta);return(d>=0?'+':'')+d})()+'</td></tr>').join('')+
   '</tbody></table></div>';
   $('leagueBody').querySelectorAll('tbody tr').forEach(tr=>tr.onclick=()=>openPlayer(tr.dataset.p));
   $('rateHelp').onclick=openRatingHelp;
@@ -1354,7 +1353,7 @@ function renderLeague(){try{
 function renderPlayers(){
   const L=computeLeague(RES.group);
   if(!L.length){$('playersBody').innerHTML='<p class="empty">Players show up here once you add names to a match. Partners can change every game. Everyone keeps their own record.</p>';return}
-  $('playersBody').innerHTML='<div class="pgrid">'+L.map((p,i)=>'<button class="pcard" data-p="'+esc(p.key)+'" style="--i:'+i+'">'+(p.key===pkey(PROF.name||'\u0000')&&PROF.photo?'<img class="pav" src="'+PROF.photo+'" alt="">':friendOf(p.key)&&friendOf(p.key).photo?'<img class="pav" src="'+friendOf(p.key).photo+'" alt="">':'<span class="pav">'+esc(initials(p.name))+'</span>')+'<span class="pname">'+esc(p.name)+(flagFor(p.key)?' '+flagFor(p.key):'')+'</span>'+(styleFor(p.key)?'<span class="pstyle">'+styleSvg(styleFor(p.key))+'Archetype: '+esc(STYLE[styleFor(p.key)][1])+'</span>':'')+(ptLevelFor(p.key)?'<span class="ptlvl">Level '+ptLevelFor(p.key)+'</span>':'')+'<span class="pmeta">'+Math.round(p.rating)+' rating, '+p.w+'–'+p.l+(Object.keys(p.badges||{}).length?', ★ '+Object.keys(p.badges).length:'')+(p.key===meKey()?' (you)':'')+'</span>'+formDots(p.form)+'</button>').join('')+'</div>';
+  $('playersBody').innerHTML='<div class="pgrid">'+L.map((p,i)=>'<button class="pcard" data-p="'+esc(p.key)+'" style="--i:'+i+'">'+(p.key===pkey(PROF.name||'\u0000')&&PROF.photo?'<img class="pav" src="'+PROF.photo+'" alt="">':friendOf(p.key)&&friendOf(p.key).photo?'<img class="pav" src="'+friendOf(p.key).photo+'" alt="">':'<span class="pav">'+esc(initials(p.name))+'</span>')+'<span class="pname">'+esc(p.name)+(flagFor(p.key)?' '+flagFor(p.key):'')+'</span>'+(styleFor(p.key)?'<span class="pstyle">'+styleSvg(styleFor(p.key))+'Archetype: '+esc(STYLE[styleFor(p.key)][1])+'</span>':'')+(ptLevelFor(p.key)?'<span class="ptlvl">Level '+ptLevelFor(p.key)+'</span>':'')+'<span class="pmeta">Overall '+perfScore(p.rating)+', '+p.w+'–'+p.l+(Object.keys(p.badges||{}).length?', ★ '+Object.keys(p.badges).length:'')+(p.key===meKey()?' (you)':'')+'</span>'+formDots(p.form)+'</button>').join('')+'</div>';
   $('playersBody').querySelectorAll('.pcard').forEach(b=>b.onclick=()=>openPlayer(b.dataset.p));
 }
 const initials=n=>n.split(/\s+|&/).filter(Boolean).slice(0,2).map(s=>s[0].toUpperCase()).join('');
@@ -1381,7 +1380,7 @@ function openPlayer(key,refreshing){
   $('playerBody').dataset.key=key;
   const frFull=fr&&fr.stats&&fr.stats.bmap;
   $('playerBody').innerHTML=(fr?friendHero(fr)+friendDetails(fr)+'<div style="height:6px"></div>'+friendExtras(fr,key)+recentHtml(fr.stats,fr.name)+friendBadges(fr)+'<p class="sh" style="margin-top:14px">In your matches</p>':formCardHtml(formData(p),p.name,isMe)+highlightsHtml(p,isMe))+'<div class="merow"><p class="help" style="margin:0">Ranked '+(i+1)+' of '+L.length+' in your league.</p><button class="mini'+(isMe?' lime':'')+(fr&&fr.uid?' hide':'')+'" id="meBtn">'+(isMe?'This is you':'This is me')+'</button></div>'+
-    '<div class="cards c4">'+card(Math.round(p.rating),'Rating',0)+card(p.p,'Played',1)+card(p.w+'–'+p.l,'Won–lost',2)+card(Math.round(p.w/Math.max(1,p.p)*100)+'%','Win rate',3)+'</div>'+
+    '<div class="cards c4">'+card(perfScore(p.rating),'Overall',0)+card(p.p,'Played',1)+card(p.w+'–'+p.l,'Won–lost',2)+card(Math.round(p.w/Math.max(1,p.p)*100)+'%','Win rate',3)+'</div>'+
     (p.trend.length>2?'<p class="sh">Rating over time</p>'+sparkline(p.trend,320,70):'')+
     '<table class="stats plain"><tbody>'+
     line('Best partner',partner&&partner.p>0?esc(partner.name)+' ('+partner.w+' of '+partner.p+' won)':'')+
@@ -2655,7 +2654,9 @@ function rateStatsHtml(key){
 /* ================= peer ratings and your Overall ================= */
 const PR={items:store.get('db-pr')||[],given:store.get('db-pr-given')||{}};
 const OVR_W_RESULTS=.7,OVR_W_PEER=.3,PEER_MIN=3,PEER_DAYS=90,OVR_STEP=3;
-const perfScore=rating=>Math.max(40,Math.min(99,Math.round(40+(rating-700)*(55/600))));
+// Overall from the rating engine: 40 at 500, three Overall points for every 50 rating points, up to 99
+const OVR_PER_POINT=0.06;
+const perfScore=rating=>Math.max(40,Math.min(99,Math.round(40+(rating-500)*OVR_PER_POINT)));
 function peerAgg(){
   const cut=Date.now()-PEER_DAYS*864e5,list=PR.items.filter(x=>x.at>=cut&&x.v>=.5&&x.v<=5);
   const raters=new Set(list.map(x=>x.from));
@@ -2681,7 +2682,8 @@ function ovrPeak(p){
   if(typeof meKey==='function'&&p.key===meKey()){const s=store.get('db-ovr')||{};const hist=(s.hist||[]).map(h=>h.v);return Math.max(results,s.v||0,...hist)}
   return results;
 }
-const ovrTier=v=>v>=85?['o-legend','Legend']:v>=75?['o-pro','Pro']:v>=60?['o-club','Club']:['o-rookie','Rookie'];
+// tier thresholds keep the same rating requirements as before the 2.4 recalibration
+const ovrTier=v=>v>=81?['o-legend','Legend']:v>=75?['o-pro','Pro']:v>=65?['o-club','Club']:['o-rookie','Rookie'];
 function ovrCard(o,mine,name){
   if(!o)return mine?'<div class="ovrcard o-rookie empty"><div class="ovrnum"><b>–</b><span>OVR</span></div><div class="ovrinfo"><b>Your Overall</b><span>Play a match to get your Overall.</span></div></div>':'';
   const [cls,label]=ovrTier(o.v),pe=o.peer;
@@ -2882,6 +2884,9 @@ function mergePlans(arr){(arr||[]).forEach(c=>{const i=PLAN.list.findIndex(x=>x.
 function planWhen(p){const d=new Date(p.at);return d.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long'})+', '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}
 function nextPlan(){const now=Date.now()-3*36e5;return PLAN.list.filter(p=>p.at>=now).sort((a,b)=>a.at-b.at)[0]||null}
 function planText(p){const names=p.players.filter(Boolean);return'🎾 Padel: '+planWhen(p)+(p.venue?' at '+p.venue:'')+'\n'+(names.length?'Players: '+names.join(', ')+(names.length<4?' (+'+(4-names.length)+' needed)':'')+'\n':'')+(p.notes?p.notes+'\n':'')+'Reply to confirm. Planned with PadelCred.'}
+// opens Google Calendar with the match already filled in, ready to save
+function planGcalUrl(p){const z=n=>String(n).padStart(2,'0'),f=t=>{const d=new Date(t);return d.getUTCFullYear()+z(d.getUTCMonth()+1)+z(d.getUTCDate())+'T'+z(d.getUTCHours())+z(d.getUTCMinutes())+'00Z'};
+  const q=new URLSearchParams({action:'TEMPLATE',text:'Padel'+(p.venue?' at '+p.venue:''),dates:f(p.at)+'/'+f(p.at+(p.mins||90)*6e4),details:planText(p),location:p.venue||''});return'https://calendar.google.com/calendar/render?'+q.toString()}
 function planIcs(p){const z=n=>String(n).padStart(2,'0'),f=t=>{const d=new Date(t);return d.getUTCFullYear()+z(d.getUTCMonth()+1)+z(d.getUTCDate())+'T'+z(d.getUTCHours())+z(d.getUTCMinutes())+'00Z'};const esc2=s=>String(s||'').replace(/[,;\\]/g,m=>'\\'+m).replace(/\n/g,'\\n');
   return['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//PadelCred//Match night//EN','BEGIN:VEVENT','UID:'+p.id+'@padelcred','DTSTAMP:'+f(Date.now()),'DTSTART:'+f(p.at),'DTEND:'+f(p.at+(p.mins||90)*6e4),'SUMMARY:'+esc2('Padel'+(p.venue?' at '+p.venue:'')),'LOCATION:'+esc2(p.venue),'DESCRIPTION:'+esc2(planText(p)),'END:VEVENT','END:VCALENDAR'].join('\r\n')}
 function renderPlan(){
@@ -2890,11 +2895,11 @@ function renderPlan(){
   const known=(()=>{try{return computeLeague().map(x=>x.name)}catch(e){return[]}})();
   box.innerHTML='<div class="plgrid"><label class="field"><span class="lbl">Date</span><input type="date" id="plDate" value="'+dv+'"></label><label class="field"><span class="lbl">Time</span><input type="time" id="plTime" value="'+tv+'"></label></div>'+
     '<label class="field"><span class="lbl">Venue</span><input type="text" id="plVenue" list="plVenues" maxlength="60" placeholder="Where you\'re playing" value="'+esc(p.venue||'')+'"></label><datalist id="plVenues">'+allVenues().map(v=>'<option value="'+esc(v)+'">').join('')+'</datalist>'+
-    '<p class="sh" style="margin-top:12px">Players</p><div id="plPlayers">'+p.players.map((n,i)=>'<div class="plp"><input type="text" list="plKnown" placeholder="Player '+(i+1)+'" value="'+esc(n||'')+'"><button class="plok'+(p.ok&&p.ok[i]?' on':'')+'" data-plok="'+i+'" aria-pressed="'+!!(p.ok&&p.ok[i])+'">'+(p.ok&&p.ok[i]?'In':'Tick when in')+'</button></div>').join('')+'</div><datalist id="plKnown">'+known.map(n=>'<option value="'+esc(n)+'">').join('')+'</datalist>'+
+    '<p class="sh" style="margin-top:12px">Players</p><div id="plPlayers">'+p.players.map((n,i)=>{const isIn=!!(p.ok&&p.ok[i]),isOut=!isIn&&!!(p.no&&p.no[i]);return'<div class="plp"><input type="text" list="plKnown" placeholder="Player '+(i+1)+'" value="'+esc(n||'')+'"><button class="plok'+(isIn?' on':'')+(isOut?' out':'')+'" data-plok="'+i+'" aria-pressed="'+isIn+'">'+(isIn?'In':isOut?'Out':'Tick when in')+'</button></div>'}).join('')+'</div><datalist id="plKnown">'+known.map(n=>'<option value="'+esc(n)+'">').join('')+'</datalist>'+
     (p.players.length<8?'<button class="secondary" id="plAdd">Add a player</button>':'')+
     '<label class="field" style="margin-top:12px"><span class="lbl">Notes (optional)</span><input type="text" id="plNotes" maxlength="120" placeholder="Bring balls, court 3" value="'+esc(p.notes||'')+'"></label>'+
     '<div id="plTeams"></div>'+
-    '<div class="placts"><button class="primary" id="plShare">Share to WhatsApp</button><button class="secondary" id="plCal">Add to calendar</button><button class="secondary" id="plTeamsBtn">Suggest fair teams</button><button class="secondary" id="plStart">Start this match</button><button class="ghost kodel" id="plDel">Delete this plan</button></div>';
+    '<div class="placts">'+(FB.user&&planInvitable(p).length?'<button class="primary" id="plInvite">Send invites in PadelCred ('+planInvitable(p).length+')</button>':'')+'<button class="'+(FB.user&&planInvitable(p).length?'secondary':'primary')+'" id="plShare">Share to WhatsApp</button><button class="secondary" id="plGcal">Add to Google Calendar</button><button class="linkbtn plother" id="plCal">Using Apple or Outlook? Download the calendar file</button><button class="secondary" id="plTeamsBtn">Suggest fair teams</button><button class="secondary" id="plStart">Start this match</button><button class="ghost kodel" id="plDel">Delete this plan</button></div>';
 }
 function planRead(){const p=PLAN.cur;const dv=$('plDate').value,tv=$('plTime').value||'19:00';if(dv){const[y,m,d]=dv.split('-').map(Number),[hh,mm]=tv.split(':').map(Number);p.at=new Date(y,m-1,d,hh,mm).getTime()}p.venue=canonicalVenue($('plVenue').value);p.notes=$('plNotes').value.trim();p.players=[...$('plPlayers').querySelectorAll('input')].map(i=>i.value.trim());p.u=Date.now();
   const i=PLAN.list.findIndex(x=>x.id===p.id);if(i<0)PLAN.list.push(p);else PLAN.list[i]=p;planSave()}
@@ -2905,8 +2910,10 @@ function planSuggest(){const n=PLAN.cur.players.filter(Boolean);if(n.length!==4)
 document.addEventListener('click',async e=>{
   const t=e.target;if(!t.closest||!t.closest('#planSheet'))return;
   if(t.closest('#plAdd')){planRead();PLAN.cur.players.push('');PLAN.cur.ok=(PLAN.cur.ok||[]).concat(false);renderPlan();return}
-  const ok=t.closest('[data-plok]');if(ok){const i=+ok.dataset.plok;planRead();PLAN.cur.ok=PLAN.cur.ok||[];PLAN.cur.ok[i]=!PLAN.cur.ok[i];planSave();renderPlan();if(PLAN.cur.players.filter(Boolean).length===4&&PLAN.cur.ok.slice(0,4).every(Boolean))planSuggest();return}
+  if(t.closest('#plInvite')){planRead();planSendInvites(PLAN.cur);return}
+  const ok=t.closest('[data-plok]');if(ok){const i=+ok.dataset.plok;planRead();PLAN.cur.ok=PLAN.cur.ok||[];PLAN.cur.no=PLAN.cur.no||[];PLAN.cur.ok[i]=!PLAN.cur.ok[i];PLAN.cur.no[i]=false;planSave();renderPlan();if(PLAN.cur.players.filter(Boolean).length===4&&PLAN.cur.ok.slice(0,4).every(Boolean))planSuggest();return}
   if(t.closest('#plShare')){planRead();const txt=planText(PLAN.cur);try{if(navigator.share){await navigator.share({text:txt});return}}catch(err){return}window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');return}
+  if(t.closest('#plGcal')){planRead();window.open(planGcalUrl(PLAN.cur),'_blank');return}
   if(t.closest('#plCal')){planRead();const blob=new Blob([planIcs(PLAN.cur)],{type:'text/calendar'}),name='padel-'+new Date(PLAN.cur.at).toISOString().slice(0,10)+'.ics';
     try{const file=new File([blob],name,{type:'text/calendar'});if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:'Padel'});return}}catch(err){}
     const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500);toast('Calendar file saved. Open it to add the match.');return}
@@ -2918,7 +2925,7 @@ document.addEventListener('change',e=>{if(e.target.closest&&e.target.closest('#p
 
 /* --- rating preview and chemistry on the setup prediction --- */
 function predExtras(a,b,p){if(p==null)return'';const ses=false,k=ses?K/2:K,up=Math.round(k*(1-p)),down=Math.round(k*p);const ch=chemLines(a,b);
-  return'<p class="predchg">If '+esc(a.join(' & '))+' win: <b>+'+up+'</b> each · lose: <b>−'+down+'</b></p>'+(ch.length?'<p class="predchem">'+ch.join(' · ')+'</p>':'')}
+  const ou=Math.max(1,Math.round(up*OVR_PER_POINT)),od=Math.round(down*OVR_PER_POINT);return'<p class="predchg">If '+esc(a.join(' & '))+' win: Overall <b>+'+ou+'</b> each · lose: <b>'+(od?'−'+od:'no change')+'</b></p>'+(ch.length?'<p class="predchem">'+ch.join(' · ')+'</p>':'')}
 
 /* --- match moment markers: one tap while filming, shown on the clip editor's timeline --- */
 let recMarks=[];
@@ -2969,7 +2976,7 @@ document.addEventListener('click',e=>{const t=e.target;if(!t.closest)return;
 /* ================= v1.9: legal pages, profile reports, near my level at any size ================= */
 $('termsBtn').onclick=()=>{hideSheet();setTimeout(()=>showSheet('termsSheet'),150)};$('termsClose').onclick=()=>hideSheet();
 $('acTerms').onclick=()=>{hideSheet();setTimeout(()=>showSheet('termsSheet'),150)};$('acPriv').onclick=()=>{hideSheet();setTimeout(()=>showSheet('privacySheet'),150)};
-const RP_REASONS=['Offensive photo','Offensive name or username','Pretending to be someone else','Fake or spam account','Something else'];
+const RP_REASONS=['Their Overall or results look wrong','Offensive photo','Offensive name or username','Pretending to be someone else','Fake or spam account','Something else'];
 const RPT={uid:null,name:'',user:''};
 function addReportBtn(uid,name,user){const box=$('playerBody');if(!box||!uid||!FB.user||uid===myUid()||box.querySelector('.rptbtn'))return;box.insertAdjacentHTML('beforeend','<button class="linkbtn rptbtn" data-report="'+esc(uid)+'" data-rname="'+esc(name||'')+'" data-ruser="'+esc(user||'')+'">Report this profile</button>')}
 document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-report]');if(!b)return;RPT.uid=b.dataset.report;RPT.name=b.dataset.rname;RPT.user=b.dataset.ruser;
@@ -3074,6 +3081,36 @@ function renderBox(){
       const ex=f.hid?history.findIndex(e=>e.id===f.hid):-1;if(ex>=0){history[ex].sets=[[a,c]];history[ex].added=now}else{const id='m'+now.toString(36)+'x';history.unshift({id,manual:true,date:now,added:now,sets:[[a,c]],notes:'Box league: '+b.name,cfg});f.hid=id}
       saveH();f.sa=a;f.sb=c;b.u=now;boxSave();renderBox();if(b.fx.every(z=>z.sa!=null))toast(boxLabel(b,boxTable(b)[0].i)+' win '+b.name+'!')}})}
 document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('#boxHome'))closeBox()});
+
+/* ================= trust: how many of your shared results other players confirmed ================= */
+function trustStats(){let c=0,t=0;history.forEach(h=>{if(hDisputed(h))return;const sent=h.conf&&Object.keys(h.conf).length,recv=!!h.recv;if(!sent&&!recv)return;t++;if((sent&&Object.values(h.conf).some(x=>x&&x.ok))||(recv&&h.cs==='yes'))c++});return{c,t}}
+function trustLine(tr){if(!tr||!tr.t||tr.t<3)return'';return'<p class="trustline">✓ '+tr.c+' of '+tr.t+' shared results confirmed by other players</p>'}
+
+/* ================= match night invites: friends on PadelCred answer in the app ================= */
+const INV={list:store.get('db-plan-inv')||[]};
+function invSave(){store.set('db-plan-inv',INV.list.slice(0,30))}
+function planInvitable(p){const me=meKey();return(p.players||[]).filter(n=>n&&pkey(n)!==me).map(n=>friendOf(pkey(n))).filter(f=>f&&f.uid)}
+async function planSendInvites(p){const fr=planInvitable(p);if(!FB.user){toast('Sign in to send invites in PadelCred.');return}if(!fr.length){toast('None of these players are PadelCred friends yet. Share it on WhatsApp instead.');return}
+  const pl={id:p.id,at:p.at,mins:p.mins||90,venue:p.venue||'',notes:p.notes||'',players:p.players.filter(Boolean)};let ok=0;p.inv=p.inv||{};
+  for(const f of fr){try{await FB.db.collection('inbox').doc(f.uid).collection('items').doc('p_'+p.id+'_'+myUid()).set({from:myUid(),fromName:PROF.name||'',j:JSON.stringify({type:'plan',plan:pl}),createdAt:Date.now()});p.inv[f.uid]=f.name;ok++}catch(e){}}
+  planRead();PLAN.cur.inv=p.inv;planSave();renderPlan();toast(ok?'Invite sent to '+fr.slice(0,ok).map(f=>f.name.split(' ')[0]).join(', ')+'. Their answers tick them in here.':'Couldn\'t send the invites. Check your signal.')}
+function planInviteReceived(e,it){const pl=e.plan;if(!pl||!pl.id)return;const i=INV.list.findIndex(x=>x.id===pl.id);const rec={id:pl.id,from:it.from,fromName:it.fromName||'A friend',plan:pl,ans:i>=0?INV.list[i].ans:null,at:Date.now()};if(i>=0)INV.list[i]=rec;else INV.list.unshift(rec);invSave();
+  toast((it.fromName||'A friend')+' invited you to padel, '+planWhen(pl)+'.');if(typeof homeOn==='function'&&homeOn())renderHome()}
+function planReplyReceived(e,it){const p=PLAN.list.find(x=>x.id===e.id);if(!p)return;const nm=it.fromName||'';let k=p.players.findIndex(n=>n&&pkey(n)===pkey(nm));
+  if(k<0&&p.inv&&p.inv[it.from])k=p.players.findIndex(n=>n&&pkey(n)===pkey(p.inv[it.from]));if(k<0)return;
+  p.ok=p.ok||[];p.no=p.no||[];p.ok[k]=!!e.ok;p.no[k]=!e.ok;p.u=Date.now();planSave();
+  const inN=p.players.filter((n,j)=>n&&p.ok[j]).length;toast(e.ok?(nm.split(' ')[0]||'A friend')+'\'s in for '+planWhen(p).split(',')[0]+(inN>=4?'. Everyone\'s in.':'.'):(nm.split(' ')[0]||'A friend')+' can\'t make '+planWhen(p).split(',')[0]+'.');
+  if(PLAN.cur&&PLAN.cur.id===p.id&&$('planSheet').classList.contains('on')){PLAN.cur=JSON.parse(JSON.stringify(p));renderPlan()}if(typeof homeOn==='function'&&homeOn())renderHome()}
+async function planReply(inv,ok){if(!FB.user)return;try{await FB.db.collection('inbox').doc(inv.from).collection('items').doc('r_'+inv.id+'_'+myUid()).set({from:myUid(),fromName:PROF.name||'',j:JSON.stringify({type:'planr',id:inv.id,ok:!!ok}),createdAt:Date.now()})}catch(e){toast('Couldn\'t send that. It\'ll need your signal.')}}
+function invCardsHtml(){const now=Date.now()-3*36e5,list=INV.list.filter(x=>x.plan&&x.plan.at>=now).slice(0,3);if(!list.length)return'';
+  return'<section class="cfcard invcard" id="invCard"><b class="cfttl">Match night '+(list.length===1?'invite':'invites')+'</b>'+list.map(x=>{const pl=x.plan,others=pl.players.filter(n=>pkey(n)!==meKey()&&pkey(n)!==pkey(x.fromName));
+    return'<div class="cfrow"><span><b>'+esc(planWhen(pl))+(pl.venue?' · '+esc(pl.venue):'')+'</b><em>From '+esc(x.fromName)+(others.length?' · with '+esc(others.join(', ')):'')+'</em></span>'+
+      (x.ans===null?'<div class="cfbtns"><button class="mini cfok" data-invyes="'+esc(x.id)+'">I\'m in</button><button class="mini" data-invno="'+esc(x.id)+'">Can\'t make it</button></div>':
+       x.ans?'<div class="cfbtns"><span class="invstate">✓ You\'re in</span><button class="mini" data-invcal="'+esc(x.id)+'">Add to Google Calendar</button></div>':'<div class="cfbtns"><span class="invstate">You said you can\'t make it</span><button class="mini" data-invyes="'+esc(x.id)+'">I can now</button></div>')+'</div>'}).join('')+'</section>'}
+document.addEventListener('click',e=>{const t=e.target;if(!t.closest)return;const y=t.closest('[data-invyes]'),n=t.closest('[data-invno]'),c=t.closest('[data-invcal]');
+  const find=id=>INV.list.find(x=>x.id===id);
+  if(y||n){const x=find((y||n).dataset[y?'invyes':'invno']);if(!x)return;x.ans=!!y;invSave();planReply(x,!!y);toast(y?'You\'re in. '+x.fromName.split(' ')[0]+' has been told.':x.fromName.split(' ')[0]+' has been told you can\'t make it.');renderHome();return}
+  if(c){const x=find(c.dataset.invcal);if(x)window.open(planGcalUrl(x.plan),'_blank')}});
 
 /* ================= bug reports ================= */
 const appVersion=()=>((document.querySelector('meta[name="app-version"]')||{}).content||'');
@@ -3343,18 +3380,18 @@ function formData(p){
 function packForm(fd){if(!fd)return null;const flat=a=>a.reduce((o,x)=>o.concat(x),[]);return{v:fd.v,d:fd.d,n:fd.n,at:fd.at,w30:fd.w30,t30:fd.t30,gf:fd.gf,ga:fd.ga,p:flat(fd.pts),wk:flat(fd.wk),mo:flat(fd.mo)}}
 function unpackForm(s){if(!s||typeof s.v!=='number')return null;const group=(a,n)=>{const o=[];for(let i=0;i+n<=(a||[]).length;i+=n)o.push(a.slice(i,i+n));return o};return{v:s.v,d:s.d,n:s.n,at:s.at,w30:s.w30||0,t30:s.t30||0,gf:s.gf||0,ga:s.ga||0,pts:group(s.p,2),wk:group(s.wk,3),mo:group(s.mo,3)}}
 const FORMS={};let formSeq=0;
-const formBand=v=>v>=75?'hot':v>=55?'good':v>=40?'steady':'cold';
-const formWord=v=>v>=75?'On fire':v>=55?'In form':v>=40?'Steady':'Struggling';
+const formBand=v=>v>=65?'hot':v>=35?'steady':'cold';
+const formWord=v=>v>=65?'On fire':v>=35?'Steady':'Cold';
 function formCardHtml(fd,name,mine){
   if(!fd)return'';const id='fm'+(++formSeq);FORMS[id]={fd,range:'3M',per:'wk'};
   const v=fd.v,ang=Math.max(0,Math.min(100,v))/100,R=52,C=2*Math.PI*R,arc=C*.75,band=formBand(v);
   const who=mine?'Your':esc((name||'').split(' ')[0])+'\'s';
   const delta=fd.d==null?'<span class="fmdelta flat">New</span><span class="fmsub">Not enough history for a 30-day comparison yet</span>':
-    '<span class="fmdelta '+(fd.d>0?'up':fd.d<0?'down':'flat')+'">'+(fd.d>0?'↑ +':fd.d<0?'↓ ':'→ ')+Math.abs(fd.d)+'</span><span class="fmsub">vs 30 days before '+(mine?'your':'their')+' latest match</span>';
+    '<span class="fmdelta '+(fd.d>0?'up':fd.d<0?'down':'flat')+'">'+(fd.d>0?'↑ Heating up':fd.d<0?'↓ Cooling off':'→ Holding steady')+'</span><span class="fmsub">vs 30 days before '+(mine?'your':'their')+' latest match</span>';
   return'<section class="formcard" id="'+id+'">'+
     '<div class="fmhead"><b>Form</b><button class="fminfo" data-howrate aria-label="How Form works">i</button></div>'+
     '<p class="fmlead">'+who+' current form</p>'+
-    '<div class="fmtop"><div class="fmgauge '+band+'"><svg viewBox="0 0 128 128" aria-hidden="true"><circle cx="64" cy="64" r="'+R+'" class="trk" stroke-dasharray="'+arc+' '+C+'" transform="rotate(135 64 64)"/><circle cx="64" cy="64" r="'+R+'" class="val" stroke-dasharray="'+(arc*ang)+' '+C+'" transform="rotate(135 64 64)"/></svg><b>'+v+'</b><em>'+formWord(v)+'</em></div>'+
+    '<div class="fmtop"><div class="fmgauge '+band+'"><svg viewBox="0 0 128 128" aria-hidden="true"><circle cx="64" cy="64" r="'+R+'" class="trk" stroke-dasharray="'+arc+' '+C+'" transform="rotate(135 64 64)"/><circle cx="64" cy="64" r="'+R+'" class="val" stroke-dasharray="'+(arc*ang)+' '+C+'" transform="rotate(135 64 64)"/></svg><b class="fmword">'+formWord(v)+'</b></div>'+
     '<div class="fmside">'+delta+'<span class="fmbased">Based on '+fd.n+' recent match'+(fd.n===1?'':'es')+'</span><span class="fmdate">'+dLong(fd.at)+'</span></div></div>'+
     '<div class="fmsec"><b>Form over time</b><span>One value after each match</span><div class="seg fmrange">'+['1M','3M','6M','All'].map(x=>'<button data-r="'+x+'" aria-pressed="'+(x==='3M')+'">'+x+'</button>').join('')+'</div><div class="fmline"></div></div>'+
     (fd.t30?'<div class="fmsec"><b>Last 30 days</b><div class="fmstats"><div><strong>'+Math.round(fd.w30/fd.t30*100)+'%</strong><span>Win rate</span><em>'+fd.w30+' of '+fd.t30+' matches</em></div><div><strong>'+((fd.gf+fd.ga)?Math.round(fd.gf/(fd.gf+fd.ga)*100):0)+'%</strong><span>Game share</span><em>'+fd.gf+' of '+(fd.gf+fd.ga)+' games</em></div></div><div class="fmbar"><i style="width:'+Math.round(fd.w30/fd.t30*100)+'%"></i></div><p class="fmwl">'+fd.w30+' win'+(fd.w30===1?'':'s')+' · '+(fd.t30-fd.w30)+' loss'+((fd.t30-fd.w30)===1?'':'es')+'</p></div>':'')+
@@ -3365,9 +3402,9 @@ function drawForm(id){
   const st=FORMS[id],box=document.getElementById(id);if(!st||!box)return;const fd=st.fd,D=864e5;
   // line chart
   const span={'1M':31,'3M':92,'6M':183,'All':1e5}[st.range],from=fd.at-span*D,pts=fd.pts.filter(q=>q[0]>=from);
-  const W=320,H=150,L=28,Rr=8,T=12,B=22,pw=W-L-Rr,ph=H-T-B;
+  const W=320,H=150,L=46,Rr=8,T=12,B=22,pw=W-L-Rr,ph=H-T-B;
   let svg='<svg viewBox="0 0 '+W+' '+H+'" class="fmsvg" role="img" aria-label="Form over time">';
-  [0,25,50,75,100].forEach(y=>{const yy=T+ph-(y/100)*ph;svg+='<line x1="'+L+'" x2="'+(W-Rr)+'" y1="'+yy+'" y2="'+yy+'" class="g"/><text x="'+(L-6)+'" y="'+(yy+3.5)+'" class="ax" text-anchor="end">'+y+'</text>'});
+  [0,35,65,100].forEach(y=>{const yy=T+ph-(y/100)*ph;svg+='<line x1="'+L+'" x2="'+(W-Rr)+'" y1="'+yy+'" y2="'+yy+'" class="g"/>'});[[17,'Cold'],[50,'Steady'],[83,'On fire']].forEach(([y,w])=>{const yy=T+ph-(y/100)*ph;svg+='<text x="'+(L-6)+'" y="'+(yy+3.5)+'" class="ax" text-anchor="end">'+w+'</text>'});
   if(pts.length){
     const t0=Math.min(pts[0][0],fd.at-(span<1e4?span*D:0))||pts[0][0],t1=fd.at,dx=Math.max(1,t1-t0);
     const X=t=>L+((t-t0)/dx)*pw,Y=v=>T+ph-(v/100)*ph;
@@ -3382,7 +3419,7 @@ function drawForm(id){
     if(xy.length<=60)xy.forEach(p=>svg+='<circle cx="'+p[0].toFixed(1)+'" cy="'+p[1].toFixed(1)+'" r="2.2" class="dt"/>');
     const lp=xy[xy.length-1];svg+='<circle cx="'+lp[0]+'" cy="'+lp[1]+'" r="4.5" class="last"/>';
     const tx=Math.min(W-Rr-18,Math.max(L+18,lp[0])),ty=Math.max(T+8,lp[1]-16);
-    svg+='<rect x="'+(tx-16)+'" y="'+(ty-11)+'" width="32" height="18" rx="6" class="tag"/><text x="'+tx+'" y="'+(ty+2.5)+'" class="tagt" text-anchor="middle">'+pts[pts.length-1][1]+'</text>';
+    
   }else svg+='<text x="'+(W/2)+'" y="'+(H/2)+'" class="ax" text-anchor="middle">No matches in this period</text>';
   svg+='</svg>';
   box.querySelector('.fmline').innerHTML=svg+'<p class="fmnote">'+pts.length+' match'+(pts.length===1?'':'es')+' in this period</p>';
@@ -3433,7 +3470,7 @@ function fairestSplit(n){const[a1,a2,b1,b2]=n;const opts=[[[a1,a2],[b1,b2]],[[a1
   return opts.map(o=>({a:o[0],b:o[1],p:winChance(o[0],o[1]),q:chemChance(o[0],o[1])})).sort((x,y)=>Math.abs(x.q-.5)-Math.abs(y.q-.5))[0]}
 // matchmaking: ranked players near your level (pure, so it can be tested on its own)
 function nearLevel(rows,myOvr,myUid,range){range=range||6;return(rows||[]).filter(r=>r.uid!==myUid&&typeof r.ovr==='number'&&Math.abs(r.ovr-myOvr)<=range).sort((a,b)=>Math.abs(a.ovr-myOvr)-Math.abs(b.ovr-myOvr)||b.ovr-a.ovr)}
-window.PCX={winChance,fairestSplit,nearLevel,pctPair,mergeProf:(a,b)=>mergeProf(a,b),nearRanks:(a,b,c)=>nearRanks(a,b,c)};
+
 
 /* the prediction on the setup screen, with a one-tap balance */
 function setupNames(){return['pA1','pA2','pB1','pB2'].map(i=>{const e=$(i);return e?(e.value||'').trim():''})}
@@ -3458,13 +3495,13 @@ $('startBtn').addEventListener('click',()=>{const n=setupNames(),a=[n[0],n[1]].f
 function duosHtml(L){
   const seen={},rows=[];
   L.forEach(p=>Object.entries(p.partners||{}).forEach(([k,x])=>{const q=L.find(z=>z.key===k);if(!q)return;const id=[p.key,k].sort().join('|');if(seen[id])return;seen[id]=1;
-    rows.push({a:p.name,b:q.name,avg:Math.round((p.rating+q.rating)/2),p:x.p,w:x.w})}));
+    rows.push({a:p.name,b:q.name,avg:perfScore((p.rating+q.rating)/2),p:x.p,w:x.w})}));
   const list=rows.filter(r=>r.p>=2).sort((x,y)=>y.avg-x.avg||y.p-x.p).slice(0,12);
   if(!list.length)return'';
-  return'<p class="sh" style="margin-top:18px">Duos</p><p class="help" style="margin:-2px 2px 8px">Every pairing that has played at least twice, ranked by the pair\'s average rating.</p><div class="tablewrap"><table class="grid duos"><thead><tr><th>Duo</th><th class="num">Avg</th><th class="num">W–L</th><th class="num">Win %</th></tr></thead><tbody>'+
+  return'<p class="sh" style="margin-top:18px">Duos</p><p class="help" style="margin:-2px 2px 8px">Every pairing that has played at least twice, ranked by the pair\'s average Overall.</p><div class="tablewrap"><table class="grid duos"><thead><tr><th>Duo</th><th class="num">Avg</th><th class="num">W–L</th><th class="num">Win %</th></tr></thead><tbody>'+
     list.map(r=>'<tr><td>'+esc(r.a)+' & '+esc(r.b)+'</td><td class="num"><b>'+r.avg+'</b></td><td class="num">'+r.w+'–'+(r.p-r.w)+'</td><td class="num">'+Math.round(r.w/r.p*100)+'%</td></tr>').join('')+'</tbody></table></div>';
 }
-function leagueAvgLine(L){if(!L.length)return'';const avg=Math.round(L.reduce((s,p)=>s+p.rating,0)/L.length);return'<p class="lgavg">League average: <b>'+avg+'</b> rating across '+L.length+' player'+(L.length===1?'':'s')+'.</p>'}
+function leagueAvgLine(L){if(!L.length)return'';const avg=Math.round(L.reduce((s,p)=>s+p.rating,0)/L.length);return'<p class="lgavg">League average Overall: <b>'+perfScore(avg)+'</b> across '+L.length+' player'+(L.length===1?'':'s')+'.</p>'}
 /* renderLeague: built into the function itself */
 
 /* shared groups: each group's average rating */
@@ -3742,7 +3779,7 @@ function recapData(){
   const rows=weekRows(7),me=meKey();
   const L=computeLeague(),p=me?L.find(x=>x.key===me):null;
   let delta=null;
-  if(p){const ids=new Set(rows.map(r=>r.id));let d=0;p.matches.forEach((id,i)=>{if(ids.has(id))d+=p.trend[i+1]-p.trend[i]});delta=Math.round(d)}
+  if(p){const ids=new Set(rows.map(r=>r.id));let d=0;p.matches.forEach((id,i)=>{if(ids.has(id))d+=p.trend[i+1]-p.trend[i]});delta=perfScore(p.rating)-perfScore(p.rating-d)}
   const won=rows.filter(r=>r.won).length;
   let best=null;rows.forEach(r=>{rowAwards(r).forEach(a=>{if(a.team===r.side&&!best)best={a,r}})});
   const badges=p?Object.entries(p.badges||{}).filter(([id,d])=>d>=Date.now()-7*86400000).map(([id])=>(BADGE[id]||[])[1]).filter(Boolean):[];
@@ -3770,7 +3807,7 @@ async function makeRecapCard(){
   x.textAlign='center';x.fillStyle='#0B1420';x.font='800 104px '+D;x.fillText('My week',540,top+90);x.fillText('in padel',540,top+195);
   x.font='700 36px '+F;x.fillText(d.name?d.name:'Last 7 days',540,top+260);
   const y0=top+320;x.fillStyle='#0B1420';rr(x,70,y0,940,1500-y0+250,48);x.fill();
-  const tiles=[[String(d.rows.length),'Played'],[d.won+'–'+d.lost,'Won–lost'],[Math.round(d.won/Math.max(1,d.rows.length)*100)+'%','Win rate'],[d.delta===null?'–':(d.delta>=0?'+':'')+d.delta,'Rating']];
+  const tiles=[[String(d.rows.length),'Played'],[d.won+'–'+d.lost,'Won–lost'],[Math.round(d.won/Math.max(1,d.rows.length)*100)+'%','Win rate'],[d.delta===null?'–':(d.delta>=0?'+':'')+d.delta,'Overall']];
   tiles.forEach((t,i)=>{const tx=110+(i%2)*440,ty=y0+50+Math.floor(i/2)*250;x.fillStyle='#334155';rr(x,tx,ty,420,220,30);x.fill();x.fillStyle='#6EE7B7';fitFont(x,t[0],'',120,D,380);x.fillText(t[0],tx+210,ty+135);x.fillStyle='#fff';x.font='600 34px '+F;x.fillText(t[1],tx+210,ty+190)});
   let y=y0+580;
   if(d.best){x.fillStyle='#6EE7B7';rr(x,110,y,860,140,30);x.fill();x.textAlign='left';x.fillStyle='#0B1420';x.font='700 30px '+F;x.fillText('Best moment',145,y+48);x.font='800 52px '+D;fitFont(x,d.best.a.title,'',52,D,780);x.fillText(d.best.a.title,145,y+108);x.textAlign='center';y+=170}
@@ -3882,12 +3919,12 @@ function renderProfile(){
     (PROF.bio?'<p class="bio">'+esc(PROF.bio)+'</p>':'')+
     (chips.length?'<div class="pchips">'+chips.map(c=>'<span>'+esc(c)+'</span>').join('')+'</div>':'')+
     (socials?'<div class="socials">'+socials+'</div>':'')+
-    ovrCard(overallFor(i>=0?p:{p:0,rating:seedFor(key),maxRating:seedFor(key)}),true)+rankLineHtml()+'<button class="secondary sharecardbtn" id="profShare">Share my Courtfolio</button>'+skillCardHtml(skillAgg(),true,PROF.name)+formCardHtml(i>=0?formData(p):null,PROF.name,true)+formInsightsHtml(i>=0?p:null)+highlightsHtml(i>=0?p:null,true)+
+    ovrCard(overallFor(i>=0?p:{p:0,rating:seedFor(key),maxRating:seedFor(key)}),true)+trustLine(trustStats())+rankLineHtml()+'<button class="secondary sharecardbtn" id="profShare">Share my Courtfolio</button>'+skillCardHtml(skillAgg(),true,PROF.name)+formCardHtml(i>=0?formData(p):null,PROF.name,true)+formInsightsHtml(i>=0?p:null)+highlightsHtml(i>=0?p:null,true)+
     (yipSeason()?'<button class="hmyip" id="profYip" style="margin-top:14px"><span><em>Your '+yipYear()+' in padel</em><b>Your year, wrapped.</b></span><i>Play</i></button>':'')+
     '<div class="frbox">'+friendsHtml()+'</div>'+
     badgesHtml(Object.assign({},p,{ex:myExclusive(),exMine:true}))+
     '<p class="sh">Your stats</p>'+
-    (i>=0?'<div class="cards c4">'+card(Math.round(p.rating),'Rating',0)+card('#'+(i+1),'of '+L.length+' in league',1)+card(p.p,'Played',2)+card(Math.round(p.w/Math.max(1,p.p)*100)+'%','Win rate',3)+'</div>'+
+    (i>=0?'<div class="cards c4">'+card(((overallFor(p)||{}).v)||perfScore(p.rating),'Overall',0)+card('#'+(i+1),'of '+L.length+' in league',1)+card(p.p,'Played',2)+card(Math.round(p.w/Math.max(1,p.p)*100)+'%','Win rate',3)+'</div>'+
       '<table class="stats plain"><tbody><tr><td>Record</td><td>'+p.w+' won, '+p.l+' lost</td></tr><tr><td>Form</td><td>'+formDots(p.form)+'</td></tr>'+
       (partner?'<tr><td>Best partner</td><td>'+esc(partner.name)+' ('+partner.w+' of '+partner.p+' won)</td></tr>':'')+
       (nemesis?'<tr><td>Toughest opponent</td><td>'+esc(nemesis.name)+'</td></tr>':'')+'</tbody></table>'
@@ -3982,7 +4019,7 @@ $('peCancel').onclick=()=>hideSheet();
 
 
 /* ================= home logo and updates ================= */
-const APP_VERSION='2.1';
+const APP_VERSION='2.4';
 document.querySelectorAll('.vlogo').forEach(i=>i.src=$('logo').src);
 function goHome(e){
   const el=e&&e.currentTarget;if(el){el.classList.remove('tap');void el.offsetWidth;el.classList.add('tap')}
@@ -5084,7 +5121,7 @@ function periodName(d){return d>=365?'year':d>=30?'month':'week'}
 function recapBig(days){
   const rows=periodRows(days),me=meKey(),won=rows.filter(r=>r.won).length;
   const L=computeLeague(),p=me?L.find(x=>x.key===me):null;
-  let delta=null;if(p){const ids=new Set(rows.map(r=>r.id));let d=0;p.matches.forEach((id,i)=>{if(ids.has(id))d+=p.trend[i+1]-p.trend[i]});delta=Math.round(d)}
+  let delta=null;if(p){const ids=new Set(rows.map(r=>r.id));let d=0;p.matches.forEach((id,i)=>{if(ids.has(id))d+=p.trend[i+1]-p.trend[i]});delta=perfScore(p.rating)-perfScore(p.rating-d)}
   const partners={},opps={};let run=0,best=0,biggest=null,mins=0;
   rows.forEach(r=>{
     const mine=members(r.cfg,r.side),theirs=members(r.cfg,1-r.side);
@@ -5110,7 +5147,7 @@ function openRecapP(days){
   const hrs=d.mins>=600?Math.round(d.mins/60)+' hours':d.mins>=60?Math.floor(d.mins/60)+' hr '+(d.mins%60)+' min':d.mins+' min';
   const badgeLine=d.badges.length?(d.badges.length>3?d.badges.length+' unlocked, including '+d.badges.slice(0,3).join(', '):d.badges.join(', ')):'';
   $('recapBody').innerHTML='<p class="help" style="margin:-6px 2px 14px">'+(d.name?esc(d.name)+', ':'')+(d.period==='week'?'last 7 days':'this '+d.period+' so far')+'.</p>'+
-    '<div class="cards c4">'+card(d.rows.length,'Played',0)+card(d.won+'–'+d.lost,'Won–lost',1)+card(Math.round(d.won/d.rows.length*100)+'%','Win rate',2)+card(d.delta===null?'–':(d.delta>=0?'+':'')+d.delta,'Rating',3)+'</div>'+
+    '<div class="cards c4">'+card(d.rows.length,'Played',0)+card(d.won+'–'+d.lost,'Won–lost',1)+card(Math.round(d.won/d.rows.length*100)+'%','Win rate',2)+card(d.delta===null?'–':(d.delta>=0?'+':'')+d.delta,'Overall',3)+'</div>'+
     '<table class="stats plain"><tbody>'+line('Best partner',d.bp?esc(d.bp.name)+' ('+d.bp.w+' of '+d.bp.p+' won)':'')+line('Toughest opponent',d.nem?esc(d.nem.name)+' (lost '+d.nem.l+')':'')+
     line('Biggest win',d.biggest?esc(d.biggest.r.side===0?d.biggest.r.b:d.biggest.r.a)+', '+esc(d.biggest.r.side===0?d.biggest.r.score:d.biggest.r.score.replace(/(\d+)–(\d+)/g,'$2–$1')):'')+
     line('Longest winning run',d.best>1?d.best+' in a row':'')+line('Time on court',d.mins?hrs:'')+line('Achievements',esc(badgeLine))+'</tbody></table>'+
@@ -5128,7 +5165,7 @@ async function makeRecapCardP(){
   x.textAlign='center';x.fillStyle='#0B1420';x.font='800 104px '+D;x.fillText('My '+d.period,540,top+90);x.fillText('in padel',540,top+195);
   x.font='700 36px '+F;x.fillText(d.name||'',540,top+258);
   const y0=top+310;x.fillStyle='#0B1420';rr(x,70,y0,940,1780-y0,48);x.fill();
-  [[String(d.rows.length),'Played'],[d.won+'–'+d.lost,'Won–lost'],[Math.round(d.won/Math.max(1,d.rows.length)*100)+'%','Win rate'],[d.delta===null?'–':(d.delta>=0?'+':'')+d.delta,'Rating']].forEach((tl,i)=>{
+  [[String(d.rows.length),'Played'],[d.won+'–'+d.lost,'Won–lost'],[Math.round(d.won/Math.max(1,d.rows.length)*100)+'%','Win rate'],[d.delta===null?'–':(d.delta>=0?'+':'')+d.delta,'Overall']].forEach((tl,i)=>{
     const tx=110+(i%2)*440,ty=y0+46+Math.floor(i/2)*236;x.fillStyle='#334155';rr(x,tx,ty,420,210,30);x.fill();x.fillStyle='#6EE7B7';fitFont(x,tl[0],'',116,D,380);x.fillText(tl[0],tx+210,ty+128);x.fillStyle='#fff';x.font='600 32px '+F;x.fillText(tl[1],tx+210,ty+182)});
   let y=y0+540;
   const row=(l,v)=>{if(!v)return;x.textAlign='left';x.fillStyle='#BAC9D3';x.font='600 30px '+F;x.fillText(l,120,y);x.fillStyle='#FFFFFF';fitFont(x,v,'700',40,F,840);x.fillText(v,120,y+50);y+=112};
@@ -5713,7 +5750,7 @@ function receiveResults(items){
   const me=myUid();let added=0,updated=0;const from=new Set();
   items.forEach(it=>{
     let e;try{e=JSON.parse(it.j)}catch(err){return}
-    if(e&&e.type==='conf'){try{confReceived(e,it)}catch(err){}FB.db.collection('inbox').doc(me).collection('items').doc(it._id).delete().catch(()=>{});return}
+    if(e&&(e.type==='conf'||e.type==='plan'||e.type==='planr')){try{if(e.type==='conf')confReceived(e,it);else if(e.type==='plan')planInviteReceived(e,it);else planReplyReceived(e,it)}catch(err){}FB.db.collection('inbox').doc(me).collection('items').doc(it._id).delete().catch(()=>{});return}
     if(e.uids){const map={};Object.entries(e.uids).forEach(([n,u])=>{if(u===me&&PROF.name)map[pkey(n)]=PROF.name;else{const f=friendByUid(u);if(f)map[pkey(n)]=f.name}});
       const c=Object.assign({},e.cfg),fix=l=>(l||[]).map(n=>map[pkey(n||'')]||n);c.pa=fix(c.pa);c.pb=fix(c.pb);
       if(!c.an&&c.pa.filter(Boolean).length)c.a=joinNames(c.pa);if(!c.bn&&c.pb.filter(Boolean).length)c.b=joinNames(c.pb);e=Object.assign({},e,{cfg:c})}
@@ -5862,7 +5899,7 @@ function renderGroupsSheet(){try{
     r.querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>removeMember(g,b.dataset.rm))});
   $('grLive').checked=liveOn();
 
-}finally{(()=>{try{document.querySelectorAll('#grList .grbox').forEach(box=>{const L=computeLeague(box.dataset.g);if(!L.length)return;const avg=Math.round(L.reduce((s,p)=>s+p.rating,0)/L.length);const sp=box.querySelector('.grrow span');if(sp&&!sp.querySelector('.gravg'))sp.insertAdjacentHTML('beforeend','<em class="gravg"> · Avg rating '+avg+'</em>')})}catch(e){}})()}}
+}finally{(()=>{try{document.querySelectorAll('#grList .grbox').forEach(box=>{const L=computeLeague(box.dataset.g);if(!L.length)return;const avg=Math.round(L.reduce((s,p)=>s+p.rating,0)/L.length);const sp=box.querySelector('.grrow span');if(sp&&!sp.querySelector('.gravg'))sp.insertAdjacentHTML('beforeend','<em class="gravg"> · Avg Overall '+perfScore(avg)+'</em>')})}catch(e){}})()}}
 
 /* --- matches shared with the group --- */
 async function groupSend(h){
@@ -5976,13 +6013,13 @@ function renderHome(){try{
     h+='<button class="hmcard hmcarry" id="hmCarry"><span class="hmtag"><span class="livedot"></span>Match in progress</span><b>'+esc(nm(0))+' v '+esc(nm(1))+'</b><span class="hmscore">'+esc((setLine(S)||'0–0')+', '+L2[0]+'–'+L2[1])+'</span><span class="hmgo">Carry on</span></button>';
   }
   h+='<button class="hmcard hmstart'+(inProgress?' sec':'')+'" id="hmStart"><b>'+(inProgress?'Start a new match':'Start a match')+'</b><span>'+esc(fmtLine)+(lastTeams&&!inProgress?'<br>Last time: '+esc(lastTeams):'')+(!seemsIn()?'<em class="hmwarn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2.5 20h19z"/><path d="M12 9.5v5M12 17.4v.1"/></svg>Your results won\'t be backed up without an account.</em>':'')+'</span><span class="hmgo">'+(inProgress?'New':'Let\'s play')+'</span></button>';
-  {const cur=amCur();h+='<button class="hmamer" id="hmAmer"><span class="hmamic"><svg viewBox="0 0 24 24"><circle cx="7" cy="7" r="2.6"/><circle cx="17" cy="7" r="2.6"/><circle cx="7" cy="17" r="2.6"/><circle cx="17" cy="17" r="2.6"/><path d="M9.6 7h4.8M7 9.6v4.8M17 9.6v4.8M9.6 17h4.8"/></svg></span><span><b>'+(cur?'Carry on: '+(cur.type==="americano"?"Americano":"Mexicano")+', round '+(cur.at+1):'Americano night')+'</b><em>'+(cur?cur.players.length+' players, '+(cur.venue?esc(cur.venue):cur.pts+' points per match'):'Rotating partners, points scoring, a leaderboard at the end')+'</em></span><i>'+(cur?'Open':'Set up')+'</i></button>'}
+  {const cur=amCur();h+='<button class="hmamer" id="hmAmer"><span class="hmamic"><svg viewBox="0 0 24 24"><circle cx="7" cy="7" r="2.6"/><circle cx="17" cy="7" r="2.6"/><circle cx="7" cy="17" r="2.6"/><circle cx="17" cy="17" r="2.6"/><path d="M9.6 7h4.8M7 9.6v4.8M17 9.6v4.8M9.6 17h4.8"/></svg></span><span><b>'+(cur?'Carry on: '+(cur.type==="americano"?"Americano":"Mexicano")+', round '+(cur.at+1):'Americano night')+'</b><em>'+(cur?cur.players.length+' players, '+(cur.venue?esc(cur.venue):cur.pts+' points per match'):'Rotating partners')+'</em></span><i>'+(cur?'Open':'Set up')+'</i></button>'}
   if(live.length){const r=live[0],st=r.st;
     h+='<button class="hmcard hmlive" id="hmLive"><span class="hmtag"><span class="livedot'+(r.ended?' off':'')+'"></span>'+(r.ended?'Just finished':'Live now')+', '+esc(r.g)+'</span><b>'+esc(st.us.name)+' v '+esc(st.them.name)+'</b><span class="hmscore">'+(r.ended?esc(st.winner+' won '+st.score):esc((st.score?st.score+', ':'')+st.us.points+'–'+st.them.points))+'</span></button>'}
   if(reqs.length)h+='<button class="hmcard hmreq" id="hmReq"><b>'+reqs.length+' friend request'+(reqs.length===1?'':'s')+'</b><span>'+esc(reqs.map(l=>l.fromName||'@'+l.fromUsername).slice(0,3).join(', '))+'</span><span class="hmgo">View</span></button>';
   if(rows.length){
     const run=(()=>{const f=p?p.form:[];if(!f.length)return'–';const x=f[f.length-1];let n=0;for(let k=f.length-1;k>=0&&f[k]===x;k--)n++;return(x==='W'?'W':'L')+n})();
-    h+='<p class="sh hmsh">Your padel</p><div class="hmstats"><div><b>'+wk.length+'</b><span>Played this week</span></div><div><b>'+(wk.length?won+'–'+(wk.length-won):'–')+'</b><span>Won–lost this week</span></div><div><b>'+(p?Math.round(p.rating):'–')+'</b><span>Rating</span></div><div><b>'+run+'</b><span>Current run</span></div></div>';
+    h+='<p class="sh hmsh">Your padel</p><div class="hmstats"><div><b>'+wk.length+'</b><span>Played this week</span></div><div><b>'+(wk.length?won+'–'+(wk.length-won):'–')+'</b><span>Won–lost this week</span></div><div><b>'+(p?(((overallFor(p)||{}).v)||perfScore(p.rating)):'–')+'</b><span>Overall</span></div><div><b>'+run+'</b><span>Current run</span></div></div>';
     const lw=last.winner===null?null:me?(()=>{const a=members(last.cfg,0).some(n=>pkey(n)===me),b2=members(last.cfg,1).some(n=>pkey(n)===me);return a?last.winner===0:b2?last.winner===1:null})():last.winner===0;
     h+='<p class="sh hmsh">Latest result</p><button class="hmcard hmlast" id="hmLast"><span class="res '+(lw===null?'':lw?'w':'l')+'">'+(lw===null?'–':lw?'W':'L')+'</span><div><b>'+esc(last.winner===1?last.b+' beat '+last.a:last.a+(last.winner===0?' beat ':' v ')+last.b)+'</b><span>'+esc((last.winner===1?last.score.replace(/(\d+)–(\d+)/g,'$2–$1'):last.score)+', '+dShort(last.date))+'</span></div></button>';
   }else{
@@ -5999,15 +6036,16 @@ function renderHome(){try{
   box.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{openResults();setTab(b.dataset.go)});
   $('hmRules').onclick=()=>openRules();
   if($('hmAmer'))$('hmAmer').onclick=()=>openAmer();
-  {const am=$('hmAmer');if(am&&!$('hmKo')){const cur=KO.list.find(x=>!x.done);am.insertAdjacentHTML('afterend','<button class="hmamer hmko" id="hmKo"><span class="hmamic"><svg viewBox="0 0 24 24"><path d="M7 4h10v4a5 5 0 0 1-10 0z"/><path d="M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3M12 13v4M8.5 20h7M10 17h4"/></svg></span><span><b>'+(cur?'Carry on: '+esc(cur.name):'Knockout')+'</b><em>'+(cur?'Your bracket is in progress':'A bracket for your group. Winners go through.')+'</em></span><i>'+(cur?'Open':'Set up')+'</i></button>');$('hmKo').onclick=()=>openKo(cur?cur.id:null)}}
-  {const kb=$('hmKo');if(kb&&!$('hmPlan')){const np=nextPlan();const inN=np?np.players.filter(Boolean).length:0,okN=np?(np.ok||[]).filter(Boolean).length:0;kb.insertAdjacentHTML('afterend','<button class="hmamer hmko" id="hmPlan"><span class="hmamic"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4M9 14.5l2 2 4-4"/></svg></span><span><b>'+(np?esc(planWhen(np)):'Plan a match night')+'</b><em>'+(np?esc((np.venue?np.venue+' · ':'')+okN+' of '+Math.max(4,inN)+' in'):'Pick a time, invite your group on WhatsApp')+'</em></span><i>'+(np?'Open':'Plan')+'</i></button>');$('hmPlan').onclick=()=>openPlan(np?np.id:null)}}
-  {const pb=$('hmPlan');if(pb&&!$('hmBox')){const cur=BOX.list.find(x=>x.fx.some(f=>f.sa==null));pb.insertAdjacentHTML('afterend','<button class="hmamer hmko" id="hmBox"><span class="hmamic"><svg viewBox="0 0 24 24"><rect x="3.5" y="4" width="17" height="16" rx="2.5"/><path d="M3.5 9.5h17M3.5 14.5h17M9.5 4v16"/></svg></span><span><b>'+(cur?'Carry on: '+esc(cur.name):'Box league')+'</b><em>'+(cur?cur.fx.filter(f=>f.sa!=null).length+' of '+cur.fx.length+' matches played':'Everyone plays everyone. A table and a champion.')+'</em></span><i>'+(cur?'Open':'Set up')+'</i></button>');$('hmBox').onclick=()=>openBox(cur?cur.id:null)}}
+  {const am=$('hmAmer');if(am&&!$('hmKo')){const cur=KO.list.find(x=>!x.done);am.insertAdjacentHTML('afterend','<button class="hmamer hmko" id="hmKo"><span class="hmamic"><svg viewBox="0 0 24 24"><path d="M7 4h10v4a5 5 0 0 1-10 0z"/><path d="M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3M12 13v4M8.5 20h7M10 17h4"/></svg></span><span><b>'+(cur?'Carry on: '+esc(cur.name):'Knockout')+'</b><em>'+(cur?'Your bracket is in progress':'Winners go through')+'</em></span><i>'+(cur?'Open':'Set up')+'</i></button>');$('hmKo').onclick=()=>openKo(cur?cur.id:null)}}
+  {const kb=$('hmKo');if(kb&&!$('hmPlan')){const np=nextPlan();const inN=np?np.players.filter(Boolean).length:0,okN=np?(np.ok||[]).filter(Boolean).length:0;kb.insertAdjacentHTML('afterend','<button class="hmamer hmko" id="hmPlan"><span class="hmamic"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4M9 14.5l2 2 4-4"/></svg></span><span><b>'+(np?esc(planWhen(np)):'Plan a match night')+'</b><em>'+(np?esc((np.venue?np.venue+' · ':'')+okN+' of '+Math.max(4,inN)+' in'):'Invite your group')+'</em></span><i>'+(np?'Open':'Plan')+'</i></button>');$('hmPlan').onclick=()=>openPlan(np?np.id:null)}}
+  {const pb=$('hmPlan');if(pb&&!$('hmBox')){const cur=BOX.list.find(x=>x.fx.some(f=>f.sa==null));pb.insertAdjacentHTML('afterend','<button class="hmamer hmko" id="hmBox"><span class="hmamic"><svg viewBox="0 0 24 24"><rect x="3.5" y="4" width="17" height="16" rx="2.5"/><path d="M3.5 9.5h17M3.5 14.5h17M9.5 4v16"/></svg></span><span><b>'+(cur?'Carry on: '+esc(cur.name):'Box league')+'</b><em>'+(cur?cur.fx.filter(f=>f.sa!=null).length+' of '+cur.fx.length+' matches played':'Everyone plays everyone')+'</em></span><i>'+(cur?'Open':'Set up')+'</i></button>');$('hmBox').onclick=()=>openBox(cur?cur.id:null)}}
+  {const a=$('hmAmer');if(a&&!a.closest('.hmorg')){const g=document.createElement('section');g.className='hmorg';g.innerHTML='<b class="hmorgttl">Organise</b><div class="hmorggrid"></div>';a.parentNode.insertBefore(g,a);const grid=g.querySelector('.hmorggrid');['hmPlan','hmAmer','hmKo','hmBox'].forEach(id=>{const el=$(id);if(el)grid.appendChild(el)})}}
   if($('hmYip'))$('hmYip').onclick=()=>openYip();
   if($('hmAcc'))$('hmAcc').onclick=()=>{authMode='up';openAccount()};
   $('hmTour').onclick=()=>startTour();
   syncHomeAvatar();
 
-}finally{(()=>{try{const st=$('hmStart');if(st&&!$('cfCard')){const html=confCardsHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}})()}}
+}finally{(()=>{try{const st=$('hmStart');if(st&&!$('cfCard')){const html=confCardsHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}try{const st=$('hmStart');if(st&&!$('invCard')){const html=invCardsHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}})()}}
 setTimeout(()=>{try{lockSeed()}catch(e){}},1500);
 function syncHomeAvatar(){const b=$('hmAv');if(!b)return;b.innerHTML=$('avBtn').innerHTML;b.className=$('avBtn').className;b.id='hmAv';b.setAttribute('data-n',$('avBtn').getAttribute('data-n')||'')}
 
@@ -6044,7 +6082,7 @@ function friendBadges(f){
 }
 
 // your headline stats, published on your public card so friends can see them
-function myStats(){const s=myStatsBase();if(s){const a=skillAgg();if(a.ready)s.sk={ready:true,raters:a.raters,n:a.n,c:a.c}}return s}
+function myStats(){const s=myStatsBase();if(s){const a=skillAgg();if(a.ready)s.sk={ready:true,raters:a.raters,n:a.n,c:a.c};try{const tr=trustStats();if(tr.t)s.trust=tr}catch(e){}}return s}
 function myStatsBase(){
   const me=meKey();if(!me)return null;
   const p=computeLeague().find(x=>x.key===me);if(!p){const sv=Math.round(levelToOvr(PROF.ptLevel));return{played:0,ovr:{v:PROF.seed?perfScore(PROF.seed):sv,perf:PROF.seed?perfScore(PROF.seed):sv,peer:{ready:false}},bmap:PROF.founder?{founder:PROF.founderAt}:{},u:Date.now()}}
@@ -6088,12 +6126,12 @@ function recentHtml(st,name){
   return'<p class="sh">Recent results</p><ul class="pubres">'+rs.map(r=>'<li><span class="res '+(r.w?'w':'l')+'">'+(r.w?'W':'L')+'</span><div><b>'+esc(r.sc)+'</b><span>'+(r.pa&&r.pa.length?'With '+esc(r.pa.join(', '))+' ':'')+'v '+esc((r.vs||[]).join(' & '))+'</span><em>'+dShort(r.d)+(r.v?' · '+esc(r.v):'')+'</em></div></li>').join('')+'</ul>';
 }
 function friendExtras(f,key){
-  let h=friendOvrCard(f)+skillCardHtml(f.stats&&f.stats.sk,false,f.name);const st=f.stats;
+  let h=friendOvrCard(f)+trustLine(f.stats&&f.stats.trust)+skillCardHtml(f.stats&&f.stats.sk,false,f.name);const st=f.stats;
   if(st&&st.fm){const fd=unpackForm(st.fm);if(fd&&fd.pts.length)h+=formCardHtml(fd,f.name,false)}
   if(st&&st.played){
     const card=(v,l,i)=>'<div class="card" style="--i:'+i+'"><b>'+v+'</b><span>'+l+'</span></div>';
     const mon=ts=>new Date(ts).toLocaleDateString('en-GB',{month:'long',year:'numeric'});
-    h+='<p class="sh">'+esc(f.name.split(' ')[0])+'\'s padel</p><div class="cards c4">'+card(st.rating,'Rating',0)+card(st.played,'Played',1)+card(st.w+'–'+st.l,'Won–lost',2)+card(Math.round(st.w/Math.max(1,st.played)*100)+'%','Win rate',3)+'</div>'+
+    h+='<p class="sh">'+esc(f.name.split(' ')[0])+'\'s padel</p><div class="cards c4">'+card((st.ovr&&st.ovr.v)||(st.rating?perfScore(st.rating):'–'),'Overall',0)+card(st.played,'Played',1)+card(st.w+'–'+st.l,'Won–lost',2)+card(Math.round(st.w/Math.max(1,st.played)*100)+'%','Win rate',3)+'</div>'+
       '<table class="stats plain"><tbody>'+(st.form&&st.form.length?'<tr><td>Form</td><td>'+formDots(st.form)+'</td></tr>':'')+
       (st.best>1?'<tr><td>Best winning run</td><td>'+st.best+' in a row</td></tr>':'')+
       (st.first?'<tr><td>Playing since</td><td>'+mon(st.first)+'</td></tr>':'')+
