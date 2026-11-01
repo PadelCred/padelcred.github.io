@@ -456,7 +456,7 @@ const HELP={
 };
 function segSet(id,val){document.querySelectorAll('#'+id+' button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.v===String(val))))}
 function teamNameFrom(custom,a,b,fallback){return custom.trim()||joinNames([a,b])||fallback}
-function syncSetup(){
+function syncSetup(){try{
   const sg=!!draft.singles;$('setup').classList.toggle('singles',sg);segSet('segPlay',sg?'singles':'doubles');
   if(sg){$('pA2').value='';$('pB2').value=''}
   $('pA1').placeholder=sg?'You':'You';$('pB1').placeholder=sg?'Opponent':'Player 1';
@@ -470,7 +470,8 @@ function syncSetup(){
   if(typeof renderQuickPick==='function'&&openSheet&&openSheet.id==='setup')setTimeout(renderQuickPick,0);
   $('firstA').textContent=teamNameFrom($('inA').value,$('pA1').value,$('pA2').value,'Us');
   $('firstB').textContent=teamNameFrom($('inB').value,$('pB1').value,$('pB2').value,'Them');
-}
+
+}finally{try{setupPresetsSync()}catch(e){}}}
 function openSetup(){
   draft=Object.assign({},M.cfg);
   const pa=draft.pa||[],pb=draft.pb||[];
@@ -1316,7 +1317,7 @@ function computeLeagueRaw(group){
     const ra=A.reduce((s,p)=>s+p.rating,0)/A.length,rb=B.reduce((s,p)=>s+p.rating,0)/B.length;
     const ea=1/(1+Math.pow(10,(rb-ra)/400));
     const sa=r.winner===0?1:0,ses=r.h.session;
-    const change=(ses?K/2:K)*(sa-ea); // a single rotation set moves ratings half as much as a full match
+    const change=K*matchWeight(r)*(sa-ea); // shorter formats move ratings less: see matchWeight
     {const gA=r.sets.reduce((s,x)=>s+((x.g&&x.g[0])||0),0),gB=r.sets.reduce((s,x)=>s+((x.g&&x.g[1])||0),0),gs=(gA+gB)?gA/(gA+gB):.5;
      const fm=(team,exp,res,share,gf,ga)=>team.forEach(p=>{(p.fm=p.fm||[]).push(formMatchScore(exp,res,share));(p.formPts=p.formPts||[]).push([r.date,formFromScores(p.fm)]);(p.fx=p.fx||[]).push([r.date,res,gf,ga])});
      fm(A,ea,sa,gs,gA,gB);fm(B,1-ea,1-sa,1-gs,gB,gA);}
@@ -2920,8 +2921,8 @@ document.addEventListener('click',async e=>{
 document.addEventListener('change',e=>{if(e.target.closest&&e.target.closest('#planSheet')&&PLAN.cur){planRead();if(typeof renderHome==='function'&&$('homeView').classList.contains('on'))renderHome()}});
 
 /* --- rating preview and chemistry on the setup prediction --- */
-function predExtras(a,b,p){if(p==null)return'';const ses=false,k=ses?K/2:K,up=Math.round(k*(1-p)),down=Math.round(k*p);const ch=chemLines(a,b);
-  const ou=Math.max(1,Math.round(up*OVR_PER_POINT)),od=Math.round(down*OVR_PER_POINT);return'<p class="predchg">If '+esc(a.join(' & '))+' win: Overall <b>+'+ou+'</b> each · lose: <b>'+(od?'−'+od:'no change')+'</b></p>'+(ch.length?'<p class="predchem">'+ch.join(' · ')+'</p>':'')}
+function predExtras(a,b,p){if(p==null)return'';const k=K*matchWeight({cfg:draft,sets:[]}),up=Math.round(k*(1-p)),down=Math.round(k*p);const ch=chemLines(a,b);
+  const ou=Math.max(1,Math.round(up*OVR_PER_POINT)),od=Math.round(down*OVR_PER_POINT);return'<p class="predchg">If '+esc(a.join(' & '))+' win: Overall <b>+'+ou+'</b> each · lose: <b>'+(od?'−'+od:'no change')+'</b>'+(()=>{const w=matchWeight({cfg:draft,sets:[]});return w>=1?'':' · counts '+(w===.75?'three-quarters':'half')})()+'</p>'+(ch.length?'<p class="predchem">'+ch.join(' · ')+'</p>':'')}
 
 /* --- match moment markers: one tap while filming, shown on the clip editor's timeline --- */
 let recMarks=[];
@@ -3107,6 +3108,27 @@ document.addEventListener('click',e=>{const t=e.target;if(!t.closest)return;cons
   const find=id=>INV.list.find(x=>x.id===id);
   if(y||n){const x=find((y||n).dataset[y?'invyes':'invno']);if(!x)return;x.ans=!!y;invSave();planReply(x,!!y);toast(y?'You\'re in. '+x.fromName.split(' ')[0]+' has been told.':x.fromName.split(' ')[0]+' has been told you can\'t make it.');renderHome();return}
   if(c){const x=find(c.dataset.invcal);if(x)window.open(planGcalUrl(x.plan),'_blank')}});
+
+/* ================= simple match setup: three ways to play, the rest under Customise ================= */
+const PRESETS={full:{bestOf:3,games:6,race:false},set:{bestOf:1,games:6,race:false},quick:{bestOf:1,games:5,race:true}};
+const DEUCE_WORD={adv:'Advantage',star:'Star point',golden:'Golden point'};
+function presetFor(d){if(d.singles)return null;for(const[k,p]of Object.entries(PRESETS)){if(d.bestOf===p.bestOf&&d.games===p.games&&!!d.race===p.race)return k}return null}
+function setupPresetsSync(){const box=$('setPresets');if(!box)return;const cur=presetFor(draft),dw=DEUCE_WORD[draft.deuce]||'Golden point';
+  const sub={full:'Best of 3 · '+dw,set:'6 games · '+dw,quick:'First to 5 games · '+dw};
+  box.querySelectorAll('[data-preset]').forEach(b=>{const on=b.dataset.preset===cur;b.classList.toggle('on',on);b.setAttribute('aria-pressed',String(on));const em=b.querySelector('em');if(em)em.textContent=sub[b.dataset.preset]});
+  const c=$('setCustom');if(c&&!cur&&!c.classList.contains('open')){c.classList.add('open');$('setCustomBtn').setAttribute('aria-expanded','true')}
+  const note=$('setCustomNote');if(note)note.textContent=cur?'':'Custom: '+formatText(draft)+(draft.singles?', singles':'')+'.';
+  // the prediction's win/lose preview depends on the format, so refresh it too
+  if(typeof updatePred==='function'&&$('setup').classList.contains('on'))updatePred()}
+document.addEventListener('click',e=>{const t=e.target;if(!t.closest)return;
+  const pb=t.closest('[data-preset]');if(pb){const p=PRESETS[pb.dataset.preset];if(!p)return;draft.bestOf=p.bestOf;draft.games=p.games;draft.race=p.race;draft.singles=false;syncSetup();return}
+  if(t.closest('#setCustomBtn')){const c=$('setCustom'),open=!c.classList.contains('open');c.classList.toggle('open',open);$('setCustomBtn').setAttribute('aria-expanded',String(open));$('setCustomBtn').firstChild.textContent=open?'Hide the extra options':'Customise: serving, 40–40, singles and more';return}});
+
+/* ================= how much a match counts towards ratings, by format ================= */
+// full matches count fully; one set three-quarters; quick games, short single sets and rotation rounds half
+function matchWeight(r){if(r&&r.h&&r.h.session)return .5;const c=(r&&r.cfg)||{};
+  if(c.bestOf){if(c.race)return .5;if(c.games===4)return c.bestOf>=3?.75:.5;if(c.bestOf===1)return .75;return 1}
+  const s=(r&&r.sets)||[];if(s.length>=2)return 1;const g=s[0]&&s[0].g?Math.max(s[0].g[0]||0,s[0].g[1]||0):6;return g>=6?.75:.5}
 
 /* ================= bug reports ================= */
 const appVersion=()=>((document.querySelector('meta[name="app-version"]')||{}).content||'');
@@ -3485,7 +3507,7 @@ function nearLevel(rows,myOvr,myUid,range){range=range||6;return(rows||[]).filte
 function setupNames(){return['pA1','pA2','pB1','pB2'].map(i=>{const e=$(i);return e?(e.value||'').trim():''})}
 function updatePred(){
   const box=$('predBox');if(!box)return;const n=setupNames(),a=[n[0],n[1]].filter(Boolean),b=[n[2],n[3]].filter(Boolean);
-  const sig=n.join('|');if(box.dataset.sig===sig)return;box.dataset.sig=sig;
+  const sig=n.join('|')+'|'+draft.bestOf+'|'+draft.games+'|'+(draft.race?1:0);if(box.dataset.sig===sig)return;box.dataset.sig=sig;
   if(!a.length||!b.length){box.classList.add('hide');return}
   const p=winChance(a,b),[pa,pb]=pctPair(p);
   let bal='';if(n.every(Boolean)){const f=fairestSplit(n);if(Math.abs(p-.5)-Math.abs(f.p-.5)>.04&&Math.abs(p-.5)>.08){const[fa,fb]=pctPair(f.p);bal='<button class="linkbtn inl" id="predBal">Balance teams</button><span class="predhint">'+esc(f.a.join(' & '))+' v '+esc(f.b.join(' & '))+' would be '+fa+'–'+fb+'</span>'}}
@@ -4028,7 +4050,7 @@ $('peCancel').onclick=()=>hideSheet();
 
 
 /* ================= home logo and updates ================= */
-const APP_VERSION='2.4.4';
+const APP_VERSION='2.5';
 document.querySelectorAll('.vlogo').forEach(i=>i.src=$('logo').src);
 function goHome(e){
   const el=e&&e.currentTarget;if(el){el.classList.remove('tap');void el.offsetWidth;el.classList.add('tap')}

@@ -9,13 +9,13 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="PadelCred">
-<meta name="app-version" content="2.4.4">
+<meta name="app-version" content="2.5">
 <title>PadelCred</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="padelcred.css?v=2.4.4">
+<link rel="stylesheet" href="padelcred.css?v=2.5">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="64x64" href="favicon-64.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -176,6 +176,12 @@
   </div>
   <p class="help" style="margin:-6px 2px 16px">Player 1 on each team serves first.</p>
   <datalist id="playerNames"></datalist>
+  <div class="field"><span class="lbl">How are you playing?</span>
+    <div class="presets" id="setPresets"><button type="button" data-preset="full" aria-pressed="false"><b>Full match</b><em>Best of 3</em></button><button type="button" data-preset="set" aria-pressed="false"><b>One set</b><em>6 games</em></button><button type="button" data-preset="quick" aria-pressed="false"><b>Quick game</b><em>First to 5 games</em></button></div>
+    <p class="help" id="setCustomNote"></p>
+    <button type="button" class="linkbtn setcustbtn" id="setCustomBtn" aria-expanded="false" aria-controls="setCustom">Customise: serving, 40–40, singles and more</button>
+  </div>
+  <div class="setcustom" id="setCustom">
   <div class="field"><span class="lbl">Format</span>
     <div class="seg" id="segPlay"><button data-v="doubles">Doubles</button><button data-v="singles">Singles</button></div>
   </div>
@@ -193,6 +199,7 @@
   <div class="field"><span class="lbl">Games per set</span>
     <div class="seg quad" id="segGames"><button data-v="6">6 games</button><button data-v="4">4 games</button><button data-v="r3">First to 3</button><button data-v="r5">First to 5</button></div>
     <p class="help" id="gamesHelp"></p>
+  </div>
   </div>
   <details class="moreopts" id="moreOpts"><summary>More options<span>Group, team names, deciding set, video and display settings</span></summary>
   <div class="field"><label for="inVenue">Venue (optional)</label><input type="text" id="inVenue" list="venueNames" maxlength="40" autocomplete="off" placeholder="For example, Padel Social Club"><datalist id="venueNames"></datalist><p class="help">Remembered for next time, so you can see how you do at each club.</p></div>
@@ -591,11 +598,13 @@
     <table class="stats plain"><tbody><tr><td>75 to 100</td><td>On fire</td></tr><tr><td>55 to 74</td><td>In form</td></tr><tr><td>40 to 54</td><td>Steady</td></tr><tr><td>0 to 39</td><td>Struggling</td></tr></tbody></table>
     <h4>Predictions and matchmaking</h4>
     <p>Before each match, PadelCred shows each pair's chance of winning, worked out from everyone's current rating. It's the same maths that moves ratings afterwards, so beating the prediction is what earns you the most. If one pair is a big favourite, Balance teams swaps partners to make the match as even as possible.</p>
-    <p>The League shows your group's average rating and a Duos table ranking every pairing by its average. In the rankings, Near my level lists players within 6 of your Overall, so you can find good games beyond your group.</p>
+    <p>The League shows your group's average Overall and a Duos table ranking every pairing by its average. In the rankings, Near my level lists players within 6 of your Overall, so you can find good games beyond your group.</p>
     <h4>Rankings</h4>
     <p>Everyone signed in is ranked by Overall after their first match. Ties share a place. You can hide yourself from the rankings in Your data.</p>
   </div>
-  <div class="btns"><button class="secondary" id="howRateClose">Close</button></div>
+  <p class="sh">Match length</p>
+    <p>Longer matches say more about who's better, so they count for more. A best of 3 counts fully, a single 6-game set counts three-quarters, and quick games, short single sets and Americano or Mexicano rounds count half.</p>
+    <div class="btns"><button class="secondary" id="howRateClose">Close</button></div>
 </section>
 
 <section class="sheet" id="recapSheet" aria-label="Your week in padel">
@@ -635,7 +644,7 @@
     <button class="secondary" id="termsBtn">Terms</button>
     <button class="secondary" id="dataUpdate">Check for updates</button>
   </div>
-  <p class="help" style="text-align:center;margin:14px 0 0">PadelCred v2.4.4<br><span class="copyr">© 2026 Raza Rebuilt. All rights reserved.</span></p>
+  <p class="help" style="text-align:center;margin:14px 0 0">PadelCred v2.5<br><span class="copyr">© 2026 Raza Rebuilt. All rights reserved.</span></p>
 </section>
 
 <section class="camview" id="camView" aria-label="Camera">
@@ -845,7 +854,7 @@
 <canvas class="fx" id="fx"></canvas>
 <div class="toast" id="toast" role="status"></div>
 
-<script src="padelcred.js?v=2.4.4"></script>
+<script src="padelcred.js?v=2.5"></script>
 <script>if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol))addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));</script>
 </body>
 </html>
