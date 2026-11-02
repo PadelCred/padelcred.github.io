@@ -1809,3 +1809,10 @@ img:not([src]),img[src=""]{visibility:hidden}
 .fmthelpbtn,.setcustbtn{justify-self:start;margin:6px 2px 0;font-size:14px}
 .fmthelp{display:grid;gap:6px;padding:10px 12px;border-radius:12px;background:#142132}.fmthelp.hide{display:none}.fmthelp p{margin:0;font-size:13.5px;line-height:1.45;color:#BAC9D3}.fmthelp b{color:#F5F7FA}
 .fmtq .setcustbtn,.fmtq .fmthelpbtn{text-align:left;width:auto}
+/* opening screen hand-over: the P disappears first, and only then does the dark background fade,
+   so the P is never drawn on top of the app showing through */
+.boot svg.bootmark{transition:opacity .1s linear!important}
+.boot.out svg.bootmark{opacity:0!important;transform:none!important}
+.boot{transition:opacity .25s ease .12s!important}
+/* the welcome screen appears at once: the opening screen already handles the fade, so nothing shows through */
+.obview.on{animation:none!important}
