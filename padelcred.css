@@ -1777,3 +1777,7 @@ img:not([src]),img[src=""]{visibility:hidden}
 .adach summary{font-weight:700;cursor:pointer;color:#F5F7FA}
 .adachtbl{min-width:0;width:100%}.adachtbl td{vertical-align:top;font-size:13.5px}.adachtbl td:first-child{width:42%}
 .adachtbl{table-layout:fixed}.adachtbl td{white-space:normal!important;overflow-wrap:anywhere;line-height:1.4}.adach .sh{margin-top:12px}
+/* opening screen P is drawn in the page itself, so there's no image file to fail on any phone */
+.boot svg.bootmark{width:162px;height:auto;transition:transform .45s cubic-bezier(.5,0,.3,1),opacity .35s ease}.boot svg.bootmark{width:65px!important;height:auto!important}
+.boot svg.bootmark{display:block;width:65px!important;height:auto!important;flex:none}
+.boot.out svg.bootmark{transform:scale(.92)!important;opacity:0}
