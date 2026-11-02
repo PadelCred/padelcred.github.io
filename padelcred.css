@@ -1781,3 +1781,6 @@ img:not([src]),img[src=""]{visibility:hidden}
 .boot svg.bootmark{width:162px;height:auto;transition:transform .45s cubic-bezier(.5,0,.3,1),opacity .35s ease}.boot svg.bootmark{width:65px!important;height:auto!important}
 .boot svg.bootmark{display:block;width:65px!important;height:auto!important;flex:none}
 .boot.out svg.bootmark{transform:scale(.92)!important;opacity:0}
+.doneline{margin:6px 0 0;font-size:16px;font-weight:600;color:#6EE7B7}
+.doneline:empty{display:none}
+.hmorg .hmamer em{-webkit-line-clamp:3!important}

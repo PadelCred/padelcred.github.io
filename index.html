@@ -9,13 +9,13 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="PadelCred">
-<meta name="app-version" content="2.5.2">
+<meta name="app-version" content="2.6.1">
 <title>PadelCred</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="padelcred.css?v=2.5.2">
+<link rel="stylesheet" href="padelcred.css?v=2.6.1">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="64x64" href="favicon-64.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -63,7 +63,7 @@
     <div class="banner" id="banner"><b id="bannerBig"></b><span id="bannerSub"></span></div>
     <div class="done" id="done">
       <div class="dtext"><h2 id="doneTitle"></h2>
-      <p id="doneScore"></p></div>
+      <p id="doneScore"></p><p class="doneline" id="doneLine"></p></div>
       <div class="donewrap" id="doneWrap"></div>
       <div class="btns">
         <button class="primary" id="doneCard">Share card</button>
@@ -163,7 +163,7 @@
 
 
 <section class="sheet" id="setup" aria-label="Match setup">
-  <h3>Set up the match</h3>
+  <h3>Set up your match</h3>
   <div class="inprog" id="progressBox"><div><b>Match in progress</b><span id="progressScore"></span></div><div class="inbtns"><button class="secondary" id="fixBtn">Fix score</button><button class="secondary" id="endBtn">End now</button><button class="secondary" id="restartBtn">Restart</button></div></div>
   <div id="quickPick" class="quickpick hide"></div>
   <div class="teambox">
@@ -275,7 +275,7 @@
 </section>
 
 <section class="sheet" id="profSheet" aria-label="Edit your profile">
-  <h3>Your profile</h3>
+  <h3>Make it yours</h3>
   <div class="phedit"><div id="pePhoto"></div><div class="btns"><button class="secondary" id="peChange">Upload a photo</button><button class="secondary" id="peAvatar">Make an avatar</button><button class="linkbtn" id="peRemove">Remove picture</button></div></div>
   <input type="file" id="peFile" accept="image/*" class="hide">
   <div class="field"><label for="peName">Name you play under</label><input type="text" id="peName" list="playerNames" maxlength="20" autocomplete="off" placeholder="For example, Raza"><p class="help">Use the same name you add to matches so your stats link up.</p></div>
@@ -546,7 +546,7 @@
 
 <section class="sheet" id="bugSheet" aria-label="Report a bug">
   <h3>Report a bug</h3>
-  <p class="help" style="margin:-4px 2px 12px">Something not working as it should? Tell us what happened and we'll take a look. Real bugs earn the Bug hunter badge.</p>
+  <p class="help" style="margin:-4px 2px 12px">Something not working? Tell us what happened and we'll take a look. Real bugs earn the Bug hunter badge.</p>
   <div class="field"><label for="bugText">What happened?</label><textarea id="bugText" maxlength="1500" placeholder="For example, the score didn't update when I tapped Us"></textarea></div>
   <div class="field"><label for="bugSteps">What were you doing? (optional)</label><textarea id="bugSteps" maxlength="800" placeholder="For example, filming a match on my Samsung"></textarea></div>
   <p class="help" id="bugInfo"></p>
@@ -577,6 +577,7 @@
 
 <section class="sheet" id="howRateSheet" aria-label="How ratings work">
   <h3>How ratings work</h3>
+    <p>Your Overall is a PadelCred measure based on recorded results, not an official ranking.</p>
   <div class="howrate">
     <h4>Your Overall</h4>
     <p>Your Overall is the big number on your profile card, from 40 to 99. It's 70% your results and 30% how the friends you play rate you after matches.</p>
@@ -645,7 +646,7 @@
     <button class="secondary" id="termsBtn">Terms</button>
     <button class="secondary" id="dataUpdate">Check for updates</button>
   </div>
-  <p class="help" style="text-align:center;margin:14px 0 0">PadelCred v2.5.2<br><span class="copyr">© 2026 Raza Rebuilt. All rights reserved.</span></p>
+  <p class="help" style="text-align:center;margin:14px 0 0">PadelCred v2.6.1<br><span class="copyr">© 2026 Raza Rebuilt. All rights reserved.</span></p>
 </section>
 
 <section class="camview" id="camView" aria-label="Camera">
@@ -770,7 +771,7 @@
     <div class="obstep on">
       <img class="oblogo" id="obLogo" alt="PadelCred">
       <h2>Earn your reputation.</h2>
-      <p>Keep score, film your matches and track every result, rating and achievement. It all stays on your phone.</p>
+      <p>Track your matches, build rivalries and see how your game develops. Everything stays on your phone unless you create an account.</p>
       <div class="btns"><button class="primary" id="obStart">Get started</button><button class="linkbtn" id="obSkip">Skip</button></div>
       <button class="linkbtn" id="obSignIn">Already have an account? Sign in</button>
       <p class="builtby">© 2026 Raza Rebuilt. All rights reserved.</p>
@@ -855,7 +856,7 @@
 <canvas class="fx" id="fx"></canvas>
 <div class="toast" id="toast" role="status"></div>
 
-<script src="padelcred.js?v=2.5.2"></script>
+<script src="padelcred.js?v=2.6.1"></script>
 <script>if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol))addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));</script>
 </body>
 </html>

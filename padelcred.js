@@ -254,7 +254,7 @@ function recordHistory(){
   }
   saveH();
 }
-function point(w){const __pcSets=S.sets.length,__pcDone=S.done;try{
+function point(w){const __pcSets=S.sets.length,__pcDone=S.done;if(S.done===null)ANN_PRE='Point to '+(((w===0?M.cfg.a:M.cfg.b)||(w===0?'us':'them')))+'. Score: ';try{
   if(S.done!==null)return;
   if(typeof homeOn==='function'&&homeOn())hideHome();
   if(!M.start)M.start=Date.now();
@@ -279,11 +279,13 @@ function point(w){const __pcSets=S.sets.length,__pcDone=S.done;try{
 function undo(){
   if(M.preFix&&M.pts.length===M.fixLen){M.pts=M.preFix.pts;M.cfg.setFirst=M.preFix.setFirst;M.adjusted=M.preFix.adjusted;delete M.preFix;delete M.fixLen;S=replay(M.cfg,M.pts);prevL=null;prevGames='';saveM();recordHistory();render();toast('Score fix undone.');return}
   if(!M.pts.length){toast('Nothing to undo yet.');return}
-  M.pts.pop();tickSound('undo');
+  M.pts.pop();ANN_PRE='Last point undone. Score: ';tickSound('undo');
   changeEndsNow=false;M.newBadges=null;
   if(!M.pts.length)M.start=null;
   S=replay(M.cfg,M.pts);
   recordHistory();saveM();render();
+  // tell screen readers the point was undone and what the score is now
+  {const L2=labels(S,M.cfg);announce(nm(0)+' '+L2[0]+', '+nm(1)+' '+L2[1])}
 }
 
 /* ================= render ================= */
@@ -350,6 +352,7 @@ function render(){
     const plural=/&| and |^us$|^we$/i.test(n)||(S.done===0?(M.cfg.pa||[]).filter(Boolean).length>1:(M.cfg.pb||[]).filter(Boolean).length>1);
     $('doneTitle').textContent=n+(plural?' win':' wins');
     $('doneScore').textContent=setLine(S);
+    {const me=meKey(),side=me?[0,1].find(s=>members(M.cfg,s).some(n=>pkey(n)===me)):undefined,dl=$('doneLine');if(dl)dl.textContent=side===undefined?'':side===S.done?'Another one for the record.':'Tough one. The rematch is waiting.'}
     $('doneSwap').style.display=fourPlayers(M.cfg)?'':'none';
 
   }else d.classList.remove('on');
@@ -1045,7 +1048,7 @@ function renderResults(){
     card(rows.filter(r=>r.sets.some(s=>s.tb||s.super||(Math.abs(s.g[0]-s.g[1])===1&&Math.max(s.g[0],s.g[1])>=5))).length,'Tiebreak matches');
   $('resCount').textContent=all.length?(rows.length===all.length?rows.length+(rows.length===1?' match':' matches')+'. Tap a row for details.':'Showing '+rows.length+' of '+all.length+'. Tap a row for details.'):'';
   if(!all.length){
-    $('resTable').innerHTML='<p class="empty">Nothing here yet. Finished matches land here automatically. Played one without the app? Tap Add a result.</p>';
+    $('resTable').innerHTML='<p class="empty">No matches yet. Your first result changes that. Start scoring, or tap Add a result for a match you\'ve already played.</p>';
     $('h2hTable').innerHTML='<p class="empty">Your record against every opponent builds up here.</p>';return;
   }
   const cols=[['date','Date'],['res','Result'],[null,'Score'],['opp','Opponents'],['team','Your team'],['games','Games'],['pts','Points won'],['len','Length'],[null,'At 40–40'],[null,'Notes']];
@@ -1091,10 +1094,11 @@ function openRow(id){try{
   $('rowEdit').style.display=h.manual?'':'none';
   showSheet('rowSheet');
 
-}finally{(()=>{try{const h=history.find(x=>x.id===id);if(!h)return;let line='';if(h.conf){const yes=Object.values(h.conf).filter(c=>c&&c.ok).map(c=>c.n||'A friend'),no=Object.values(h.conf).filter(c=>c&&c.ok===false).map(c=>c.n||'A friend');if(yes.length)line+='<p class="cfline ok">✓ Confirmed by '+esc(yes.join(', '))+'</p>';if(no.length)line+='<p class="cfline no">'+esc(no.join(' and '))+' says this result isn\'t right'+(h.disputeOk?' (kept anyway)':'')+'.</p>'}if(h.cs==='yes')line+='<p class="cfline ok">✓ You confirmed this result</p>';if(h.cs==='no')line+='<p class="cfline no">You said this result isn\'t right, so it doesn\'t count for you.</p>';if(line)$('rowBody').insertAdjacentHTML('afterbegin',line)}catch(e){}})()}}
+}finally{(()=>{try{const h=history.find(x=>x.id===id);if(!h)return;let line='';if(h.conf){const yes=Object.values(h.conf).filter(c=>c&&c.ok).map(c=>c.n||'A friend'),no=Object.values(h.conf).filter(c=>c&&c.ok===false).map(c=>c.n||'A friend');if(yes.length)line+='<p class="cfline ok">✓ Confirmed by '+esc(yes.join(', '))+'</p>';if(no.length)line+='<p class="cfline no">'+esc(no.join(' and '))+' says this result isn\'t right'+(h.disputeOk?' (kept anyway)':'')+'.</p>'}if(h.cs==='yes')line+='<p class="cfline ok">✓ You confirmed this result</p>';
+  if(!h.conf&&!h.recv&&FB.user&&(h.added||h.date||0)>=1793491200000&&[...(h.cfg.pa||[]),...(h.cfg.pb||[])].some(n=>{const f=n&&pkey(n)!==meKey()&&friendOf(pkey(n));return f&&f.uid}))line+='<p class="cfline">Waiting for confirmation. The other players haven\'t confirmed this result yet.</p>';if(h.cs==='no')line+='<p class="cfline no">You said this result isn\'t right, so it doesn\'t count for you.</p>';if(line)$('rowBody').insertAdjacentHTML('afterbegin',line)}catch(e){}})()}}
 $('rowSave').onclick=()=>{const h=history.find(x=>x.id===rowId);if(h){h.notes=$('rowNotes').value.trim();saveH();renderResults();hideSheet();toast('Notes saved.')}};
 $('rowDelete').onclick=async()=>{
-  if(!(await ask('Delete this match?','It comes off your results, the league and player records.','Delete match',true)))return;
+  if(!(await ask('Delete this result?','This removes the result from your history, the league and player records, and may change ratings.','Delete result',true)))return;
   const delH=history.find(x=>x.id===rowId);
   if(delH&&delH.cfg&&delH.cfg.gid&&FB.user){const ref=FB.db.collection('groups').doc(delH.cfg.gid).collection('matches').doc(rowId);ref.get().then(d=>d.exists&&d.data().from===FB.user.uid?ref.set({d:true,from:FB.user.uid,u:Date.now()}):null).catch(()=>{})}
   history=history.filter(x=>x.id!==rowId);saveH();
@@ -1341,7 +1345,7 @@ function computeLeagueRaw(group){
 const formDots=f=>'<span class="form">'+f.slice(-5).map(x=>'<i class="'+(x==='W'?'w':x==='D'?'d':'l')+'">'+x+'</i>').join('')+'</span>';
 function renderLeague(){try{
   const L=computeLeague(RES.group);
-  if(!L.length){$('leagueBody').innerHTML='<p class="empty">Add player names when you set up a match and the league takes it from there. Ratings move after every result.</p>';return}
+  if(!L.length){$('leagueBody').innerHTML='<p class="empty"><b>Your league starts with your group.</b> Add player names when you set up a match and the table takes it from there. Everyone\'s Overall moves after every result.</p>';return}
   $('leagueBody').innerHTML='<details class="howto"><summary>How the league works</summary><p>Your rating starts from your Playtomic level, or from 0.5 if you don\'t have one. Win and it goes up, lose and it goes down. Beating a higher-rated pair earns you more. A round in a swapped-partners session counts for half.'+(store.get('db-live-only')===true?' Only matches scored live are counted (change this in Your data).':'')+' <button class="linkbtn inl" id="rateHelp">More on ratings</button></p></details>'+
   '<div class="tablewrap"><table class="grid"><thead><tr><th>#</th><th>Player</th><th>Overall</th><th>Played</th><th>Won</th><th>Lost</th><th>Win rate</th><th>Form</th><th>Last match</th></tr></thead><tbody>'+
   L.map((p,i)=>'<tr data-p="'+esc(p.key)+'"><td class="rank r'+(i+1)+'">'+(i+1)+'</td><td><b>'+esc(p.name)+'</b>'+(flagFor(p.key)?' '+flagFor(p.key):'')+'</td><td class="num"><b>'+perfScore(p.rating)+'</b></td><td class="num">'+p.p+'</td><td class="num">'+p.w+'</td><td class="num">'+p.l+'</td><td class="num">'+Math.round(p.w/Math.max(1,p.p)*100)+'%</td><td>'+formDots(p.form)+'</td><td class="num '+(p.delta>=0?'up':'down')+'">'+(()=>{const d=perfScore(p.rating)-perfScore(p.rating-p.delta);return(d>=0?'+':'')+d})()+'</td></tr>').join('')+
@@ -2130,7 +2134,7 @@ function secretHtml(sec,mine,friend){
     const ys=v.years;tiles.push(exTile('tsec on',id,name+(ys&&ys.length>1?' <small>×'+ys.length+'</small>':''),ys?desc.replace(/^Play/,'Played')+'.':desc+'.',true,i++,'',ys?'Collected '+ys.join(', '):'Found '+dShort(v.date)))});
   if(mine||friend)all.forEach(([id])=>{if(sec[id])return;tiles.push('<div class="badge tsec mystery" style="--i:'+(i++)+'"><i class="medal">'+badgeSvg(id)+'</i><b>???</b><span>'+(mine?'Keep playing to find out.':'Not found yet.')+'</span></div>')});
   if(!tiles.length)return'';
-  return bsec('sec','tsec','Secret',mine?'Hidden until you find them':'Hidden achievements',(mine||friend)?found+' of '+SECRET_TOTAL:found+' found',tiles.join(''));
+  return bsec('sec','tsec','Secret',mine?'Keep playing. Some things are better discovered.':'Hidden achievements',(mine||friend)?found+' of '+SECRET_TOTAL:found+' found',tiles.join(''));
 }
 function checkSecrets(){
   const s=secretFor(meKey()),y=new Date().getFullYear();
@@ -2682,7 +2686,7 @@ function ovrPeak(p){
 // tier thresholds keep the same rating requirements as before the 2.4 recalibration
 const ovrTier=v=>v>=81?['o-legend','Legend']:v>=75?['o-pro','Pro']:v>=65?['o-club','Club']:['o-rookie','Rookie'];
 function ovrCard(o,mine,name){
-  if(!o)return mine?'<div class="ovrcard o-rookie empty"><div class="ovrnum"><b>–</b><span>OVR</span></div><div class="ovrinfo"><b>Your Overall</b><span>Play a match to get your Overall.</span></div></div>':'';
+  if(!o)return mine?'<div class="ovrcard o-rookie empty"><div class="ovrnum"><b>–</b><span>OVR</span></div><div class="ovrinfo"><b>Your Overall</b><span>Your Overall starts with results. Log a match to start building it.</span></div></div>':'';
   const [cls,label]=ovrTier(o.v),pe=o.peer;
   return'<div class="ovrcard '+cls+'"><div class="ovrnum"><b>'+o.v+'</b><span>OVR</span></div><div class="ovrinfo"><b>'+(mine?'Your Overall':esc((name||'').split(' ')[0])+'\'s Overall')+' <em>'+label+'</em></b>'+
     (pe&&pe.ready?'<span class="ovrrow"><i>Results</i>'+o.perf+'</span>':'')+
@@ -3002,7 +3006,7 @@ function confCardsHtml(){
   const now=Date.now(),ask=history.filter(h=>h.cs==='ask'&&now-(h.date||h.start||0)<45*864e5).slice(0,3),bad=history.filter(h=>h.conf&&Object.values(h.conf).some(c=>c&&c.ok===false)&&!h.disputeOk&&h.cs!=='no').slice(0,3);
   if(!ask.length&&!bad.length)return'';let s='<section class="cfcard" id="cfCard">';
   if(ask.length){s+='<b class="cfttl">Confirm '+(ask.length===1?'this result':'these results')+'</b><p class="cfsub">Friends recorded these with you. Confirming keeps everyone\'s ratings honest.</p>'+ask.map(h=>{const r=rowOf(h);return'<div class="cfrow"><span><b>'+esc(r.winner===0?r.a+' beat '+r.b:r.winner===1?r.b+' beat '+r.a:r.a+' v '+r.b)+'</b><em>'+esc(r.score)+' · '+dShort(r.date)+(h.recvName?' · from '+esc(h.recvName):'')+'</em></span><div class="cfbtns"><button class="mini cfok" data-cfok="'+h.id+'">Confirm</button><button class="mini" data-cfno="'+h.id+'">Not right</button></div></div>'}).join('')}
-  if(bad.length){s+='<b class="cfttl" style="margin-top:'+(ask.length?'14px':'0')+'">Results to check</b>'+bad.map(h=>{const r=rowOf(h),who=Object.values(h.conf).filter(c=>c&&c.ok===false).map(c=>c.n||'A friend').join(' and ');return'<div class="cfrow"><span><b>'+esc(r.a+' v '+r.b)+'</b><em>'+esc(who)+' says this isn\'t right. It doesn\'t count until it\'s sorted.</em></span><div class="cfbtns"><button class="mini" data-cfopen="'+h.id+'">Check it</button><button class="mini" data-cfkeep="'+h.id+'">Keep it</button></div></div>'}).join('')}
+  if(bad.length){s+='<b class="cfttl" style="margin-top:'+(ask.length?'14px':'0')+'">'+(bad.length===1?'This result needs a review':'These results need a review')+'</b>'+bad.map(h=>{const r=rowOf(h),who=Object.values(h.conf).filter(c=>c&&c.ok===false).map(c=>c.n||'A friend').join(' and ');return'<div class="cfrow"><span><b>'+esc(r.a+' v '+r.b)+'</b><em>'+esc(who)+' says this result isn\'t right. Check the match details. It doesn\'t count until it\'s sorted.</em></span><div class="cfbtns"><button class="mini" data-cfopen="'+h.id+'">Check it</button><button class="mini" data-cfkeep="'+h.id+'">Keep it</button></div></div>'}).join('')}
   return s+'</section>'}
 document.addEventListener('click',async e=>{const t=e.target;if(!t.closest)return;
   const ok=t.closest('[data-cfok]'),no=t.closest('[data-cfno]'),op=t.closest('[data-cfopen]'),kp=t.closest('[data-cfkeep]');
@@ -3157,8 +3161,8 @@ async function sendBug(){
   $('bugSend').disabled=true;
   try{
     await FB.db.collection('reports').doc(newId()).set({from:FB.user.uid,username:PROF.username||'',name:PROF.name||'',text:text.slice(0,1500),steps:steps.slice(0,800),version:appVersion(),device:bugDevice(),theme:document.documentElement.dataset.theme||'light',at:Date.now(),status:'new'});
-    hideSheet();toast('Thanks! Your report has been sent.');
-  }catch(e){toast(fbError(e))}finally{$('bugSend').disabled=false}
+    hideSheet();toast('Report sent. Thanks. Your feedback helps make PadelCred better.');
+  }catch(e){toast('Couldn\'t send your report. Please try again.')}finally{$('bugSend').disabled=false}
 }
 $('bugSend').onclick=sendBug;$('bugCancel').onclick=()=>hideSheet();
 $('dataBug').onclick=openBug;
@@ -3368,7 +3372,7 @@ async function profileCardBlob(){
   let hy=1112;x.textAlign='left';x.fillStyle=SKY;x.font='700 26px '+F;x.fillText('HIGHLIGHTS',64,hy);
   // every achievement is shown: chips wrap onto a second row, with '+N more' if they still don't all fit
   let chipBottom=hy+52;
-  if(!hl.length){x.fillStyle='rgba(245,247,250,.7)';x.font='600 30px '+F;x.fillText('First badge still to unlock',64,hy+52)}
+  if(!hl.length){x.fillStyle='rgba(245,247,250,.7)';x.font='600 30px '+F;x.fillText('The first badge is still up for grabs.',64,hy+52)}
   else{const HC={gold:['#F7E08A','#C9A227'],purple:['#CDBEFF','#6E4AA0'],t1:['#BAC9D3','#BAC9D3'],t2:['#3F4E63','#334155'],t3:['#6EE7B7','#6EE7B7'],t4:['#6EE7B7','#F5F7FA']};
     const CH=54,GAP=10,MAXR=2,left=64,right=W-64;x.font='700 24px '+F;
     const wOf=t=>x.measureText(t).width+78;const rows=[[]];let hx=left;
@@ -4056,13 +4060,13 @@ $('peSave').onclick=()=>{
   PROF.id=PROF.id||oldId||newId();
   try{saveProf()}catch(e){}
   const uc=usernameClash(PROF.username,PROF.id);if(uc&&uc!=='you')setTimeout(()=>toast('Heads up: '+uc+' already uses @'+PROF.username+'.'),1200);
-  setMe(pkey(name));hideSheet();renderProfile();syncAvatar();toast('Profile saved.');
+  setMe(pkey(name));hideSheet();renderProfile();syncAvatar();toast('Profile updated. Your changes are saved.');
 };
 $('peCancel').onclick=()=>hideSheet();
 
 
 /* ================= home logo and updates ================= */
-const APP_VERSION='2.5.2';
+const APP_VERSION='2.6.1';
 document.querySelectorAll('.vlogo').forEach(i=>i.src=$('logo').src);
 function goHome(e){
   const el=e&&e.currentTarget;if(el){el.classList.remove('tap');void el.offsetWidth;el.classList.add('tap')}
@@ -4533,7 +4537,8 @@ $('privacyClose').onclick=()=>hideSheet();
 
 /* ================= accessibility ================= */
 let liveT=null;
-function announce(msg){clearTimeout(liveT);liveT=setTimeout(()=>{$('live').textContent=msg},120)}
+let ANN_PRE='';
+function announce(msg){const pre=ANN_PRE;ANN_PRE='';clearTimeout(liveT);liveT=setTimeout(()=>{$('live').textContent=pre+msg},120)}
 document.addEventListener('keydown',e=>{
   if(e.key!=='Escape')return;
   if($('askWrap').classList.contains('on')||$('tourView').classList.contains('on'))return;
@@ -4683,7 +4688,7 @@ let rivalKey='';
 function renderRivals(){try{
   const names=computeLeague(RES.group).map(p=>({key:p.key,name:p.name}));
   const box=$('rivalsBody');
-  if(!names.length){box.innerHTML='<p class="empty">Add player names when you set up a match and your head to heads build up here, set by set.</p>';return}
+  if(!names.length){box.innerHTML='<p class="empty"><b>Rivalries need a little history.</b> Play with friends to start building your head-to-head record. Add their names when you set up a match.</p>';return}
   if(!rivalKey||!names.some(n=>n.key===rivalKey))rivalKey=names.some(n=>n.key===meKey())?meKey():names[0].key;
   const me=names.find(n=>n.key===rivalKey),R=rivalsFor(rivalKey);
   const pct=o=>Math.round(o.w/Math.max(1,o.w+o.l)*100);
@@ -5398,7 +5403,7 @@ const syncedMap=()=>store.get('db-synced')||{};
 async function syncNow(quiet){
   if(!FB.user||FB.syncing)return;
   if(!navigator.onLine){if(!quiet)toast('You\'re offline. Your results will sync when you\'re back online.');return}
-  FB.syncing=true;setSyncLabel('Syncing…');
+  FB.syncing=true;setSyncLabel('Syncing your changes…');
   try{
     const uid=FB.user.uid,col=FB.db.collection('users').doc(uid).collection('matches');
     const pullKey='db-pull-'+uid,since=store.get(pullKey)||0,started=Date.now();
@@ -5629,7 +5634,7 @@ $('unSkip').onclick=()=>{if(unameRequired&&needsUsername()){signOutNow();return}
 
 /* --- delete everything --- */
 async function deleteAccount(){
-  if(!(await ask('Delete your account?','This deletes your account and everything linked to it, for good: your profile, friend connections, group memberships and synced results. Results on this phone stay unless you remove them.','Delete account',true)))return;
+  if(!(await ask('Delete your PadelCred account?','This deletes your account and everything linked to it, for good: your profile, friend connections, group memberships and synced results. Results on this phone stay unless you remove them.','Delete account',true)))return;
   try{
     const uid=FB.user.uid,db=FB.db,FV=firebase.firestore.FieldValue;
     let uname=(PROF.username||'').toLowerCase();
@@ -6041,7 +6046,7 @@ function renderHome(){try{
   const reqs=typeof SOC!=='undefined'?SOC.links.filter(l=>l.status==='pending'&&l.from!==myUid()):[];
   const fmtLine=formatText(M.cfg);
   const lastTeams=last?(last.a+' v '+last.b):'';
-  let h='<div class="hmhead"><div><span class="hmhi">'+greeting()+(first?', '+esc(first):'')+'</span><b>Ready to play?</b></div></div>';
+  let h='<div class="hmhead"><div><span class="hmhi">'+greeting()+(first?', '+esc(first):'')+'</span><b>Ready for your next match?</b></div></div>';
   if(yipSeason()&&(()=>{const S=yipStats(yipYear());return S&&!S.few})())h+='<button class="hmyip" id="hmYip"><span><em>Your '+yipYear()+' in padel</em><b>It\'s ready. Take a look.</b></span><i>Play</i></button>';
   if(!seemsIn())h+='<button class="hmacc" id="hmAcc"><span><b>Create your free account</b><em>Keep your results safe, add friends and share a league.</em></span><i>Sign up</i></button>';
   if(inProgress){
@@ -6049,7 +6054,7 @@ function renderHome(){try{
     h+='<button class="hmcard hmcarry" id="hmCarry"><span class="hmtag"><span class="livedot"></span>Match in progress</span><b>'+esc(nm(0))+' v '+esc(nm(1))+'</b><span class="hmscore">'+esc((setLine(S)||'0–0')+', '+L2[0]+'–'+L2[1])+'</span><span class="hmgo">Carry on</span></button>';
   }
   h+='<button class="hmcard hmstart'+(inProgress?' sec':'')+'" id="hmStart"><b>'+(inProgress?'Start a new match':'Start a match')+'</b><span>'+esc(fmtLine)+(lastTeams&&!inProgress?'<br>Last time: '+esc(lastTeams):'')+(!seemsIn()?'<em class="hmwarn"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2.5 20h19z"/><path d="M12 9.5v5M12 17.4v.1"/></svg>Your results won\'t be backed up without an account.</em>':'')+'</span><span class="hmgo">'+(inProgress?'New':'Let\'s play')+'</span></button>';
-  {const cur=amCur();h+='<button class="hmamer" id="hmAmer"><span class="hmamic"><svg viewBox="0 0 24 24"><circle cx="7" cy="7" r="2.6"/><circle cx="17" cy="7" r="2.6"/><circle cx="7" cy="17" r="2.6"/><circle cx="17" cy="17" r="2.6"/><path d="M9.6 7h4.8M7 9.6v4.8M17 9.6v4.8M9.6 17h4.8"/></svg></span><span><b>'+(cur?'Carry on: '+(cur.type==="americano"?"Americano":"Mexicano")+', round '+(cur.at+1):'Americano night')+'</b><em>'+(cur?cur.players.length+' players, '+(cur.venue?esc(cur.venue):cur.pts+' points per match'):'Rotating partners')+'</em></span><i>'+(cur?'Open':'Set up')+'</i></button>'}
+  {const cur=amCur();h+='<button class="hmamer" id="hmAmer"><span class="hmamic"><svg viewBox="0 0 24 24"><circle cx="7" cy="7" r="2.6"/><circle cx="17" cy="7" r="2.6"/><circle cx="7" cy="17" r="2.6"/><circle cx="17" cy="17" r="2.6"/><path d="M9.6 7h4.8M7 9.6v4.8M17 9.6v4.8M9.6 17h4.8"/></svg></span><span><b>'+(cur?'Carry on: '+(cur.type==="americano"?"Americano":"Mexicano")+', round '+(cur.at+1):'Americano night')+'</b><em>'+(cur?cur.players.length+' players, '+(cur.venue?esc(cur.venue):cur.pts+' points per match'):'Everyone plays. Everyone competes.')+'</em></span><i>'+(cur?'Open':'Set up')+'</i></button>'}
   if(live.length){const r=live[0],st=r.st;
     h+='<button class="hmcard hmlive" id="hmLive"><span class="hmtag"><span class="livedot'+(r.ended?' off':'')+'"></span>'+(r.ended?'Just finished':'Live now')+', '+esc(r.g)+'</span><b>'+esc(st.us.name)+' v '+esc(st.them.name)+'</b><span class="hmscore">'+(r.ended?esc(st.winner+' won '+st.score):esc((st.score?st.score+', ':'')+st.us.points+'–'+st.them.points))+'</span></button>'}
   if(reqs.length)h+='<button class="hmcard hmreq" id="hmReq"><b>'+reqs.length+' friend request'+(reqs.length===1?'':'s')+'</b><span>'+esc(reqs.map(l=>l.fromName||'@'+l.fromUsername).slice(0,3).join(', '))+'</span><span class="hmgo">View</span></button>';
@@ -6059,7 +6064,7 @@ function renderHome(){try{
     const lw=last.winner===null?null:me?(()=>{const a=members(last.cfg,0).some(n=>pkey(n)===me),b2=members(last.cfg,1).some(n=>pkey(n)===me);return a?last.winner===0:b2?last.winner===1:null})():last.winner===0;
     h+='<p class="sh hmsh">Latest result</p><button class="hmcard hmlast" id="hmLast"><span class="res '+(lw===null?'':lw?'w':'l')+'">'+(lw===null?'–':lw?'W':'L')+'</span><div><b>'+esc(last.winner===1?last.b+' beat '+last.a:last.a+(last.winner===0?' beat ':' v ')+last.b)+'</b><span>'+esc((last.winner===1?last.score.replace(/(\d+)–(\d+)/g,'$2–$1'):last.score)+', '+dShort(last.date))+'</span></div></button>';
   }else{
-    h+='<p class="help hmempty">Your results, league and rivals build up here as you play. Start your first match above.</p>';
+    h+='<p class="help hmempty">Start scoring or log a result to build your record.</p>';
   }
   h+='<div class="hmhelp"><button id="hmRules"><svg viewBox="0 0 24 24"><path d="M5 4h10l4 4v12H5z"/><path d="M15 4v4h4M8.5 12h7M8.5 15.5h7"/></svg>Padel rules</button><button id="hmTour"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M15.5 8.5 13.5 13.5 8.5 15.5 10.5 10.5z"/></svg>Take the tour</button></div>';
   h+='<p class="builtby hmfoot"><span class="copyr">© 2026 Raza Rebuilt. All rights reserved.</span></p>';
@@ -6072,7 +6077,7 @@ function renderHome(){try{
   box.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{openResults();setTab(b.dataset.go)});
   $('hmRules').onclick=()=>openRules();
   if($('hmAmer'))$('hmAmer').onclick=()=>openAmer();
-  {const am=$('hmAmer');if(am&&!$('hmKo')){const cur=KO.list.find(x=>!x.done);am.insertAdjacentHTML('afterend','<button class="hmamer hmko" id="hmKo"><span class="hmamic"><svg viewBox="0 0 24 24"><path d="M7 4h10v4a5 5 0 0 1-10 0z"/><path d="M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3M12 13v4M8.5 20h7M10 17h4"/></svg></span><span><b>'+(cur?'Carry on: '+esc(cur.name):'Knockout')+'</b><em>'+(cur?'Your bracket is in progress':'Winners go through')+'</em></span><i>'+(cur?'Open':'Set up')+'</i></button>');$('hmKo').onclick=()=>openKo(cur?cur.id:null)}}
+  {const am=$('hmAmer');if(am&&!$('hmKo')){const cur=KO.list.find(x=>!x.done);am.insertAdjacentHTML('afterend','<button class="hmamer hmko" id="hmKo"><span class="hmamic"><svg viewBox="0 0 24 24"><path d="M7 4h10v4a5 5 0 0 1-10 0z"/><path d="M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3M12 13v4M8.5 20h7M10 17h4"/></svg></span><span><b>'+(cur?'Carry on: '+esc(cur.name):'Knockout')+'</b><em>'+(cur?'Your bracket is in progress':'One bracket. Plenty at stake.')+'</em></span><i>'+(cur?'Open':'Set up')+'</i></button>');$('hmKo').onclick=()=>openKo(cur?cur.id:null)}}
   {const kb=$('hmKo');if(kb&&!$('hmPlan')){const np=nextPlan();const inN=np?np.players.filter(Boolean).length:0,okN=np?(np.ok||[]).filter(Boolean).length:0;kb.insertAdjacentHTML('afterend','<button class="hmamer hmko" id="hmPlan"><span class="hmamic"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4M9 14.5l2 2 4-4"/></svg></span><span><b>'+(np?esc(planWhen(np)):'Plan a match night')+'</b><em>'+(np?esc((np.venue?np.venue+' · ':'')+okN+' of '+Math.max(4,inN)+' in'):'Invite your group')+'</em></span><i>'+(np?'Open':'Plan')+'</i></button>');$('hmPlan').onclick=()=>openPlan(np?np.id:null)}}
   {const pb=$('hmPlan');if(pb&&!$('hmBox')){const cur=BOX.list.find(x=>x.fx.some(f=>f.sa==null));pb.insertAdjacentHTML('afterend','<button class="hmamer hmko" id="hmBox"><span class="hmamic"><svg viewBox="0 0 24 24"><rect x="3.5" y="4" width="17" height="16" rx="2.5"/><path d="M3.5 9.5h17M3.5 14.5h17M9.5 4v16"/></svg></span><span><b>'+(cur?'Carry on: '+esc(cur.name):'Box league')+'</b><em>'+(cur?cur.fx.filter(f=>f.sa!=null).length+' of '+cur.fx.length+' matches played':'Everyone plays everyone')+'</em></span><i>'+(cur?'Open':'Set up')+'</i></button>');$('hmBox').onclick=()=>openBox(cur?cur.id:null)}}
   {const a=$('hmAmer');if(a&&!a.closest('.hmorg')){const g=document.createElement('section');g.className='hmorg';g.innerHTML='<b class="hmorgttl">Organise</b><div class="hmorggrid"></div>';a.parentNode.insertBefore(g,a);const grid=g.querySelector('.hmorggrid');['hmPlan','hmAmer','hmKo','hmBox'].forEach(id=>{const el=$(id);if(el)grid.appendChild(el)})}}
