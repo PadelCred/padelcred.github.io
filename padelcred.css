@@ -1784,3 +1784,28 @@ img:not([src]),img[src=""]{visibility:hidden}
 .doneline{margin:6px 0 0;font-size:16px;font-weight:600;color:#6EE7B7}
 .doneline:empty{display:none}
 .hmorg .hmamer em{-webkit-line-clamp:3!important}
+/* v2.7: hands-free rotation switch */
+.rotrow{display:flex;gap:12px;align-items:flex-start;margin:12px 0 0;padding:12px;border:1.5px solid #334155;border-radius:14px;background:#142132;cursor:pointer}
+.rotrow.hide{display:none}
+.rotrow input{width:22px;height:22px;margin:2px 0 0;accent-color:#6EE7B7;flex:none}
+.rotrow span{display:grid;gap:3px}.rotrow b{font-size:15px;color:#F5F7FA}.rotrow em{font-style:normal;font-size:12.5px;color:#BAC9D3;line-height:1.35}
+/* v2.8: court time */
+.presets{grid-template-columns:1fr 1fr!important}
+.courtopts{margin-top:12px;display:grid;gap:8px}.courtopts.hide{display:none}
+.courtopts .seg.quad button{font-size:13px;line-height:1.2;padding:10px 6px}
+.ctclock{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(96px + env(safe-area-inset-bottom,0px));z-index:5;padding:6px 14px;border-radius:99px;background:rgba(11,20,32,.88);border:1.5px solid #334155;color:#F5F7FA;font:700 14px var(--body);white-space:nowrap}
+.ctclock.hide,.ctl.swapnow.hide{display:none}
+.ctl.swapnow svg{fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+/* court time adds a fourth button: keep the control bar on one row */
+.controls.four{grid-template-columns:repeat(4,1fr)}
+.controls.four .ctl{font-size:13.5px;min-width:0}
+/* v2.9: simple setup */
+.fmtsum{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;padding:12px 14px;border:1.5px solid #334155;border-radius:14px;background:#142132}
+.fmtsum .lbl{flex-basis:100%;margin:0}
+.fmtsum b{flex:1;font-size:15.5px;color:#F5F7FA;line-height:1.35}
+.fmtq{display:none;gap:8px;margin-top:12px}.fmtq.open{display:grid}
+.fmtql{margin:8px 2px 0;font-size:15px;font-weight:700;color:#F5F7FA}
+.seg.hide,#q3wrap.hide{display:none}#q3wrap{display:grid;gap:8px}
+.fmthelpbtn,.setcustbtn{justify-self:start;margin:6px 2px 0;font-size:14px}
+.fmthelp{display:grid;gap:6px;padding:10px 12px;border-radius:12px;background:#142132}.fmthelp.hide{display:none}.fmthelp p{margin:0;font-size:13.5px;line-height:1.45;color:#BAC9D3}.fmthelp b{color:#F5F7FA}
+.fmtq .setcustbtn,.fmtq .fmthelpbtn{text-align:left;width:auto}

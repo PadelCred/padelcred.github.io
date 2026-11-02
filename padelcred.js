@@ -230,6 +230,7 @@ function setScore(s){
 }
 const setLine=st=>st.sets.filter(s=>s.g[0]+s.g[1]>0).map(setScore).join(', ');
 function formatText(cfg){
+  if(cfg.court)return({adv:'Advantage',star:'Star point',golden:'Golden point'}[cfg.deuce]||'Golden point')+', court time, '+(cfg.courtMins||90)+' min';
   const d={adv:'Advantage',star:'Star point',golden:'Golden point'}[cfg.deuce];
   const l={1:'one set',3:'best of 3',5:'best of 5'}[cfg.bestOf];
   let t=d+', '+l;
@@ -254,7 +255,7 @@ function recordHistory(){
   }
   saveH();
 }
-function point(w){const __pcSets=S.sets.length,__pcDone=S.done;if(S.done===null)ANN_PRE='Point to '+(((w===0?M.cfg.a:M.cfg.b)||(w===0?'us':'them')))+'. Score: ';try{
+function point(w){const __pcSets=S.sets.length,__pcDone=S.done,__pcG=courtGames(S)[0]+courtGames(S)[1];if(M.prevPair){delete M.prevPair}if(M.prevSeg){delete M.prevSeg}if(M.cfg.court&&S.done===null){M.session=M.session||{id:'s'+Date.now().toString(36),players:fourPlayers(M.cfg)};if(!M.session.courtStart)M.session.courtStart=Date.now()}if(S.done===null)ANN_PRE='Point to '+(((w===0?M.cfg.a:M.cfg.b)||(w===0?'us':'them')))+'. Score: ';try{
   if(S.done!==null)return;
   if(typeof homeOn==='function'&&homeOn())hideHome();
   if(!M.start)M.start=Date.now();
@@ -264,19 +265,22 @@ function point(w){const __pcSets=S.sets.length,__pcDone=S.done;if(S.done===null)
   S=replay(M.cfg,M.pts);
   celebrate(prev,S);
   changeEndsNow=isChangeEnds(prev,S);
-  if(S.done!==null&&prev.done===null){const before=badgeSnapshot();recordHistory();announceBadges(newBadgesBetween(before,badgeSnapshot()));backupNudge()}
+  if(S.done!==null&&prev.done===null){const before=badgeSnapshot();recordHistory();announceBadges(newBadgesBetween(before,badgeSnapshot()));backupNudge();if(M.cfg.rotate&&fourPlayers(M.cfg))rotateAfterDone()}
   else recordHistory();
   saveM();render();
   if(changeEndsNow){try{navigator.vibrate&&navigator.vibrate([90,70,90,70,90])}catch(e){}}
-  if(S.done===null&&S.sets.length>prev.sets.length)setTimeout(()=>{if(document.querySelector('.sheet.on')||$('celView').classList.contains('on')||S.done!==null)return;if(fourPlayers(M.cfg))openSwap(false);else openServe()},1700);
+  if(S.done===null&&S.sets.length>prev.sets.length)setTimeout(()=>{if(document.querySelector('.sheet.on')||$('celView').classList.contains('on')||S.done!==null)return;if(fourPlayers(M.cfg)){if(M.cfg.rotate)autoRotate();else openSwap(false)}else openServe()},1700);
   {const L2=labels(S,M.cfg);announce(S.done!==null?nm(S.done)+' win the match, '+setLine(S):nm(0)+' '+L2[0]+', '+nm(1)+' '+L2[1]+(changeEndsNow?'. Change ends':'')+(pressNow?'. '+pressNow:ruleNow?'. '+ruleNow:''))}
 
   tickSound('point');
   const el=w===0?$('halfUs'):$('halfThem');el.classList.remove('flash');void el.offsetWidth;el.classList.add('flash');
   try{navigator.vibrate&&navigator.vibrate(S.done!==null?[60,60,60]:30)}catch(e){}
 
-}finally{(()=>{try{if(rec){if(S.done!==null&&__pcDone===null)addMark('match');else if(S.sets.length>__pcSets)addMark('set')}}catch(e){}})()}}
+}finally{(()=>{try{if(rec){if(S.done!==null&&__pcDone===null)addMark('match');else if(S.sets.length>__pcSets)addMark('set')}}catch(e){}
+  try{if(M.cfg.court&&M.cfg.courtEvery&&fourPlayers(M.cfg)){const t=courtGames(S)[0]+courtGames(S)[1];if(t>__pcG&&t>0&&t%M.cfg.courtEvery===0)setTimeout(()=>courtSwap(true),1200)}}catch(e){}})()}}
 function undo(){
+  if(!M.pts.length&&M.prevSeg){courtUnswap();return}
+  if(!M.pts.length&&M.prevPair&&M.session){const pp=M.prevPair,cfg=Object.assign({},M.cfg,{pa:pp[0].slice(),pb:pp[1].slice(),an:'',bn:''});cfg.a=joinNames(cfg.pa);cfg.b=joinNames(cfg.pb);const ses=M.session;M=newMatch(cfg);M.session=ses;S=replay(M.cfg,M.pts);prevL=null;prevGames='';changeEndsNow=false;saveM();render();toast('Swap undone. Same pairs as the last set.');announce('Swap undone. '+cfg.a+' against '+cfg.b+'.');nativeEvent='undo';if(typeof pushNative==='function')pushNative();return}
   if(M.preFix&&M.pts.length===M.fixLen){M.pts=M.preFix.pts;M.cfg.setFirst=M.preFix.setFirst;M.adjusted=M.preFix.adjusted;delete M.preFix;delete M.fixLen;S=replay(M.cfg,M.pts);prevL=null;prevGames='';saveM();recordHistory();render();toast('Score fix undone.');return}
   if(!M.pts.length){toast('Nothing to undo yet.');return}
   M.pts.pop();ANN_PRE='Last point undone. Score: ';tickSound('undo');
@@ -311,7 +315,7 @@ function celebrate(prev,next){
 }
 
 function fmtDur(ms){const m=Math.max(0,Math.round(ms/60000));return m<60?m+' min':Math.floor(m/60)+' hr '+(m%60)+' min'}
-function render(){
+function render(){try{
   if(typeof WRAP!=='undefined'&&WRAP.on&&S.done===null){WRAP.on=false;WRAP.items=[];WRAP.invite=null;renderWrap()}
   const L=labels(S,M.cfg);
   $('ptUs').textContent=L[0];$('ptThem').textContent=L[1];
@@ -356,13 +360,14 @@ function render(){
     $('doneSwap').style.display=fourPlayers(M.cfg)?'':'none';
 
   }else d.classList.remove('on');
-  $('undoBtn').disabled=!M.pts.length;
+  $('undoBtn').disabled=!M.pts.length&&!M.prevPair&&!M.prevSeg; // after an automatic swap, Undo at 0–0 swaps back
   updateSession();
   if(typeof syncCamUi==='function'&&camOpen)syncCamUi();
   if(typeof pushNative==='function'){if(changeEndsNow&&nativeEvent==='point')nativeEvent='changeEnds';pushNative()}
   if(typeof liveTick==='function')liveTick();
   if(typeof homeOn==='function'&&homeOn())renderHome();
-}
+
+}finally{try{courtUI()}catch(e){}}}
 function tickClock(){
   if(!M.start){$('clock').textContent='';return}
   $('clock').textContent=fmtDur((M.end||Date.now())-M.start);
@@ -445,7 +450,7 @@ function showSheet(id){try{
   openSheet=next;openSheet.scrollTop=0;openSheet.classList.add('on');$('scrim').classList.add('on');
   setTimeout(()=>{if(openSheet===next){const h=next.querySelector('h3');if(h)h.focus({preventScroll:true})}},40);
 
-}finally{(()=>{if(id==='setup')setTimeout(updatePred,60);})()}}
+}finally{(()=>{if(id==='setup'){setTimeout(updatePred,60);try{fmtOpenState()}catch(e){}}})()}}
 function hideSheet(){if(openSheet&&openSheet.id==='usernameSheet'&&typeof unameRequired!=='undefined'&&unameRequired&&needsUsername()){toast('Pick a username to carry on.');return}
   const was=!!openSheet;const wasSetup=openSheet&&openSheet.id==='setup';if(wasSetup&&setupFromHome&&!setupStarted&&!M.pts.length&&typeof showHome==='function')setTimeout(()=>{if(!openSheet&&!$('resultsView').classList.contains('on'))showHome()},50);if(wasSetup){setupStarted=false;setupFromHome=false}if(openSheet)openSheet.classList.remove('on');openSheet=null;document.querySelectorAll('.sheet.on').forEach(s=>s.classList.remove('on'));$('scrim').classList.remove('on');if(was&&lastFocus&&document.body.contains(lastFocus)){try{lastFocus.focus({preventScroll:true})}catch(e){}}lastFocus=null}
 $('scrim').onclick=()=>{if(openSheet&&openSheet.id==='clipSheet')return;hideSheet()};
@@ -504,6 +509,7 @@ function takeDraft(){
   draft.an=$('inA').value.trim();draft.bn=$('inB').value.trim();
   draft.a=teamNameFrom(draft.an,draft.pa[0],draft.pa[1],'Us');draft.b=teamNameFrom(draft.bn,draft.pb[0],draft.pb[1],'Them');
   draft.overlay=$('inOverlay').checked;
+  draft.rotate=!!draft.rotate&&!draft.court&&!draft.singles&&[...draft.pa,...draft.pb].filter(Boolean).length===4;
   draft.group=$('inGroup').value.trim();store.set('db-lastGroup',draft.group);
   draft.venue=canonicalVenue($('inVenue').value);store.set('db-lastVenue',draft.venue);
   {const sg=typeof sharedGroup==='function'?sharedGroup(draft.group):null;draft.gid=sg?sg.id:'';if(sg)draft.group=sg.name}
@@ -1014,7 +1020,7 @@ function rowOf(h){
   winner=h.manual?(sw[0]>sw[1]?0:sw[1]>sw[0]?1:null):h.unfinished?(h.counts?h.leader:null):st.done;
   const score=sets.map(s=>s.super?'['+s.g[0]+'–'+s.g[1]+']':s.g[0]+'–'+s.g[1]+(s.tb?'('+Math.min(s.tb[0],s.tb[1])+')':'')).join(' ');
   return{id:h.id,h,cfg,date:date||0,a:cfg.a||'Us',b:cfg.b||'Them',sets,winner,sw,gw,pf,pa,dur,score,
-    source:h.manual?'Added':h.unfinished?'Ended early':'Scored live',notes:h.notes||'',st,unfinished:!!h.unfinished};
+    source:h.manual?'Added':h.court?'Court time':h.unfinished?'Ended early':'Scored live',notes:h.notes||'',st,unfinished:!!h.unfinished};
 }
 function allRows(){if(memo.rows&&memo.hv===HV)return memo.rows;memo.hv=HV;return memo.rows=history.filter(h=>!hDisputed(h)).map(rowOf).filter(r=>r.sets.length)}
 function filteredRows(){
@@ -1059,7 +1065,7 @@ function renderResults(){
     const len=r.dur?fmtDur(r.dur):'–';
     const rule=r.h.manual?'–':DEUCE_NAME[r.cfg.deuce];
     const notes=r.notes?esc(r.notes.length>28?r.notes.slice(0,27)+'…':r.notes):'';
-    return '<tr data-id="'+r.id+'"><td>'+dShort(r.date)+'</td><td>'+res+'</td><td class="score">'+esc(r.score)+(r.unfinished?' <small class="unf">Unfinished</small>':'')+(r.h.session?' <small class="unf">Rotation</small>':'')+(r.h.manual?' <small class="unf man">Added</small>':'')+'</td><td>'+esc(r.b)+'</td><td>'+esc(r.a)+'</td><td class="num">'+r.gw[0]+'–'+r.gw[1]+'</td><td class="num">'+pts+'</td><td class="num">'+len+'</td><td>'+rule+'</td><td>'+notes+'</td></tr>';
+    return '<tr data-id="'+r.id+'"><td>'+dShort(r.date)+'</td><td>'+res+'</td><td class="score">'+esc(r.score)+(r.h.court?' <small class="unf">Court time</small>':(r.unfinished?' <small class="unf">Unfinished</small>':'')+(r.h.session?' <small class="unf">Rotation</small>':''))+(r.h.manual?' <small class="unf man">Added</small>':'')+'</td><td>'+esc(r.b)+'</td><td>'+esc(r.a)+'</td><td class="num">'+r.gw[0]+'–'+r.gw[1]+'</td><td class="num">'+pts+'</td><td class="num">'+len+'</td><td>'+rule+'</td><td>'+notes+'</td></tr>';
   }).join('');
   $('resTable').innerHTML=rows.length?'<div class="tablewrap"><table class="grid"><thead>'+head+'</thead><tbody>'+body+'</tbody></table></div>':'<p class="empty">No matches fit that search.</p>';
   $('resTable').querySelectorAll('[data-sort]').forEach(b=>b.onclick=()=>{
@@ -2926,7 +2932,7 @@ document.addEventListener('change',e=>{if(e.target.closest&&e.target.closest('#p
 
 /* --- rating preview and chemistry on the setup prediction --- */
 function predExtras(a,b,p){if(p==null)return'';const k=K*matchWeight({cfg:draft,sets:[]}),up=Math.round(k*(1-p)),down=Math.round(k*p);const ch=chemLines(a,b);
-  const ou=Math.max(1,Math.round(up*OVR_PER_POINT)),od=Math.round(down*OVR_PER_POINT);return'<p class="predchg">If '+esc(a.join(' & '))+' win: Overall <b>+'+ou+'</b> each · lose: <b>'+(od?'−'+od:'no change')+'</b>'+(()=>{const w=matchWeight({cfg:draft,sets:[]});return w>=1?'':' · counts '+(w===.75?'three-quarters':'half')})()+'</p>'+(ch.length?'<p class="predchem">'+ch.join(' · ')+'</p>':'')}
+  const ou=Math.max(1,Math.round(up*OVR_PER_POINT)),od=Math.round(down*OVR_PER_POINT);return'<p class="predchg">If '+esc(a.join(' & '))+' win: Overall <b>+'+ou+'</b> each · lose: <b>'+(od?'−'+od:'no change')+'</b>'+(()=>{if(draft.court)return' · each stretch counts by games played';const w=matchWeight({cfg:draft,sets:[]});return w>=1?'':' · counts '+(w===.75?'three-quarters':'half')})()+'</p>'+(ch.length?'<p class="predchem">'+ch.join(' · ')+'</p>':'')}
 
 /* --- match moment markers: one tap while filming, shown on the clip editor's timeline --- */
 let recMarks=[];
@@ -3114,23 +3120,25 @@ document.addEventListener('click',e=>{const t=e.target;if(!t.closest)return;cons
   if(c){const x=find(c.dataset.invcal);if(x)window.open(planGcalUrl(x.plan),'_blank')}});
 
 /* ================= simple match setup: three ways to play, the rest under Customise ================= */
-const PRESETS={full:{bestOf:3,games:6,race:false},set:{bestOf:1,games:6,race:false},quick:{bestOf:1,games:5,race:true}};
+const PRESETS={full:{bestOf:3,games:6,race:false},set:{bestOf:1,games:6,race:false},quick:{bestOf:1,games:5,race:true},court:{bestOf:1,games:99,race:true,court:true}};
 const DEUCE_WORD={adv:'Advantage',star:'Star point',golden:'Golden point'};
-function presetFor(d){if(d.singles)return null;for(const[k,p]of Object.entries(PRESETS)){if(d.bestOf===p.bestOf&&d.games===p.games&&!!d.race===p.race)return k}return null}
-function setupPresetsSync(){const box=$('setPresets');if(!box)return;const cur=presetFor(draft),dw=DEUCE_WORD[draft.deuce]||'Golden point';
-  const sub={full:'Best of 3 · '+dw,set:'6 games · '+dw,quick:'First to 5 games · '+dw};
+function presetFor(d){if(d.singles)return null;if(d.court)return'court';for(const[k,p]of Object.entries(PRESETS)){if(k!=='court'&&d.bestOf===p.bestOf&&d.games===p.games&&!!d.race===p.race)return k}return null}
+function setupPresetsSync(){try{fmtSync()}catch(e){}const box=$('setPresets');if(!box){if(typeof updatePred==='function'&&$('setup').classList.contains('on'))updatePred();return}const cur=presetFor(draft),dw=DEUCE_WORD[draft.deuce]||'Golden point';
+  const sub={full:'Best of 3 · '+dw,set:'6 games · '+dw,quick:'First to 5 games · '+dw,court:(draft.courtMins||90)+' min · swap any time'};
   box.querySelectorAll('[data-preset]').forEach(b=>{const on=b.dataset.preset===cur;b.classList.toggle('on',on);b.setAttribute('aria-pressed',String(on));const em=b.querySelector('em');if(em)em.textContent=sub[b.dataset.preset]});
   const c=$('setCustom');if(c&&!cur&&!c.classList.contains('open')){c.classList.add('open');$('setCustomBtn').setAttribute('aria-expanded','true')}
   const note=$('setCustomNote');if(note)note.textContent=cur?'':'Custom: '+formatText(draft)+(draft.singles?', singles':'')+'.';
   // the prediction's win/lose preview depends on the format, so refresh it too
+  try{rotRowSync()}catch(e){}
+  {const co=$('courtOpts');if(co){co.classList.toggle('hide',cur!=='court');co.querySelectorAll('[data-cm]').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.cm===(draft.courtMins||90))));co.querySelectorAll('[data-ce]').forEach(b=>b.setAttribute('aria-pressed',String(+b.dataset.ce===(draft.courtEvery||0))))}}
   if(typeof updatePred==='function'&&$('setup').classList.contains('on'))updatePred()}
 document.addEventListener('click',e=>{const t=e.target;if(!t.closest)return;
-  const pb=t.closest('[data-preset]');if(pb){const p=PRESETS[pb.dataset.preset];if(!p)return;draft.bestOf=p.bestOf;draft.games=p.games;draft.race=p.race;draft.singles=false;syncSetup();return}
-  if(t.closest('#setCustomBtn')){const c=$('setCustom'),open=!c.classList.contains('open');c.classList.toggle('open',open);$('setCustomBtn').setAttribute('aria-expanded',String(open));$('setCustomBtn').firstChild.textContent=open?'Hide the extra options':'Customise: serving, 40–40, singles and more';return}});
+  const pb=t.closest('[data-preset]');if(pb){const p=PRESETS[pb.dataset.preset];if(!p)return;draft.bestOf=p.bestOf;draft.games=p.games;draft.race=p.race;draft.singles=false;draft.court=!!p.court;if(p.court){draft.courtMins=draft.courtMins||90;if(draft.courtEvery===undefined)draft.courtEvery=0;draft.rotate=false}syncSetup();return}
+  if(t.closest('#setCustomBtn')){const c=$('setCustom'),open=!c.classList.contains('open');c.classList.toggle('open',open);$('setCustomBtn').setAttribute('aria-expanded',String(open));$('setCustomBtn').firstChild.textContent=open?'Hide match rules':'Match rules: 40–40, who serves, singles';return}});
 
 /* ================= how much a match counts towards ratings, by format ================= */
 // full matches count fully; one set three-quarters; quick games, short single sets and rotation rounds half
-function matchWeight(r){if(r&&r.h&&r.h.session)return .5;const c=(r&&r.cfg)||{};
+function matchWeight(r){if(r&&r.h&&r.h.court){const g=(r.gw?r.gw[0]+r.gw[1]:0);return Math.max(.1,Math.min(1,g/16))}if(r&&r.h&&r.h.session)return .5;const c=(r&&r.cfg)||{};
   if(c.bestOf){if(c.race)return .5;if(c.games===4)return c.bestOf>=3?.75:.5;if(c.bestOf===1)return .75;return 1}
   const s=(r&&r.sets)||[];if(s.length>=2)return 1;const g=s[0]&&s[0].g?Math.max(s[0].g[0]||0,s[0].g[1]||0):6;return g>=6?.75:.5}
 
@@ -3145,6 +3153,93 @@ function adminAchievementsHtml(){
     sec('Match achievements',BADGES.map(b=>[b[1]+(tierName[b[2]]?' · '+tierName[b[2]]:''),b[3]+'.']));
 }
 document.addEventListener('toggle',e=>{const d=e.target;if(d&&d.classList&&d.classList.contains('adach')&&d.open){const box=$('adAchList');if(box&&!box.innerHTML)box.innerHTML=adminAchievementsHtml()}},true);
+
+/* ================= hands-free rotation: swap partners automatically after every set ================= */
+function rotRowSync(){const r=$('rotRow');if(!r)return;const n=setupNames(),four=n.length===4&&n.every(Boolean)&&!draft.singles&&!draft.court;r.classList.toggle('hide',!four);$('inRotate').checked=!!draft.rotate}
+document.addEventListener('change',e=>{if(e.target&&e.target.id==='inRotate')draft.rotate=e.target.checked});
+// move to the next pairing in the rotation, save the set just played, and tell everyone the new pairs
+function autoRotate(){const pr=pairings(M.cfg);if(!pr.length)return false;const cur=currentPairing(M.cfg),nx=pr[((cur<0?0:cur)+1)%3];
+  const prev=[teamPlayers(M.cfg,0).slice(),teamPlayers(M.cfg,1).slice()];doSwap(nx);M.prevPair=prev;saveM();render();
+  const say='New pairs. '+nx[0].join(' and ')+', against '+nx[1].join(' and ')+'.';announce(say);
+  try{if(soundOn()&&window.speechSynthesis&&window.SpeechSynthesisUtterance){const u=new SpeechSynthesisUtterance(say);u.lang='en-GB';speechSynthesis.cancel();speechSynthesis.speak(u)}}catch(e){}
+  try{navigator.vibrate&&navigator.vibrate([200,100,200])}catch(e){}
+  nativeEvent='swap';if(typeof pushNative==='function')pushNative();return true}
+// a single-set match just finished: give everyone a moment to see the result, then start the next pairing
+function rotateAfterDone(){const id=M.id;let tries=0;const go=()=>{if(M.id!==id||S.done===null)return;
+  if((document.querySelector('.sheet.on')||$('celView').classList.contains('on')||($('achPop')&&$('achPop').classList.contains('on')))&&tries++<30){setTimeout(go,700);return}autoRotate()};setTimeout(go,3000)}
+
+/* ================= court time: play games until the booking ends, swap partners whenever ================= */
+const courtGames=st=>{const s=st.sets[st.sets.length-1];return s?s.g:[0,0]};
+function courtLeft(){if(!M.cfg.court||!M.session||!M.session.courtStart)return null;return (M.cfg.courtMins||90)*6e4-(Date.now()-M.session.courtStart)}
+function courtSay(say){announce(say);try{if(soundOn()&&window.speechSynthesis&&window.SpeechSynthesisUtterance){const u=new SpeechSynthesisUtterance(say);u.lang='en-GB';speechSynthesis.cancel();speechSynthesis.speak(u)}}catch(e){}}
+// save the games just played as their own result: a win for whoever won more games, level means it doesn't count
+function courtSaveStretch(){if(!M.pts.length)return null;const g=courtGames(S),lead=g[0]>g[1]?0:g[1]>g[0]?1:null;
+  if(!M.start)M.start=Date.now();const entry={id:M.id,cfg:M.cfg,pts:M.pts.slice(),start:M.start,end:Date.now(),unfinished:true,court:true,counts:lead!==null,leader:lead};
+  if(M.session)entry.session=M.session.id;const before=entry.counts?badgeSnapshot():null;
+  const i=history.findIndex(h=>h.id===M.id);if(i>=0)history[i]=entry;else history.unshift(entry);saveH();
+  if(entry.counts){setTimeout(()=>autoSend(entry),300);announceBadges(newBadgesBetween(before,badgeSnapshot()))}return entry}
+function courtSwap(auto){if(!M.cfg.court||S.done!==null)return false;const pr=pairings(M.cfg);if(!pr.length){toast('Add all four players\' names in setup to swap partners.');return false}
+  const snap={id:M.id,cfg:Object.assign({},M.cfg),pts:M.pts.slice(),start:M.start,saved:false};const g=courtGames(S);
+  if(M.pts.length){courtSaveStretch();snap.saved=true}
+  const cur=currentPairing(M.cfg),nx=pr[((cur<0?0:cur)+1)%3],session=M.session;
+  const cfg=Object.assign({},M.cfg,{pa:nx[0].slice(),pb:nx[1].slice(),an:'',bn:''});cfg.a=joinNames(cfg.pa);cfg.b=joinNames(cfg.pb);
+  M=newMatch(cfg);M.session=session;M.prevSeg=snap;S=replay(M.cfg,M.pts);prevL=null;prevGames='';changeEndsNow=false;saveM();render();
+  toast((snap.pts.length?'Saved '+g[0]+'–'+g[1]+'. ':'')+'New pairs: '+cfg.a+' v '+cfg.b+'.');
+  courtSay('New pairs. '+nx[0].join(' and ')+', against '+nx[1].join(' and ')+'.');
+  try{navigator.vibrate&&navigator.vibrate([200,100,200])}catch(e){}nativeEvent='swap';if(typeof pushNative==='function')pushNative();return true}
+// undo straight after a swap: carry on with the previous pairs and their score, as if the swap never happened
+function courtUnswap(){const sp=M.prevSeg;if(!sp)return false;const session=M.session;
+  if(sp.saved){const i=history.findIndex(h=>h.id===sp.id);if(i>=0){history[i]=Object.assign({},history[i]);delete history[i].unfinished;delete history[i].court;delete history[i].counts;delete history[i].leader;delete history[i].end;saveH()}}
+  M={id:sp.id,cfg:sp.cfg,pts:sp.pts.slice(),start:sp.start,end:null};M.session=session;S=replay(M.cfg,M.pts);prevL=null;prevGames='';saveM();render();
+  toast('Swap undone. Carry on with '+M.cfg.a+' v '+M.cfg.b+'.');announce('Swap undone. '+M.cfg.a+' against '+M.cfg.b+'.');nativeEvent='undo';if(typeof pushNative==='function')pushNative();return true}
+// time's up: save the last stretch and finish the evening, so nothing is lost if everyone walks off
+function courtTimeUp(){if(!M.session||M.session.ended)return;M.session.ended=true;const e=courtSaveStretch();
+  const n=history.filter(h=>h.session===M.session.id&&h.court).length;
+  courtSay('Time\'s up. Good session.');try{navigator.vibrate&&navigator.vibrate([300,120,300,120,300])}catch(e){}
+  nativeEvent='timeup';if(typeof pushNative==='function')pushNative();
+  const cfg=Object.assign({},M.cfg);M=newMatch(cfg);S=replay(M.cfg,M.pts);prevL=null;saveM();render();
+  toast('Time\'s up. '+n+' stretch'+(n===1?'':'es')+' saved.');if(typeof showHome==='function')showHome()}
+function courtTick(){if(!M.cfg.court)return;const left=courtLeft();if(left===null)return;
+  if(left<=5*6e4&&left>0&&!M.session.warned){M.session.warned=true;saveM();courtSay('Five minutes left.');try{navigator.vibrate&&navigator.vibrate([120,80,120])}catch(e){}}
+  if(left<=0)courtTimeUp();courtUI()}
+setInterval(courtTick,10000);
+// the clock lives in the court's summary line at the top, where it can't cover anything you tap
+function courtUI(){const on=!!M.cfg.court&&S.done===null,sw=$('swapNowBtn'),f=$('fmt');if(!sw)return;
+  sw.classList.toggle('hide',!(on&&fourPlayers(M.cfg)&&!M.cfg.courtNoSwap));
+  {const nav=document.querySelector('nav.controls');if(nav)nav.classList.toggle('four',!sw.classList.contains('hide'))}
+  if(on&&f){const left=courtLeft(),dw={adv:'Advantage',star:'Star point',golden:'Golden point'}[M.cfg.deuce]||'Golden point';f.textContent=(left===null?(M.cfg.courtMins||90)+' min, starts with the first point':left<=0?'Time\'s up':Math.ceil(left/6e4)+' min left')+' · '+dw}}
+document.addEventListener('click',e=>{const t=e.target;if(!t.closest)return;
+  const cm=t.closest('[data-cm]');if(cm){draft.courtMins=+cm.dataset.cm;syncSetup();return}
+  const ce=t.closest('[data-ce]');if(ce){draft.courtEvery=+ce.dataset.ce;draft.courtNoSwap=false;syncSetup();return}
+  if(t.closest('#swapNowBtn')){courtSwap(false)}});
+
+/* ================= simple setup: a one-line summary, and three plain questions behind Change ================= */
+let FMTQ_INIT=false;
+const fmtFour=()=>{const n=setupNames();return n.length===4&&n.every(Boolean)&&!draft.singles};
+function fmtSummary(d){const dw=(DEUCE_WORD[d.deuce]||'Golden point').toLowerCase();
+  if(d.court){const sw=d.courtNoSwap?'no swaps':d.courtEvery?'swap every '+d.courtEvery+' games':'swap when you tap';return(d.courtMins||90)+' min court time · '+dw+(fmtFour()?' · '+sw:'')}
+  const k=presetFor(d),len=k==='full'?'Best of 3':k==='set'?'One set':k==='quick'?'First to 5 games':formatText(d);
+  return(k?len+' · '+dw:len)+(d.singles?' · singles':fmtFour()?' · '+(d.rotate?'swap after every set':'no swaps'):'')}
+// every time setup opens: just the summary for anyone who's played before, the questions for a first match
+function fmtOpenState(){const q=$('fmtQ');if(!q)return;const o=!history.length;q.classList.toggle('open',o);$('fmtChange').setAttribute('aria-expanded',String(o));$('fmtChange').textContent=o?'Done':'Change';FMTQ_INIT=true}
+function fmtSync(){const q=$('fmtQ');if(!q)return;
+  if(!FMTQ_INIT){FMTQ_INIT=true;if(!history.length){q.classList.add('open');$('fmtChange').setAttribute('aria-expanded','true')}}
+  const t=fmtSummary(draft);$('fmtSumTxt').textContent=t.charAt(0).toUpperCase()+t.slice(1);
+  const court=!!draft.court,k=presetFor(draft),four=fmtFour();
+  const press=(sel,on)=>q.querySelectorAll(sel).forEach(b=>b.setAttribute('aria-pressed',String(on(b))));
+  press('[data-q1]',b=>b.dataset.q1===(court?'time':'sets'));
+  $('segQ2s').classList.toggle('hide',court);$('segQ2t').classList.toggle('hide',!court);
+  press('[data-q2]',b=>b.dataset.q2===k);press('#segQ2t [data-cm]',b=>+b.dataset.cm===(draft.courtMins||90));
+  $('q3wrap').classList.toggle('hide',!four);$('segQ3s').classList.toggle('hide',court);$('segQ3t').classList.toggle('hide',!court);
+  press('#segQ3s [data-q3]',b=>b.dataset.q3===(draft.rotate?'set':'no'));
+  press('#segQ3t [data-q3]',b=>b.dataset.q3===(draft.courtNoSwap?'no':draft.courtEvery?'every':'tap'));
+  $('segQ3n').classList.toggle('hide',!(court&&draft.courtEvery&&!draft.courtNoSwap));press('#segQ3n [data-ce]',b=>+b.dataset.ce===(draft.courtEvery||0))}
+document.addEventListener('click',e=>{const t=e.target;if(!t.closest||!t.closest('#setup'))return;
+  if(t.closest('#fmtChange')){const q=$('fmtQ'),o=!q.classList.contains('open');q.classList.toggle('open',o);$('fmtChange').setAttribute('aria-expanded',String(o));$('fmtChange').textContent=o?'Done':'Change';return}
+  if(t.closest('#fmtHelpBtn')){const h=$('fmtHelp'),o=h.classList.contains('hide');h.classList.toggle('hide',!o);$('fmtHelpBtn').setAttribute('aria-expanded',String(o));return}
+  const q1=t.closest('[data-q1]');if(q1){if(q1.dataset.q1==='time'){Object.assign(draft,{bestOf:1,games:99,race:true,court:true,rotate:false});draft.courtMins=draft.courtMins||90;if(draft.courtEvery===undefined)draft.courtEvery=0}else{draft.court=false;if(!presetFor(draft)||draft.games===99)Object.assign(draft,PRESETS.full)}syncSetup();return}
+  const q2=t.closest('[data-q2]');if(q2){const p=PRESETS[q2.dataset.q2];Object.assign(draft,{bestOf:p.bestOf,games:p.games,race:p.race,court:false});syncSetup();return}
+  const q3=t.closest('[data-q3]');if(q3){const v=q3.dataset.q3;if(draft.court){if(v==='no'){draft.courtEvery=0;draft.courtNoSwap=true}else if(v==='tap'){draft.courtEvery=0;draft.courtNoSwap=false}else{draft.courtEvery=draft.courtEvery||3;draft.courtNoSwap=false}}else draft.rotate=v==='set';syncSetup();return}});
 
 /* ================= bug reports ================= */
 const appVersion=()=>((document.querySelector('meta[name="app-version"]')||{}).content||'');
@@ -3521,7 +3616,7 @@ function nearLevel(rows,myOvr,myUid,range){range=range||6;return(rows||[]).filte
 
 /* the prediction on the setup screen, with a one-tap balance */
 function setupNames(){return['pA1','pA2','pB1','pB2'].map(i=>{const e=$(i);return e?(e.value||'').trim():''})}
-function updatePred(){
+function updatePred(){try{rotRowSync()}catch(e){}try{fmtSync()}catch(e){}
   const box=$('predBox');if(!box)return;const n=setupNames(),a=[n[0],n[1]].filter(Boolean),b=[n[2],n[3]].filter(Boolean);
   const sig=n.join('|')+'|'+draft.bestOf+'|'+draft.games+'|'+(draft.race?1:0);if(box.dataset.sig===sig)return;box.dataset.sig=sig;
   if(!a.length||!b.length){box.classList.add('hide');return}
@@ -4066,7 +4161,7 @@ $('peCancel').onclick=()=>hideSheet();
 
 
 /* ================= home logo and updates ================= */
-const APP_VERSION='2.6.1';
+const APP_VERSION='2.9';
 document.querySelectorAll('.vlogo').forEach(i=>i.src=$('logo').src);
 function goHome(e){
   const el=e&&e.currentTarget;if(el){el.classList.remove('tap');void el.offsetWidth;el.classList.add('tap')}
@@ -4880,7 +4975,7 @@ const NATIVE=window.PadelCredNative||null;
 let nativeEvent='point';
 function watchState(){
   const L=labels(S,M.cfg),g=S.sets[S.sets.length-1].g,side=t=>({name:nm(t),points:L[t],games:g[t],sets:S.setsWon[t],serving:S.server===t,server:S.server===t?serverName(S,M.cfg):''});
-  return{v:1,us:side(0),them:side(1),status:pressNow||ruleNow||'',changeEnds:!!changeEndsNow,done:S.done!==null,winner:S.done!==null?nm(S.done):'',score:setLine(S),event:nativeEvent,recording:!!rec,locked:lockOn(),ts:Date.now()};
+  return{v:1,us:side(0),them:side(1),status:pressNow||ruleNow||'',changeEnds:!!changeEndsNow,done:S.done!==null,winner:S.done!==null?nm(S.done):'',score:setLine(S),event:nativeEvent,recording:!!rec,locked:lockOn(),court:M.cfg.court?{minsLeft:courtLeft()===null?null:Math.max(0,Math.ceil(courtLeft()/6e4)),canSwap:!!fourPlayers(M.cfg)}:null,ts:Date.now()};
 }
 function pushNative(){if(!NATIVE||!NATIVE.onState)return;try{NATIVE.onState(JSON.stringify(watchState()))}catch(e){}nativeEvent='update'}
 // the commands the native side can call, for example from a watch tap
@@ -4888,6 +4983,7 @@ window.padelcred={
   version:APP_VERSION,
   point(team){if(S.done!==null)return false;nativeEvent='point';point(team===1||team==='them'?1:0);return true},
   undo(){nativeEvent='undo';undo();return true},
+  swap(){return courtSwap(false)},
   clip(){if(!rec)return false;clipThat();return true},
   state(){return JSON.stringify(watchState())}
 };
