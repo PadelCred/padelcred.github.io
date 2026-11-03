@@ -450,7 +450,8 @@ function showSheet(id){try{
   openSheet=next;openSheet.scrollTop=0;openSheet.classList.add('on');$('scrim').classList.add('on');
   setTimeout(()=>{if(openSheet===next){const h=next.querySelector('h3');if(h)h.focus({preventScroll:true})}},40);
 
-}finally{(()=>{if(id==='setup'){setTimeout(updatePred,60);try{fmtOpenState()}catch(e){}}})()}}
+}finally{(()=>{if(id==='setup'){setTimeout(updatePred,60);try{fmtOpenState()}catch(e){}}
+  if(id==='howRateSheet'){try{hrFill()}catch(e){}}})()}}
 function hideSheet(){if(openSheet&&openSheet.id==='usernameSheet'&&typeof unameRequired!=='undefined'&&unameRequired&&needsUsername()){toast('Pick a username to carry on.');return}
   const was=!!openSheet;const wasSetup=openSheet&&openSheet.id==='setup';if(wasSetup&&setupFromHome&&!setupStarted&&!M.pts.length&&typeof showHome==='function')setTimeout(()=>{if(!openSheet&&!$('resultsView').classList.contains('on'))showHome()},50);if(wasSetup){setupStarted=false;setupFromHome=false}if(openSheet)openSheet.classList.remove('on');openSheet=null;document.querySelectorAll('.sheet.on').forEach(s=>s.classList.remove('on'));$('scrim').classList.remove('on');if(was&&lastFocus&&document.body.contains(lastFocus)){try{lastFocus.focus({preventScroll:true})}catch(e){}}lastFocus=null}
 $('scrim').onclick=()=>{if(openSheet&&openSheet.id==='clipSheet')return;hideSheet()};
@@ -1065,7 +1066,7 @@ function renderResults(){
     const len=r.dur?fmtDur(r.dur):'–';
     const rule=r.h.manual?'–':DEUCE_NAME[r.cfg.deuce];
     const notes=r.notes?esc(r.notes.length>28?r.notes.slice(0,27)+'…':r.notes):'';
-    return '<tr data-id="'+r.id+'"><td>'+dShort(r.date)+'</td><td>'+res+'</td><td class="score">'+esc(r.score)+(r.h.court?' <small class="unf">Court time</small>':(r.unfinished?' <small class="unf">Unfinished</small>':'')+(r.h.session?' <small class="unf">Rotation</small>':''))+(r.h.manual?' <small class="unf man">Added</small>':'')+'</td><td>'+esc(r.b)+'</td><td>'+esc(r.a)+'</td><td class="num">'+r.gw[0]+'–'+r.gw[1]+'</td><td class="num">'+pts+'</td><td class="num">'+len+'</td><td>'+rule+'</td><td>'+notes+'</td></tr>';
+    return '<tr data-id="'+r.id+'"><td>'+dShort(r.date)+'</td><td>'+res+'</td><td class="score">'+esc(r.score)+(r.h.amer?' <small class="unf">'+esc(String(r.h.amer))+'</small>':r.h.court?' <small class="unf">Court time</small>':(r.unfinished?' <small class="unf">Unfinished</small>':'')+(r.h.session?' <small class="unf">Rotation</small>':''))+(r.h.manual?' <small class="unf man">Added</small>':'')+'</td><td>'+esc(r.b)+'</td><td>'+esc(r.a)+'</td><td class="num">'+r.gw[0]+'–'+r.gw[1]+'</td><td class="num">'+pts+'</td><td class="num">'+len+'</td><td>'+rule+'</td><td>'+notes+'</td></tr>';
   }).join('');
   $('resTable').innerHTML=rows.length?'<div class="tablewrap"><table class="grid"><thead>'+head+'</thead><tbody>'+body+'</tbody></table></div>':'<p class="empty">No matches fit that search.</p>';
   $('resTable').querySelectorAll('[data-sort]').forEach(b=>b.onclick=()=>{
@@ -1101,7 +1102,7 @@ function openRow(id){try{
   showSheet('rowSheet');
 
 }finally{(()=>{try{const h=history.find(x=>x.id===id);if(!h)return;let line='';if(h.conf){const yes=Object.values(h.conf).filter(c=>c&&c.ok).map(c=>c.n||'A friend'),no=Object.values(h.conf).filter(c=>c&&c.ok===false).map(c=>c.n||'A friend');if(yes.length)line+='<p class="cfline ok">✓ Confirmed by '+esc(yes.join(', '))+'</p>';if(no.length)line+='<p class="cfline no">'+esc(no.join(' and '))+' says this result isn\'t right'+(h.disputeOk?' (kept anyway)':'')+'.</p>'}if(h.cs==='yes')line+='<p class="cfline ok">✓ You confirmed this result</p>';
-  if(!h.conf&&!h.recv&&FB.user&&(h.added||h.date||0)>=1793491200000&&[...(h.cfg.pa||[]),...(h.cfg.pb||[])].some(n=>{const f=n&&pkey(n)!==meKey()&&friendOf(pkey(n));return f&&f.uid}))line+='<p class="cfline">Waiting for confirmation. The other players haven\'t confirmed this result yet.</p>';if(h.cs==='no')line+='<p class="cfline no">You said this result isn\'t right, so it doesn\'t count for you.</p>';if(line)$('rowBody').insertAdjacentHTML('afterbegin',line)}catch(e){}})()}}
+  if(!h.conf&&!h.recv&&!h.amer&&FB.user&&(h.added||h.date||0)>=1793491200000&&[...(h.cfg.pa||[]),...(h.cfg.pb||[])].some(n=>{const f=n&&pkey(n)!==meKey()&&friendOf(pkey(n));return f&&f.uid}))line+='<p class="cfline">Waiting for confirmation. The other players haven\'t confirmed this result yet.</p>';if(h.cs==='no')line+='<p class="cfline no">You said this result isn\'t right, so it doesn\'t count for you.</p>';if(line)$('rowBody').insertAdjacentHTML('afterbegin',line)}catch(e){}})()}}
 $('rowSave').onclick=()=>{const h=history.find(x=>x.id===rowId);if(h){h.notes=$('rowNotes').value.trim();saveH();renderResults();hideSheet();toast('Notes saved.')}};
 $('rowDelete').onclick=async()=>{
   if(!(await ask('Delete this result?','This removes the result from your history, the league and player records, and may change ratings.','Delete result',true)))return;
@@ -1287,8 +1288,15 @@ function fillNameList(){const fr=FRIENDS.map(f=>f.name),seen=new Set(fr.map(pkey
 /* ================= league (Elo-style ratings) ================= */
 const START_RATING=1000,K=32;
 // your Playtomic level (0 to 7) sets where you start; no level means the 0.5 starting point
-function levelToOvr(L){L=parseFloat(String(L||'').replace(',','.'));if(!isFinite(L)||L<=0)L=.5;L=Math.max(.5,Math.min(7,L));return 40+(L-.5)/6.5*59}
-const ovrToRating=o=>700+(o-40)*600/55;
+// Playtomic 0.5 (or no level) starts at 45, evenly up to 7.0 at 99; starting above the floor of 40 leaves room to drop
+function levelToOvr(L){L=parseFloat(String(L||'').replace(',','.'));if(!isFinite(L)||L<=0)L=.5;L=Math.max(.5,Math.min(7,L));return 45+(L-.5)/6.5*54}
+// the exact opposite of perfScore (40 at 500, 0.06 Overall per rating point), so a level shows back as the Overall it promises
+const ovrToRating=o=>500+(o-40)/0.06;
+// starting points saved before v2.9.3 were stored as numbers on the old scale: turn them back into a level
+function legacySeedToRating(s){const o=40+(s-700)*55/600,L=Math.round((.5+(o-40)*6.5/59)*100)/100;return levelToRating(L)}
+// a friend's starting point: their locked level if their app shares it, else their old stored number, else their current level
+function friendSeed(f){if(!f)return levelToRating(null);if(f.seedLevel!==undefined&&f.seedLevel!==null)return levelToRating(f.seedLevel);if(f.seed)return legacySeedToRating(f.seed);return levelToRating(f.ptLevel)}
+function mySeed(){if(PROF.seed)return PROF.seedLevel!==undefined?levelToRating(PROF.seedLevel):legacySeedToRating(PROF.seed);return levelToRating(PROF.ptLevel)}
 const levelToRating=L=>Math.round(ovrToRating(levelToOvr(L)));
 function lockSeed(){
   if(PROF.seed||!PROF.name)return;
@@ -1297,12 +1305,12 @@ function lockSeed(){
   PROF.seed=levelToRating(PROF.ptLevel);PROF.seedLevel=PROF.ptLevel||'';if(typeof saveProf==='function')saveProf();
 }
 function seedFor(key){
-  if(typeof PROF!=='undefined'&&PROF.name&&key===pkey(PROF.name))return PROF.seed||levelToRating(PROF.ptLevel);
+  if(typeof PROF!=='undefined'&&PROF.name&&key===pkey(PROF.name))return mySeed();
   const f=typeof friendOf==='function'?friendOf(key):null;
-  if(f)return f.seed||levelToRating(f.ptLevel);
+  if(f)return friendSeed(f);
   return levelToRating(null);
 }
-const seedSig=()=>{try{return (PROF.seed||levelToRating(PROF.ptLevel))+'/'+FRIENDS.map(f=>f.key+(f.seed||f.ptLevel||'')).join(',')}catch(e){return ''}};
+const seedSig=()=>{try{return mySeed()+'/'+FRIENDS.map(f=>f.key+friendSeed(f)).join(',')}catch(e){return ''}};
 function computeLeague(group){
   const mk='L|'+(group||'')+'|'+(store.get('db-live-only')===true)+'|'+seedSig();if(memo[mk]&&memo.lhv===HV)return memo[mk];
   const out=computeLeagueRaw(group);if(memo.lhv!==HV){for(const k in memo)if(k.startsWith('L|'))delete memo[k];memo.lhv=HV}memo[mk]=out;return out;
@@ -2349,7 +2357,20 @@ $('yipView').addEventListener('click',e=>{if(e.target.closest('#yipClose')){clos
 /* ================= Americano and Mexicano nights ================= */
 const AM={list:store.get('db-amer')||[],view:null,draft:null,scoring:null};
 const amCur=()=>AM.list.find(e=>!e.done)||null;
-function saveAmer(){store.set('db-amer',AM.list);if(typeof profChanged==='function')profChanged()}
+
+// Americano and Mexicano rounds count towards ratings (at half, like any swapped-partners set): keep the results exactly in step with the nights
+function amSyncAll(){let changed=false;const want=new Map();
+  AM.list.forEach(ev=>{const base=ev.created||Date.now(),kind=ev.type==='americano'?'Americano':'Mexicano';
+    (ev.rounds||[]).forEach((r,ri)=>(r.matches||[]).forEach((m,mi)=>{if(m.sa==null||m.sb==null||!m.a||!m.b)return;const id='am'+ev.id+'_'+ri+'_'+mi;
+      want.set(id,{id,manual:true,amer:kind,date:base+ri*60000+mi,added:ev.u||base,sets:[[m.sa,m.sb]],session:'am'+ev.id,notes:ri===0&&mi===0?kind+' night':'',
+        cfg:{pa:m.a.slice(),pb:m.b.slice(),an:'',bn:'',group:ev.group||'',venue:ev.venue||'',a:teamNameFrom('',m.a[0],m.a[1],'Us'),b:teamNameFrom('',m.b[0],m.b[1],'Them'),bestOf:1}})}))});
+  for(let i=history.length-1;i>=0;i--){const h=history[i];if(!h.amer)continue;const w=want.get(h.id);
+    if(!w){history.splice(i,1);changed=true;continue}
+    if(JSON.stringify([h.sets,h.cfg.pa,h.cfg.pb])!==JSON.stringify([w.sets,w.cfg.pa,w.cfg.pb])){history[i]=Object.assign({},h,{sets:w.sets,cfg:w.cfg,added:Date.now()});changed=true}
+    want.delete(h.id)}
+  want.forEach(w=>{history.push(w);changed=true});
+  if(changed){history.sort((a,b)=>((b.date||b.start||0)-(a.date||a.start||0)));saveH()}}
+function saveAmer(){store.set('db-amer',AM.list);try{amSyncAll()}catch(e){}if(typeof profChanged==='function')profChanged()}
 function amStandings(ev){
   const S={};ev.players.forEach(n=>S[n]={name:n,pts:0,w:0,l:0,d:0,played:0,diff:0,sat:0});
   ev.rounds.forEach(r=>{(r.sit||[]).forEach(n=>{if(S[n])S[n].sat++});r.matches.forEach(m=>{if(m.sa==null||m.sb==null)return;
@@ -2507,9 +2528,11 @@ async function amShare(ev){
   const blob=await new Promise(r=>c.toBlob(r,'image/png')),name='padelcred-'+ev.type+'-night.png',f=new File([blob],name,{type:'image/png'});
   if(navigator.canShare&&navigator.canShare({files:[f]})){try{await navigator.share({files:[f],title:'Our '+ev.type+' night'})}catch(e){}}else{await saveBlob(blob,name);toast(savedMsg(name))}
 }
+setTimeout(()=>{try{amSyncAll()}catch(e){}},0);
 function mergeAmer(remote){
   if(!Array.isArray(remote))return false;let changed=false;
   remote.forEach(e=>{const i=AM.list.findIndex(x=>x.id===e.id);if(i<0){AM.list.push(e);changed=true}else if((e.u||0)>(AM.list[i].u||0)){AM.list[i]=e;changed=true}});
+  if(changed)setTimeout(()=>{try{amSyncAll()}catch(e){}},0);
   if(changed){AM.list.sort((a,b)=>b.created-a.created);store.set('db-amer',AM.list)}
   return changed;
 }
@@ -2704,7 +2727,7 @@ function ovrCard(o,mine,name){
 function friendOvrCard(f){const st=f.stats;if(!st||!st.ovr||!(st.played>0)){
     // not played yet (or their app hasn't published one): show where they start
     if(!f.uid&&!f.ptLevel&&!f.seed)return'';
-    const v=f.seed?perfScore(f.seed):Math.round(levelToOvr(f.ptLevel)),first=esc((f.name||'').split(' ')[0]),[cls,label]=ovrTier(v);
+    const v=perfScore(friendSeed(f)),first=esc((f.name||'').split(' ')[0]),[cls,label]=ovrTier(v);
     return'<div class="ovrcard '+cls+'"><div class="ovrnum"><b>'+v+'</b><span>OVR</span></div><div class="ovrinfo"><b>'+first+'\'s starting Overall <em>'+label+'</em></b><span>'+(f.seed?'Set when they played their first match.':f.ptLevel?'From Playtomic level '+esc(f.ptLevel)+'.':'No Playtomic level yet, so they start at 40.')+'</span><span>Results move it up or down from here.</span></div></div>';
   }return ovrCard({v:st.ovr.v,perf:st.ovr.perf,peer:st.ovr.peer||{ready:false},change:0},false,f.name)}
 async function loadPeer(){
@@ -3240,6 +3263,18 @@ document.addEventListener('click',e=>{const t=e.target;if(!t.closest||!t.closest
   const q1=t.closest('[data-q1]');if(q1){if(q1.dataset.q1==='time'){Object.assign(draft,{bestOf:1,games:99,race:true,court:true,rotate:false});draft.courtMins=draft.courtMins||90;if(draft.courtEvery===undefined)draft.courtEvery=0}else{draft.court=false;if(!presetFor(draft)||draft.games===99)Object.assign(draft,PRESETS.full)}syncSetup();return}
   const q2=t.closest('[data-q2]');if(q2){const p=PRESETS[q2.dataset.q2];Object.assign(draft,{bestOf:p.bestOf,games:p.games,race:p.race,court:false});syncSetup();return}
   const q3=t.closest('[data-q3]');if(q3){const v=q3.dataset.q3;if(draft.court){if(v==='no'){draft.courtEvery=0;draft.courtNoSwap=true}else if(v==='tap'){draft.courtEvery=0;draft.courtNoSwap=false}else{draft.courtEvery=draft.courtEvery||3;draft.courtNoSwap=false}}else draft.rotate=v==='set';syncSetup();return}});
+
+
+/* ================= How ratings work: numbers generated from the app's own maths, so the page can't go out of date ================= */
+function hrFill(){const st=$('hrStart'),ti=$('hrTiers');if(!st||!ti)return;
+  st.innerHTML=[['Playtomic 0.5 or no level',.5],['Playtomic 1.0',1],['Playtomic 2.0',2],['Playtomic 3.5',3.5],['Playtomic 5.0',5],['Playtomic 7.0',7]].map(([l,L])=>'<tr><td>'+l+'</td><td>'+perfScore(levelToRating(L))+'</td></tr>').join('');
+  // tier edges found by asking ovrTier itself, so they always match the badges
+  const edges=[];let last=null;for(let v=40;v<=99;v++){const t=ovrTier(v);if(!last||t[1]!==last[1]){if(edges.length)edges[edges.length-1].hi=v-1;edges.push({cls:t[0],name:t[1],lo:v});last=t}}edges[edges.length-1].hi=99;
+  ti.innerHTML=edges.map(e=>'<span class="'+e.cls+'">'+e.lo+'–'+e.hi+' '+e.name+'</span>').join('')}
+
+
+/* ================= test window: only when opened with ?selftest=1, for the promise tests. Players never see it ================= */
+if(/[?&]selftest=1\b/.test(location.search))setTimeout(()=>{window.__pcTest={perfScore,levelToRating,levelToOvr,ovrTier,matchWeight,winChance,computeLeague,formWord,formBand,legacySeedToRating,pairings,replay,rowOf,allRows,overallFor,cardHighlights,ovrToRating,fourPlayers,currentPairing,K:typeof K!=='undefined'?K:null}},0)
 
 /* ================= bug reports ================= */
 const appVersion=()=>((document.querySelector('meta[name="app-version"]')||{}).content||'');
@@ -4161,7 +4196,7 @@ $('peCancel').onclick=()=>hideSheet();
 
 
 /* ================= home logo and updates ================= */
-const APP_VERSION='2.9.2';
+const APP_VERSION='2.9.4';
 document.querySelectorAll('.vlogo').forEach(i=>i.src=$('logo').src);
 function goHome(e){
   const el=e&&e.currentTarget;if(el){el.classList.remove('tap');void el.offsetWidth;el.classList.add('tap')}
@@ -5773,10 +5808,10 @@ const myUid=()=>FB.user?FB.user.uid:null;
 async function publishProfile(){
   if(!FB.user)return;
   const photo=PROF.photo?await smallPhoto(PROF.photo,96):'';
-  const pub={username:PROF.username||'',name:PROF.name||'',photo,bio:PROF.bio||'',country:'',side:PROF.side||'',hand:PROF.hand||'',level:PROF.level||'',club:PROF.club||'',racket:PROF.racket||'',since:PROF.since||'',shot:PROF.shot||'',ig:PROF.ig||'',tiktok:PROF.tiktok||'',x:PROF.x||'',yt:PROF.yt||'',ptLevel:PROF.ptLevel||'',seed:PROF.seed||0,playtomic:PROF.playtomic||'',style:PROF.style||'',founder:PROF.founder||0,excl:myExclusive(),stats:myStats(),u:Date.now()};
+  const pub={username:PROF.username||'',name:PROF.name||'',photo,bio:PROF.bio||'',country:'',side:PROF.side||'',hand:PROF.hand||'',level:PROF.level||'',club:PROF.club||'',racket:PROF.racket||'',since:PROF.since||'',shot:PROF.shot||'',ig:PROF.ig||'',tiktok:PROF.tiktok||'',x:PROF.x||'',yt:PROF.yt||'',ptLevel:PROF.ptLevel||'',seed:PROF.seed||0,seedLevel:PROF.seed?(PROF.seedLevel||''):null,playtomic:PROF.playtomic||'',style:PROF.style||'',founder:PROF.founder||0,excl:myExclusive(),stats:myStats(),u:Date.now()};
   await FB.db.collection('profiles').doc(FB.user.uid).set(pub);
 }
-const pubToFriend=(uid,p)=>({uid,id:uid,key:pkey(p.name||p.username),name:p.name||p.username,username:p.username||'',bio:p.bio||'',country:p.country||'',side:p.side||'',hand:p.hand||'',level:p.level||'',club:p.club||'',racket:p.racket||'',since:p.since||'',shot:p.shot||'',ptLevel:p.ptLevel||'',seed:p.seed||0,playtomic:p.playtomic||'',style:p.style||'',ig:p.ig||'',tiktok:p.tiktok||'',yt:p.yt||'',photo:p.photo||'',founder:p.founder||0,excl:p.excl||(p.x&&typeof p.x==='object'?p.x:null),x:typeof p.x==='string'?p.x:'',stats:p.stats||null});
+const pubToFriend=(uid,p)=>({uid,id:uid,key:pkey(p.name||p.username),name:p.name||p.username,username:p.username||'',bio:p.bio||'',country:p.country||'',side:p.side||'',hand:p.hand||'',level:p.level||'',club:p.club||'',racket:p.racket||'',since:p.since||'',shot:p.shot||'',ptLevel:p.ptLevel||'',seed:p.seed||0,seedLevel:p.seedLevel===undefined?null:p.seedLevel,playtomic:p.playtomic||'',style:p.style||'',ig:p.ig||'',tiktok:p.tiktok||'',yt:p.yt||'',photo:p.photo||'',founder:p.founder||0,excl:p.excl||(p.x&&typeof p.x==='object'?p.x:null),x:typeof p.x==='string'?p.x:'',stats:p.stats||null});
 
 /* --- live listeners while signed in --- */
 function startSocial(){
@@ -6222,7 +6257,7 @@ function friendBadges(f){
 function myStats(){const s=myStatsBase();if(s){const a=skillAgg();if(a.ready)s.sk={ready:true,raters:a.raters,n:a.n,c:a.c};try{const tr=trustStats();if(tr.t)s.trust=tr}catch(e){}}return s}
 function myStatsBase(){
   const me=meKey();if(!me)return null;
-  const p=computeLeague().find(x=>x.key===me);if(!p){const sv=Math.round(levelToOvr(PROF.ptLevel));return{played:0,ovr:{v:PROF.seed?perfScore(PROF.seed):sv,perf:PROF.seed?perfScore(PROF.seed):sv,peer:{ready:false}},bmap:PROF.founder?{founder:PROF.founderAt}:{},u:Date.now()}}
+  const p=computeLeague().find(x=>x.key===me);if(!p){const sv=Math.round(levelToOvr(PROF.ptLevel));return{played:0,ovr:{v:PROF.seed?perfScore(mySeed()):sv,perf:PROF.seed?perfScore(mySeed()):sv,peer:{ready:false}},bmap:PROF.founder?{founder:PROF.founderAt}:{},u:Date.now()}}
   const dates=p.matches.map(id=>{const h=history.find(x=>x.id===id);return h?(h.start||h.date||0):0}).filter(Boolean).sort((a,b)=>a-b);
   const top=Object.keys(p.badges||{}).filter(id=>BADGE[id]).sort((a,b)=>BADGE[b][2]-BADGE[a][2]).slice(0,3);
   const prog={p:p.p,w:p.w,bestStreak:p.bestStreak||0,partners:p.partnersWon?p.partnersWon.size:0,tbw:p.tbw||0,maxRating:Math.round(p.maxRating||START_RATING),maxOpp:p.maxOpp||0,maxOppWins:p.maxOppWins||0,setsWon:p.setsWon||0,maxWeekend:p.maxWeekend||0,wallMatches:p.wallMatches||0,bagels:p.bagels||0};
