@@ -2146,9 +2146,11 @@ function secretHtml(sec,mine,friend){
   const all=SEASONAL.map(s=>[s[0],s[1],s[4]]).concat(SECRET_ONE);
   all.forEach(([id,name,desc])=>{const v=sec[id];if(!v)return;found++;
     const ys=v.years;tiles.push(exTile('tsec on',id,name+(ys&&ys.length>1?' <small>×'+ys.length+'</small>':''),ys?desc.replace(/^Play/,'Played')+'.':desc+'.',true,i++,'',ys?'Collected '+ys.join(', '):'Found '+dShort(v.date)))});
-  if(mine||friend)all.forEach(([id])=>{if(sec[id])return;tiles.push('<div class="badge tsec mystery" style="--i:'+(i++)+'"><i class="medal">'+badgeSvg(id)+'</i><b>???</b><span>'+(mine?'Keep playing to find out.':'Not found yet.')+'</span></div>')});
+  // the app's admin sees every secret on their own profile; everyone else sees ???
+  const reveal=mine&&typeof FB!=='undefined'&&FB.admin&&FB.user;
+  if(mine||friend)all.forEach(([id,name,desc])=>{if(sec[id])return;tiles.push(reveal?'<div class="badge tsec mystery reveal" style="--i:'+(i++)+'"><i class="medal">'+badgeSvg(id)+'</i><b>'+esc(name)+'</b><span>'+esc(desc)+'.</span></div>':'<div class="badge tsec mystery" style="--i:'+(i++)+'"><i class="medal">'+badgeSvg(id)+'</i><b>???</b><span>'+(mine?'Keep playing to find out.':'Not found yet.')+'</span></div>')});
   if(!tiles.length)return'';
-  return bsec('sec','tsec','Secret',mine?'Keep playing. Some things are better discovered.':'Hidden achievements',(mine||friend)?found+' of '+SECRET_TOTAL:found+' found',tiles.join(''));
+  return bsec('sec','tsec','Secret',reveal?'Only you can see these, as the app\'s admin.':mine?'Keep playing. Some things are better discovered.':'Hidden achievements',(mine||friend)?found+' of '+SECRET_TOTAL:found+' found',tiles.join(''));
 }
 function checkSecrets(){
   const s=secretFor(meKey()),y=new Date().getFullYear();
@@ -3275,7 +3277,7 @@ function hrFill(){const st=$('hrStart'),ti=$('hrTiers');if(!st||!ti)return;
 
 
 /* ================= test window: only when opened with ?selftest=1, for the promise tests. Players never see it ================= */
-if(/[?&]selftest=1\b/.test(location.search))setTimeout(()=>{window.__pcTest={perfScore,levelToRating,levelToOvr,ovrTier,matchWeight,winChance,computeLeague,formWord,formBand,legacySeedToRating,pairings,replay,rowOf,allRows,overallFor,cardHighlights,ovrToRating,fourPlayers,currentPairing,K:typeof K!=='undefined'?K:null,nightRoster,nightOpen,nightStatusOf,setNights:(list,me)=>{NIGHTS.list=list;NIGHTS.me=me;nightsRefresh()}}},0)
+if(/[?&]selftest=1\b/.test(location.search))setTimeout(()=>{window.__pcTest={perfScore,levelToRating,levelToOvr,ovrTier,matchWeight,winChance,computeLeague,formWord,formBand,legacySeedToRating,pairings,replay,rowOf,allRows,overallFor,cardHighlights,ovrToRating,fourPlayers,currentPairing,K:typeof K!=='undefined'?K:null,nightRoster,nightOpen,nightStatusOf,setNights:(list,me)=>{NIGHTS.list=list;NIGHTS.me=me;nightsRefresh()},setAdmin:(on,uid)=>{FB.admin=!!on;FB.user=on?{uid:uid||'admin1'}:null;renderProfile()}}},0)
 
 /* ================= shared match nights: everyone invited sees the same live list and ticks themselves in ================= */
 const NIGHTS={list:[],unsub:null,me:null,seen:store.get('db-nseen')||{},hidden:store.get('db-nhide')||{},tok:store.get('db-ntok')||{},push:null};
@@ -4316,7 +4318,7 @@ $('peCancel').onclick=()=>hideSheet();
 
 
 /* ================= home logo and updates ================= */
-const APP_VERSION='2.11';
+const APP_VERSION='2.11.1';
 document.querySelectorAll('.vlogo').forEach(i=>i.src=$('logo').src);
 function goHome(e){
   const el=e&&e.currentTarget;if(el){el.classList.remove('tap');void el.offsetWidth;el.classList.add('tap')}

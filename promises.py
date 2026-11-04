@@ -374,8 +374,23 @@ def t_profile(p):
     missing = [v for v in prof.values() if v not in text]
     return rate_ok and w + l == 9 and not missing, {'year tiles': tiles, 'details missing': missing}
 
+@promise('Secret achievements are revealed only to the admin, on their own profile', 'Profile, Secret achievements')
+def t_admin_secrets(p):
+    b, pg, e = fresh(p, history=[match('s1', ['Raza', 'Ben'], ['Leo', 'Marta'], [[6, 3], [6, 3]])])
+    pg.evaluate("document.querySelector('#fnav [data-nav=profile]').click()"); pg.wait_for_timeout(800)
+    sec = lambda: pg.evaluate("(()=>{const s=[...document.querySelectorAll('#profileBody .badge.tsec')];return {names:s.map(x=>x.querySelector('b').textContent.trim()),sub:(document.body.innerText.match(/(Only you can see these[^\\n]*|Keep playing. Some things are better discovered.)/)||[''])[0]}})()")
+    normal = sec()
+    T(pg, "t.setAdmin(true,'admin1')"); pg.wait_for_timeout(500)
+    admin = sec()
+    T(pg, "t.setAdmin(false)"); pg.wait_for_timeout(500)
+    after = sec()
+    b.close()
+    hidden_normally = all(n == '???' for n in normal['names']) and normal['names']
+    revealed = admin['names'] and '???' not in admin['names'] and admin['sub'].startswith('Only you can see these')
+    return bool(hidden_normally and revealed and all(n == '???' for n in after['names'])), {'normal player': normal, 'admin': admin, 'admin signed out again': after}
+
 TESTS = [t_start_table, t_tiers, t_weights, t_weight_applied, t_amer_counts, t_league_overall, t_pred, t_dispute, t_evening,
-         t_golden, t_adv, t_tb, t_race, t_bestof, t_stb, t_pairings, t_court, t_form, t_legacy, t_first_serve, t_versions, t_night_roster, t_night_open, t_night_cards, t_night_planner, t_profile]
+         t_golden, t_adv, t_tb, t_race, t_bestof, t_stb, t_pairings, t_court, t_form, t_legacy, t_first_serve, t_versions, t_night_roster, t_night_open, t_night_cards, t_night_planner, t_profile, t_admin_secrets]
 
 if __name__ == '__main__':
     with sync_playwright() as p:
