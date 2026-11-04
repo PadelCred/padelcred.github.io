@@ -1816,3 +1816,44 @@ img:not([src]),img[src=""]{visibility:hidden}
 .boot{transition:opacity .25s ease .12s!important}
 /* the welcome screen appears at once: the opening screen already handles the fade, so nothing shows through */
 .obview.on{animation:none!important}
+/* v2.10: shared match nights */
+.plst{flex:none;align-self:center;min-width:92px;text-align:center;padding:9px 10px;border-radius:12px;font-size:13.5px;font-weight:700;border:1.5px solid #334155;color:#BAC9D3}
+.plst.in{background:#6EE7B7;border-color:#6EE7B7;color:#0B1420}.plst.res{border-color:#E9C46A;color:#E9C46A}.plst.out{border-color:#FF8C80;color:#FF8C80}
+.pljn{flex:1;align-self:center;font-size:15px;color:#F5F7FA}
+.plsum{margin:12px 2px 4px;font-size:15px;color:#F5F7FA}.plsum b{font-weight:700}.plhelp{margin-top:10px}
+.ncan{color:#FF8C80}.nupd{font-style:normal;font-size:11.5px;font-weight:700;padding:2px 7px;border-radius:99px;background:#E9C46A;color:#0B1420;margin-left:4px}
+.nlist{font-size:12.5px;color:#BAC9D3;line-height:1.45}.nteams{margin:6px 0 4px;font-size:13px;color:#6EE7B7;font-weight:600}
+.cfbtns .mini.nout{border-color:#FF8C80;color:#FF8C80}
+.njwhen{margin:4px 2px 2px;font-size:18px;font-weight:700;color:#F5F7FA}
+/* player spotlight */
+.spot{position:relative;margin:4px 0 12px;padding:14px 14px 16px;border-radius:22px;background:linear-gradient(165deg,#13243a 0%,#0B1420 70%);border:1.5px solid #1F2E44;overflow:hidden}
+.spot::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:.5;background:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 520' preserveAspectRatio='none'><g fill='none' stroke='%236EE7B7' stroke-opacity='.10' stroke-width='3'><path d='M150 -20 L420 140'/><path d='M120 60 L330 520'/><path d='M60 300 L420 180'/><path d='M260 520 L420 470'/></g></svg>") center/cover no-repeat}
+.spot>*{position:relative}
+.spottop{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.spotkick{display:inline-flex;align-items:center;gap:8px;font:800 12.5px var(--heading);letter-spacing:.09em;text-transform:uppercase;color:#6EE7B7}
+.spotkick::before{content:"";width:22px;height:3px;border-radius:2px;background:#6EE7B7}
+.spotmain{display:grid;grid-template-columns:112px 1fr;gap:14px;align-items:center}
+.spotarch{position:relative;width:112px;height:150px;border-radius:999px;padding:4px;background:#6EE7B7}
+.spot.fnd .spotarch{background:linear-gradient(160deg,#F7E08A,#E9C46A 45%,#C9A227)}
+.spotarch img,.spotarch .spotini{display:block;width:100%;height:100%;border-radius:999px;object-fit:cover;background:#142132}
+.spotini{display:grid!important;place-items:center;font:800 34px var(--heading);color:#6EE7B7}
+.spotmed,.spotflag{position:absolute;right:-6px;bottom:6px;min-width:36px;height:36px;padding:0 6px;border-radius:99px;display:grid;place-items:center;font:800 13px var(--heading);font-style:normal;border:3px solid #0B1420}
+.spotmed{background:linear-gradient(160deg,#F7E08A,#C9A227);color:#0B1420}.spotflag{background:#142132;font-size:18px}
+.spotname{min-width:0;display:grid;gap:3px;align-content:center}
+.spotfirst{font:600 17px var(--heading);color:#BAC9D3;line-height:1.1}
+.spotname h3{margin:0;font:800 30px/1.02 var(--display,var(--heading));color:#F5F7FA;letter-spacing:-.01em;overflow-wrap:anywhere}
+.spotname .handle{font-size:13.5px}.spotname .fndline{font-size:12.5px}
+.spotarchetype{margin-top:6px}.spotarchetype .styletag{max-width:100%}
+.stiles{display:grid;gap:8px;margin-top:10px}.stiles.three{grid-template-columns:repeat(3,1fr)}.stiles.two{grid-template-columns:1fr 1fr}.stiles.one{grid-template-columns:1fr}
+.stile{min-width:0;padding:10px 12px;border-radius:16px;background:rgba(20,33,50,.92);border:1.5px solid #22314A}
+.stile span{display:block;font-size:12px;color:#9FB0C3;margin-bottom:2px}
+.stile b{display:block;font:800 21px/1.15 var(--heading);color:#F5F7FA;overflow-wrap:anywhere}
+.stile b small{font:600 12.5px var(--body);color:#BAC9D3}
+.stile b i{font-style:normal;font-size:14px}.stile b i.up{color:#6EE7B7}.stile b i.down{color:#FF8C80}
+.stile.f-hot b{color:#6EE7B7}.stile.f-cold b{color:#9FB8D6}
+.stiles.two .stile b{font-size:17px}
+.spotbio{margin:2px 2px 10px}
+.spotyear{margin:18px 0 6px;padding:14px;border-radius:22px;background:linear-gradient(165deg,#13243a 0%,#0B1420 75%);border:1.5px solid #1F2E44}
+.spotyear h4{margin:4px 0 2px;font:800 26px var(--display,var(--heading));color:#F5F7FA}
+.stiles.big .stile b{font-size:30px}
+.spottop .mini{width:auto;flex:none;padding:8px 16px}

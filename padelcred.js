@@ -2925,14 +2925,14 @@ function renderPlan(){
   const known=(()=>{try{return computeLeague().map(x=>x.name)}catch(e){return[]}})();
   box.innerHTML='<div class="plgrid"><label class="field"><span class="lbl">Date</span><input type="date" id="plDate" value="'+dv+'"></label><label class="field"><span class="lbl">Time</span><input type="time" id="plTime" value="'+tv+'"></label></div>'+
     '<label class="field"><span class="lbl">Venue</span><input type="text" id="plVenue" list="plVenues" maxlength="60" placeholder="Where you\'re playing" value="'+esc(p.venue||'')+'"></label><datalist id="plVenues">'+allVenues().map(v=>'<option value="'+esc(v)+'">').join('')+'</datalist>'+
-    '<p class="sh" style="margin-top:12px">Players</p><div id="plPlayers">'+p.players.map((n,i)=>{const isIn=!!(p.ok&&p.ok[i]),isOut=!isIn&&!!(p.no&&p.no[i]);return'<div class="plp"><input type="text" list="plKnown" placeholder="Player '+(i+1)+'" value="'+esc(n||'')+'"><button class="plok'+(isIn?' on':'')+(isOut?' out':'')+'" data-plok="'+i+'" aria-pressed="'+isIn+'">'+(isIn?'In':isOut?'Out':'Tick when in')+'</button></div>'}).join('')+'</div><datalist id="plKnown">'+known.map(n=>'<option value="'+esc(n)+'">').join('')+'</datalist>'+
+    (FB.user||NIGHTS.me?'<div class="field"><span class="lbl">Spots</span><div class="seg" id="plSpots"><button type="button" data-spots="4" aria-pressed="'+((p.spots||4)===4)+'">4 · one court</button><button type="button" data-spots="8" aria-pressed="'+(p.spots===8)+'">8 · two courts</button></div></div>':'')+'<p class="sh" style="margin-top:12px">Players</p><div id="plPlayers">'+p.players.map((n,i)=>{const isIn=!!(p.ok&&p.ok[i]),isOut=!isIn&&!!(p.no&&p.no[i]);const ls=planRowStatus(p,n);return'<div class="plp"><input type="text" list="plKnown" placeholder="Player '+(i+1)+'" value="'+esc(n||'')+'">'+(ls?'<span class="plst '+ls.k+'">'+ls.label+'</span>':'<button class="plok'+(isIn?' on':'')+(isOut?' out':'')+'" data-plok="'+i+'" aria-pressed="'+isIn+'">'+(isIn?'In':isOut?'Out':'Tick when in')+'</button>')+'</div>'}).join('')+'</div><datalist id="plKnown">'+known.map(n=>'<option value="'+esc(n)+'">').join('')+'</datalist>'+
     (p.players.length<8?'<button class="secondary" id="plAdd">Add a player</button>':'')+
     '<label class="field" style="margin-top:12px"><span class="lbl">Notes (optional)</span><input type="text" id="plNotes" maxlength="120" placeholder="Bring balls, court 3" value="'+esc(p.notes||'')+'"></label>'+
     '<div id="plTeams"></div>'+
-    '<div class="placts">'+(FB.user&&planInvitable(p).length?'<button class="primary" id="plInvite">Send invites in PadelCred ('+planInvitable(p).length+')</button>':'')+'<button class="'+(FB.user&&planInvitable(p).length?'secondary':'primary')+'" id="plShare">Share to WhatsApp</button><button class="secondary" id="plGcal">Add to Google Calendar</button><button class="linkbtn plother" id="plCal">Using Apple or Outlook? Download the calendar file</button><button class="secondary" id="plTeamsBtn">Suggest fair teams</button><button class="secondary" id="plStart">Start this match</button><button class="ghost kodel" id="plDel">Delete this plan</button></div>';
+    planSharedHtml(p)+'<div class="placts"><button class="primary" id="plShare">'+(FB.user?'Share the link to WhatsApp':'Share to WhatsApp')+'</button><button class="secondary" id="plGcal">Add to Google Calendar</button><button class="linkbtn plother" id="plCal">Using Apple or Outlook? Download the calendar file</button><button class="secondary" id="plTeamsBtn">Suggest fair teams</button><button class="secondary" id="plStart">Start this match</button>'+(FB.user&&NIGHTS.list.some(x=>x.id===p.id&&x.status!=='cancelled'&&x.org===myUid())?'<button class="secondary" id="plCancel">Cancel this night</button>':'')+'<button class="ghost kodel" id="plDel">Delete this plan</button></div>';
 }
 function planRead(){const p=PLAN.cur;const dv=$('plDate').value,tv=$('plTime').value||'19:00';if(dv){const[y,m,d]=dv.split('-').map(Number),[hh,mm]=tv.split(':').map(Number);p.at=new Date(y,m-1,d,hh,mm).getTime()}p.venue=canonicalVenue($('plVenue').value);p.notes=$('plNotes').value.trim();p.players=[...$('plPlayers').querySelectorAll('input')].map(i=>i.value.trim());p.u=Date.now();
-  const i=PLAN.list.findIndex(x=>x.id===p.id);if(i<0)PLAN.list.push(p);else PLAN.list[i]=p;planSave()}
+  const i=PLAN.list.findIndex(x=>x.id===p.id);if(i<0)PLAN.list.push(p);else PLAN.list[i]=p;planSave();nightPushSoon(p)}
 function openPlan(id){const ex=PLAN.list.find(x=>x.id===id);const t=new Date();t.setDate(t.getDate()+((4-t.getDay()+7)%7||7));t.setHours(19,0,0,0);
   PLAN.cur=ex?JSON.parse(JSON.stringify(ex)):{id:'p'+Date.now().toString(36),at:t.getTime(),mins:90,venue:(allVenues()[0]||''),players:[PROF.name||'','','',''],ok:[true,false,false,false],notes:'',u:Date.now()};
   renderPlan();showSheet('planSheet')}
@@ -2940,16 +2940,17 @@ function planSuggest(){const n=PLAN.cur.players.filter(Boolean);if(n.length!==4)
 document.addEventListener('click',async e=>{
   const t=e.target;if(!t.closest||!t.closest('#planSheet'))return;
   if(t.closest('#plAdd')){planRead();PLAN.cur.players.push('');PLAN.cur.ok=(PLAN.cur.ok||[]).concat(false);renderPlan();return}
-  if(t.closest('#plInvite')){planRead();planSendInvites(PLAN.cur);return}
-  const ok=t.closest('[data-plok]');if(ok){const i=+ok.dataset.plok;planRead();PLAN.cur.ok=PLAN.cur.ok||[];PLAN.cur.no=PLAN.cur.no||[];PLAN.cur.ok[i]=!PLAN.cur.ok[i];PLAN.cur.no[i]=false;planSave();renderPlan();if(PLAN.cur.players.filter(Boolean).length===4&&PLAN.cur.ok.slice(0,4).every(Boolean))planSuggest();return}
-  if(t.closest('#plShare')){planRead();const txt=planText(PLAN.cur);try{if(navigator.share){await navigator.share({text:txt});return}}catch(err){return}window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');return}
+  const spb=t.closest('[data-spots]');if(spb){planRead();PLAN.cur.spots=+spb.dataset.spots;planSave();nightPushSoon(PLAN.cur);renderPlan();return}
+  if(t.closest('#plCancel')){if(!(await ask('Cancel this night?','Everyone invited will see it\'s cancelled.','Cancel the night',true)))return;await nightCancel(PLAN.cur.id);return}
+  const ok=t.closest('[data-plok]');if(ok){const i=+ok.dataset.plok;planRead();PLAN.cur.ok=PLAN.cur.ok||[];PLAN.cur.no=PLAN.cur.no||[];PLAN.cur.ok[i]=!PLAN.cur.ok[i];PLAN.cur.no[i]=false;planSave();nightPushSoon(PLAN.cur);renderPlan();if(PLAN.cur.players.filter(Boolean).length===4&&PLAN.cur.ok.slice(0,4).every(Boolean))planSuggest();return}
+  if(t.closest('#plShare')){planRead();let txt=planText(PLAN.cur);if(FB.user){clearTimeout(NIGHTS.push);await nightPush(PLAN.cur);const link=await nightLink(PLAN.cur,PLAN.cur.id);if(link)txt=nightShareText(PLAN.cur,link)}try{if(navigator.share){await navigator.share({text:txt});return}}catch(err){return}window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');return}
   if(t.closest('#plGcal')){planRead();window.open(planGcalUrl(PLAN.cur),'_blank');return}
   if(t.closest('#plCal')){planRead();const blob=new Blob([planIcs(PLAN.cur)],{type:'text/calendar'}),name='padel-'+new Date(PLAN.cur.at).toISOString().slice(0,10)+'.ics';
     try{const file=new File([blob],name,{type:'text/calendar'});if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:'Padel'});return}}catch(err){}
     const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500);toast('Calendar file saved. Open it to add the match.');return}
   if(t.closest('#plTeamsBtn')){planRead();planSuggest();return}
   if(t.closest('#plStart')){planRead();const n=PLAN.cur.players.filter(Boolean);if(n.length<2){toast('Add at least two players first.');return}const f=n.length===4?fairestSplit(n):{a:[n[0],n[1]||''],b:[n[2]||'',n[3]||'']};const venue=PLAN.cur.venue;hideSheet();setTimeout(()=>{setupStarted=false;hideHome();openSetup();setupFromHome=true;const v=[f.a[0]||'',f.a[1]||'',f.b[0]||'',f.b[1]||''];['pA1','pA2','pB1','pB2'].forEach((id,i)=>{$(id).value=v[i];$(id).dispatchEvent(new Event('input',{bubbles:true}))});const vn=$('inVenue');if(vn&&venue){vn.value=venue;vn.dispatchEvent(new Event('input',{bubbles:true}))}},300);return}
-  if(t.closest('#plDel')){if(!(await ask('Delete this plan?','It\'s removed from PadelCred. Anything already shared stays in WhatsApp.','Delete',true)))return;PLAN.list=PLAN.list.filter(x=>x.id!==PLAN.cur.id);planSave();hideSheet();if(typeof renderHome==='function')renderHome();return}
+  if(t.closest('#plDel')){if(!(await ask('Delete this plan?','It\'s removed from PadelCred. Anything already shared stays in WhatsApp.','Delete',true)))return;nightDelete(PLAN.cur.id);PLAN.list=PLAN.list.filter(x=>x.id!==PLAN.cur.id);planSave();hideSheet();if(typeof renderHome==='function')renderHome();return}
 });
 document.addEventListener('change',e=>{if(e.target.closest&&e.target.closest('#planSheet')&&PLAN.cur){planRead();if(typeof renderHome==='function'&&$('homeView').classList.contains('on'))renderHome()}});
 
@@ -3274,7 +3275,98 @@ function hrFill(){const st=$('hrStart'),ti=$('hrTiers');if(!st||!ti)return;
 
 
 /* ================= test window: only when opened with ?selftest=1, for the promise tests. Players never see it ================= */
-if(/[?&]selftest=1\b/.test(location.search))setTimeout(()=>{window.__pcTest={perfScore,levelToRating,levelToOvr,ovrTier,matchWeight,winChance,computeLeague,formWord,formBand,legacySeedToRating,pairings,replay,rowOf,allRows,overallFor,cardHighlights,ovrToRating,fourPlayers,currentPairing,K:typeof K!=='undefined'?K:null}},0)
+if(/[?&]selftest=1\b/.test(location.search))setTimeout(()=>{window.__pcTest={perfScore,levelToRating,levelToOvr,ovrTier,matchWeight,winChance,computeLeague,formWord,formBand,legacySeedToRating,pairings,replay,rowOf,allRows,overallFor,cardHighlights,ovrToRating,fourPlayers,currentPairing,K:typeof K!=='undefined'?K:null,nightRoster,nightOpen,nightStatusOf,setNights:(list,me)=>{NIGHTS.list=list;NIGHTS.me=me;nightsRefresh()}}},0)
+
+/* ================= shared match nights: everyone invited sees the same live list and ticks themselves in ================= */
+const NIGHTS={list:[],unsub:null,me:null,seen:store.get('db-nseen')||{},hidden:store.get('db-nhide')||{},tok:store.get('db-ntok')||{},push:null};
+const nMe=()=>FB.user?FB.user.uid:NIGHTS.me;
+// who's playing, in reserve, out or yet to answer: first come, first served
+function nightRoster(n){const rows=[];(n.members||[]).forEach(uid=>{const a=(n.ans||{})[uid];rows.push({uid,name:(n.names||{})[uid]||'Player',s:a?a.s:null,t:a&&a.t?a.t:Infinity,app:true})});
+  (n.extra||[]).forEach(x=>rows.push({uid:null,name:x.n,s:x.s||null,t:x.t||Infinity,app:false}));
+  const sp=n.spots||4,ins=rows.filter(r=>r.s==='in').sort((a,b)=>a.t-b.t);
+  return{playing:ins.slice(0,sp),reserves:ins.slice(sp),out:rows.filter(r=>r.s==='out'),waiting:rows.filter(r=>!r.s),spots:sp}}
+function nightOpen(n){return!!n&&n.status!=='cancelled'&&(n.at||0)>Date.now()-3*36e5}
+function nightStatusOf(n,uid){const r=nightRoster(n);const pi=r.playing.findIndex(x=>x.uid===uid);if(pi>=0)return{k:'in',label:'In'};const ri=r.reserves.findIndex(x=>x.uid===uid);if(ri>=0)return{k:'res',label:'Reserve '+(ri+1)};
+  if(r.out.some(x=>x.uid===uid))return{k:'out',label:'Out'};return{k:'wait',label:'Waiting'}}
+// organiser: the plan on this phone is copied to the shared record whenever it changes
+function nightPushSoon(p){if(!FB.user||!p)return;clearTimeout(NIGHTS.push);NIGHTS.push=setTimeout(()=>nightPush(p).catch(()=>{}),700)}
+async function nightPush(p){if(!FB.user||!p)return;const me=myUid(),ref=FB.db.collection('nights').doc(p.id);let cur=null;
+  try{const d=await ref.get();cur=d.exists?d.data():null}catch(e){}
+  if(cur&&cur.org!==me)return;
+  const named=(p.players||[]).map((n,i)=>({n:(n||'').trim(),i})).filter(x=>x.n&&pkey(x.n)!==meKey());
+  const app=named.map(x=>Object.assign(x,{f:friendOf(pkey(x.n))})).filter(x=>x.f&&x.f.uid),manual=named.filter(x=>!(x.f&&x.f.uid));
+  const members=[...new Set([me,...app.map(x=>x.f.uid),...((cur&&cur.joined)||[])])];
+  const names=Object.assign({},cur?cur.names:{},{[me]:PROF.name||'Organiser'});app.forEach(x=>{if(!names[x.f.uid])names[x.f.uid]=x.f.name||x.n});
+  const ans=Object.assign({},cur?cur.ans:{});if(!ans[me])ans[me]={s:'in',t:(cur&&cur.created)||Date.now()};
+  const prev=(cur&&cur.extra)||[];const extra=manual.map(x=>{const s=p.ok&&p.ok[x.i]?'in':p.no&&p.no[x.i]?'out':null,o=prev.find(e=>pkey(e.n)===pkey(x.n));return{n:x.n,s,t:s?(o&&o.s===s&&o.t?o.t:Date.now()):null}});
+  const moved=cur&&(cur.at!==p.at||(cur.venue||'')!==(p.venue||''));
+  const doc={org:me,orgName:PROF.name||'',at:p.at,mins:p.mins||90,venue:p.venue||'',notes:p.notes||'',spots:p.spots||4,members,joined:(cur&&cur.joined)||[],names,ans,extra,
+    status:(cur&&cur.status)||'open',changed:moved?Date.now():((cur&&cur.changed)||null),created:(cur&&cur.created)||Date.now(),u:Date.now()};
+  try{await ref.set(doc)}catch(e){toast(fbError(e))}}
+async function nightAnswer(nid,s){if(!FB.user)return;const uid=myUid();try{await FB.db.collection('nights').doc(nid).update({['ans.'+uid]:{s,t:Date.now()},['names.'+uid]:PROF.name||'Player',u:Date.now()});
+  toast(s==='in'?'You\'re in.':'Got it. You\'re out for this one.')}catch(e){toast(fbError(e))}}
+async function nightCancel(nid){if(!FB.user)return;try{await FB.db.collection('nights').doc(nid).update({status:'cancelled',changed:Date.now(),u:Date.now()});toast('Night cancelled. Everyone invited will see it.')}catch(e){toast(fbError(e))}}
+async function nightDelete(nid){if(!FB.user)return;try{const d=await FB.db.collection('nights').doc(nid).get();if(d.exists&&d.data().org===myUid())await FB.db.collection('nights').doc(nid).delete()}catch(e){}}
+// a share link anyone in the night can make: a long random code that only works for this one night
+async function nightLink(n,nid){if(!FB.user)return null;let t=NIGHTS.tok[nid];
+  if(!t){const a=new Uint8Array(12);crypto.getRandomValues(a);t=[...a].map(x=>x.toString(16).padStart(2,'0')).join('');
+    try{await FB.db.collection('nightInvites').doc(t).set({nid,by:myUid(),at:n.at,venue:n.venue||'',orgName:n.orgName||PROF.name||'',u:Date.now()})}catch(e){toast(fbError(e));return null}
+    NIGHTS.tok[nid]=t;store.set('db-ntok',NIGHTS.tok)}
+  return location.origin+location.pathname+'?night='+t}
+function nightShareText(n,link){return'🎾 Padel: '+planWhen(n)+(n.venue?' at '+n.venue:'')+'\nTap to say if you\'re in: '+link}
+// keep the list of my nights live while signed in
+function nightsWatch(){const uid=myUid();if(uid&&!NIGHTS.unsub){NIGHTS.unsub=FB.db.collection('nights').where('members','array-contains',uid).onSnapshot(s=>{NIGHTS.list=s.docs.map(d=>Object.assign({id:d.id},d.data()));nightsRefresh()},()=>{})}
+  if(!uid&&NIGHTS.unsub){try{NIGHTS.unsub()}catch(e){}NIGHTS.unsub=null;NIGHTS.list=[]}
+  if(uid&&NIGHTS.join)nightJoinShow()}
+setInterval(()=>{try{nightsWatch()}catch(e){}},2500);
+function nightsRefresh(){try{if(typeof homeOn==='function'&&homeOn())renderHome()}catch(e){}
+  try{if(PLAN.cur&&$('planSheet').classList.contains('on')&&!$('planSheet').contains(document.activeElement))renderPlan()}catch(e){}}
+// Home: a card for every night someone else invited me to
+function nightCardsHtml(){const me=nMe();if(!me)return'';const soon=Date.now()-3*36e5;
+  const list=NIGHTS.list.filter(n=>n.org!==me&&!NIGHTS.hidden[n.id]&&(n.at||0)>=soon).sort((a,b)=>a.at-b.at).slice(0,3);if(!list.length)return'';
+  return'<section class="cfcard invcard" id="nightCard"><b class="cfttl">Match night'+(list.length>1?'s':'')+'</b>'+list.map(n=>{const r=nightRoster(n),st=nightStatusOf(n,me),cancelled=n.status==='cancelled',upd=!cancelled&&n.changed&&n.changed>(NIGHTS.seen[n.id]||0);
+    const names=x=>x.map(p=>esc(p.name)).join(', ');let teams='';
+    if(!cancelled&&r.playing.length===4){try{const f=fairestSplit(r.playing.map(p=>p.name));teams='<p class="nteams">Fairest teams: '+esc(f.a.join(' & '))+' v '+esc(f.b.join(' & '))+'</p><button class="mini" data-nstart="'+esc(n.id)+'">Start this match</button>'}catch(e){}}
+    return'<div class="cfrow nrow" data-nseen="'+esc(n.id)+'"><span><b>'+esc(planWhen(n))+(n.venue?' · '+esc(n.venue):'')+(upd?' <i class="nupd">Updated</i>':'')+'</b>'+
+      '<em>From '+esc(n.orgName||'a friend')+(cancelled?' · <b class="ncan">Cancelled</b>':' · '+r.playing.length+' of '+r.spots+' in'+(r.reserves.length?' · '+r.reserves.length+' reserve'+(r.reserves.length>1?'s':''):''))+'</em>'+
+      (cancelled?'':'<em class="nlist">'+(r.playing.length?'Playing: '+names(r.playing):'Nobody in yet')+(r.reserves.length?'<br>Reserves: '+names(r.reserves):'')+'</em>')+teams+'</span>'+
+      (cancelled?'<div class="cfbtns"><button class="mini" data-nhide="'+esc(n.id)+'">Dismiss</button></div>':
+       '<div class="cfbtns"><button class="mini'+(st.k==='in'||st.k==='res'?' cfok':'')+'" data-nans="in" data-nid="'+esc(n.id)+'">'+(st.k==='in'?'✓ You\'re in':st.k==='res'?'✓ '+st.label:'I\'m in')+'</button><button class="mini'+(st.k==='out'?' nout':'')+'" data-nans="out" data-nid="'+esc(n.id)+'">Can\'t make it</button><button class="mini" data-nshare="'+esc(n.id)+'">Share</button></div>')+'</div>'}).join('')+'</section>'}
+document.addEventListener('click',async e=>{const t=e.target;if(!t.closest)return;
+  const a=t.closest('[data-nans]');if(a){await nightAnswer(a.dataset.nid,a.dataset.nans);return}
+  const h=t.closest('[data-nhide]');if(h){NIGHTS.hidden[h.dataset.nhide]=1;store.set('db-nhide',NIGHTS.hidden);renderHome();return}
+  const sh=t.closest('[data-nshare]');if(sh){const n=NIGHTS.list.find(x=>x.id===sh.dataset.nshare);if(!n)return;const link=await nightLink(n,n.id);if(!link)return;const txt=nightShareText(n,link);try{if(navigator.share){await navigator.share({text:txt});return}}catch(err){return}window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank');return}
+  const st=t.closest('[data-nstart]');if(st){const n=NIGHTS.list.find(x=>x.id===st.dataset.nstart);if(!n)return;const f=fairestSplit(nightRoster(n).playing.map(p=>p.name));startWithNames([f.a[0],f.a[1],f.b[0],f.b[1]],n.venue);return}
+  const sn=t.closest('[data-nseen]');if(sn){NIGHTS.seen[sn.dataset.nseen]=Date.now();store.set('db-nseen',NIGHTS.seen)}});
+function startWithNames(v,venue){hideSheet();setTimeout(()=>{setupStarted=false;hideHome();openSetup();setupFromHome=true;['pA1','pA2','pB1','pB2'].forEach((id,i)=>{$(id).value=v[i]||'';$(id).dispatchEvent(new Event('input',{bubbles:true}))});const vn=$('inVenue');if(vn&&venue){vn.value=venue;vn.dispatchEvent(new Event('input',{bubbles:true}))}},300)}
+// joining from a link: remember the code, sign in if needed, then show the night with I'm in and Can't make it
+(()=>{try{const m=location.search.match(/[?&]night=([a-f0-9]{24})\b/);if(m){NIGHTS.join=m[1];sessionStorage.setItem('pc-njoin',m[1]);history.replaceState(null,'',location.pathname+location.hash)}else{const s=sessionStorage.getItem('pc-njoin');if(s)NIGHTS.join=s}}catch(e){}})();
+async function nightJoinShow(){const tok=NIGHTS.join;if(!tok||NIGHTS.joinBusy)return;NIGHTS.joinBusy=true;
+  try{const d=await FB.db.collection('nightInvites').doc(tok).get();if(!d.exists){toast('That match night link has expired.');nightJoinDone();return}
+    const inv=d.data(),mine=NIGHTS.list.find(n=>n.id===inv.nid);
+    if(mine){nightJoinDone();if(typeof showHome==='function')showHome();toast('You\'re already on this one. It\'s on your Home.');return}
+    NIGHTS.joinInv=Object.assign({token:tok},inv);
+    $('njWhen').textContent=planWhen(inv)+(inv.venue?' · '+inv.venue:'');$('njFrom').textContent='From '+(inv.orgName||'a friend');showSheet('nightJoinSheet')}
+  catch(e){toast(fbError(e))}finally{NIGHTS.joinBusy=false}}
+function nightJoinDone(){NIGHTS.join=null;NIGHTS.joinInv=null;try{sessionStorage.removeItem('pc-njoin')}catch(e){}}
+async function nightJoin(s){const inv=NIGHTS.joinInv;if(!inv||!FB.user)return;const uid=myUid(),FV=firebase.firestore.FieldValue;
+  try{await FB.db.collection('nights').doc(inv.nid).update({members:FV.arrayUnion(uid),joined:FV.arrayUnion(uid),['names.'+uid]:PROF.name||'Player',['ans.'+uid]:{s,t:Date.now()},joinedWith:inv.token,u:Date.now()});
+    nightJoinDone();hideSheet();toast(s==='in'?'You\'re in. It\'s on your Home.':'Got it. It\'s on your Home if you change your mind.')}
+  catch(e){toast(fbError(e))}}
+document.addEventListener('click',e=>{const t=e.target;if(!t.closest||!t.closest('#nightJoinSheet'))return;
+  if(t.closest('#njIn'))nightJoin('in');else if(t.closest('#njOut'))nightJoin('out');else if(t.closest('#njLater')){nightJoinDone();hideSheet()}});
+// before signing in, the link just asks them to sign in first
+setTimeout(()=>{try{if(NIGHTS.join&&!store.get('db-signed-in')){toast('Sign in or create an account to answer this match night.');if($('profAcBtn'))setTimeout(()=>{try{openAccount&&openAccount()}catch(e){}},600)}}catch(e){}},2500);
+
+// planner rows: PadelCred friends tick themselves in, so their row shows their answer instead of a tick button
+function planRowStatus(p,name){if(!FB.user&&!NIGHTS.me)return null;name=(name||'').trim();if(!name)return null;const n=NIGHTS.list.find(x=>x.id===p.id);
+  if(pkey(name)===meKey())return n?nightStatusOf(n,nMe()):{k:'in',label:'In'};const f=friendOf(pkey(name));if(!(f&&f.uid))return null;
+  return n?nightStatusOf(n,f.uid):{k:'wait',label:'Invited'}}
+function planSharedHtml(p){if(!FB.user&&!NIGHTS.me)return'';const n=NIGHTS.list.find(x=>x.id===p.id);
+  if(!n)return'<p class="help plhelp">PadelCred friends you add will see this night and tick themselves in. Anyone else: share the link.</p>';
+  const r=nightRoster(n),joined=(n.joined||[]).map(uid=>({uid,name:(n.names||{})[uid]||'Player'}));
+  return'<p class="plsum">'+(n.status==='cancelled'?'<b class="ncan">Cancelled</b>':'<b>'+r.playing.length+' of '+r.spots+' in</b>'+(r.reserves.length?' · '+r.reserves.length+' reserve'+(r.reserves.length>1?'s':''):'')+(r.waiting.length?' · '+r.waiting.length+' waiting':''))+'</p>'+
+    (joined.length?'<p class="sh">Joined with the link</p>'+joined.map(j=>{const s=nightStatusOf(n,j.uid);return'<div class="plp"><span class="pljn">'+esc(j.name)+'</span><span class="plst '+s.k+'">'+s.label+'</span></div>'}).join(''):'')}
 
 /* ================= bug reports ================= */
 const appVersion=()=>((document.querySelector('meta[name="app-version"]')||{}).content||'');
@@ -4073,6 +4165,37 @@ const cleanLevel=s=>{const n=parseFloat(String(s||'').replace(',','.'));return i
 const cleanPlaytomic=s=>{s=(s||'').trim();if(!s)return'';const m=s.match(/https?:\/\/[^\s]*playtomic[^\s]*/i);return m?m[0]:''};
 const cleanHandle=s=>(s||'').trim().replace(/^https?:\/\/(www\.)?[^/]+\//i,'').replace(/^@/,'').replace(/[/?#].*$/,'');
 function avatar(cls,name,photo){return photo?'<img class="'+cls+'" src="'+photo+'" alt="">':'<span class="'+cls+' ini">'+esc(initials(name||'You')||'?')+'</span>'}
+/* ================= profile: player spotlight and the year in numbers ================= */
+function spotTile(label,value,extra,cls){return'<div class="stile'+(cls?' '+cls:'')+'"><span>'+label+'</span><b>'+value+(extra||'')+'</b></div>'}
+function profSpotlightHtml(p,i,L,key){
+  const nm=(PROF.name||'').trim(),sp=nm.lastIndexOf(' '),first=sp>0?nm.slice(0,sp):'',last=sp>0?nm.slice(sp+1):nm;
+  const photo=PROF.photo?'<img src="'+esc(PROF.photo)+'" alt="">':'<span class="spotini">'+esc(initials(nm||'?'))+'</span>';
+  const o=overallFor(i>=0?p:{p:0,rating:seedFor(key),maxRating:seedFor(key)})||{},ov=o.v||perfScore(seedFor(key));
+  const chg=i>=0&&p.delta?perfScore(p.rating)-perfScore(p.rating-p.delta):0;
+  const d=RANK.data,rank=FB.user&&d&&d.me&&rankOptIn()?['#'+d.me.rank,'Ranking']:i>=0?['#'+(i+1),'In your league']:['–','Ranking'];
+  const fd=i>=0?formData(p):null,form=fd?formWord(fd.v):'–';
+  const partner=i>=0?Object.values(p.partners||{}).filter(x=>x.p>0).sort((a,b)=>(b.w/b.p)-(a.w/a.p)||b.p-a.p)[0]:null;
+  const det=[];if(PROF.side)det.push(['Side',PROF.side==='Either'?'Either side':PROF.side]);if(PROF.ptLevel)det.push(['Playtomic level',PROF.ptLevel]);
+  if(PROF.club)det.push(['Home club',PROF.club]);if(PROF.racket)det.push(['Racket',PROF.racket]);if(PROF.hand)det.push(['Plays',PROF.hand]);
+  if(PROF.since)det.push(['Playing since',PROF.since]);if(PROF.shot)det.push(['Favourite shot',PROF.shot]);if(PROF.level)det.push(['Level',PROF.level]);
+  return'<section class="spot'+(PROF.founder?' fnd':'')+'"><div class="spottop"><span class="spotkick">Player spotlight</span><button class="mini" id="profEdit">Edit</button></div>'+
+    '<div class="spotmain"><div class="spotarch">'+photo+(PROF.founder?'<i class="spotmed" title="Founding member #'+PROF.founder+'">#'+PROF.founder+'</i>':PROF.country?'<i class="spotflag" title="'+esc(countryName(PROF.country))+'">'+flagOf(PROF.country)+'</i>':'')+'</div>'+
+    '<div class="spotname">'+(first?'<span class="spotfirst">'+esc(first)+'</span>':'')+'<h3>'+esc(last)+'</h3>'+
+      (PROF.username?'<span class="handle">@'+esc(PROF.username)+(seemsIn()?'':' <em class="soff">Signed out</em>')+'</span>':'')+
+      (PROF.founder?'<span class="fndline">Founding member #'+PROF.founder+(PROF.country?' '+flagOf(PROF.country):'')+'</span>':'')+
+      '<div class="spotarchetype">'+(STYLE[PROF.style]?styleTag(PROF.style,true):'<button class="styletag findarch" id="findArch"><span class="stlab"><small>Archetype</small><b>Find yours in 30 seconds</b></span></button>')+'</div></div></div>'+
+    '<div class="stiles three">'+spotTile('Overall',ov,chg?' <i class="'+(chg>0?'up':'down')+'">'+(chg>0?'↑':'↓')+Math.abs(chg)+'</i>':'')+spotTile(rank[1],rank[0])+spotTile('Form',form,'',fd?'f-'+formBand(fd.v):'')+'</div>'+
+    (partner?'<div class="stiles one">'+spotTile('Favourite partner',esc(partner.name),' <small>'+partner.w+' of '+partner.p+' won</small>')+'</div>':'')+
+    (det.length?'<div class="stiles two">'+det.map(([l,v])=>spotTile(l,esc(v))).join('')+'</div>':'')+'</section>'}
+// this year's numbers, worked out from this year's results only
+function profYearHtml(p,key){const Y=new Date().getFullYear(),start=new Date(Y,0,1).getTime();
+  const rows=allRows().filter(r=>r.date>=start&&r.winner!==null&&r.winner!==undefined).map(r=>{const a=members(r.cfg,0).some(n=>pkey(n)===key),b=members(r.cfg,1).some(n=>pkey(n)===key);return a||b?{d:r.date,won:r.winner===(a?0:1)}:null}).filter(Boolean).sort((x,y)=>x.d-y.d);
+  const won=rows.filter(r=>r.won).length,lost=rows.length-won;let run=0,best=0;rows.forEach(r=>{run=r.won?run+1:0;best=Math.max(best,run)});
+  const ach=Object.values(p.badges||{}).filter(d=>d&&new Date(d).getFullYear()===Y).length;
+  let peak=null;(p.matches||[]).forEach((id,k)=>{const h=history.find(x=>x.id===id);const dt=h?(h.date||h.start||0):0;if(dt>=start&&p.trend&&p.trend[k+1]!=null){const v=perfScore(p.trend[k+1]);peak=peak===null?v:Math.max(peak,v)}});
+  return'<section class="spotyear"><span class="spotkick">'+esc(PROF.name||'')+'</span><h4>'+Y+' in numbers</h4>'+
+    (rows.length?'<div class="stiles two big">'+spotTile('Won–lost',won+'–'+lost)+spotTile('Win rate',Math.round(won/rows.length*100)+'%')+spotTile('Matches',rows.length)+spotTile('Achievements',ach)+spotTile('Best Overall',peak===null?'–':peak)+spotTile('Longest win streak',best)+'</div>':'<p class="help">No matches yet in '+Y+'. Your first one starts the count.</p>')+'</section>'}
+
 function renderProfile(){
   const box=$('profileBody');
   if(FB.user&&(!RANK.data||Date.now()-RANK.data.at>20*60000))loadRanking().then(d=>{if(d&&tab==='profile'&&$('resultsView').classList.contains('on')&&!RANK.rerendered){RANK.rerendered=true;renderProfile();RANK.rerendered=false}});
@@ -4092,16 +4215,13 @@ function renderProfile(){
   const card=(v,l,n)=>'<div class="card" style="--i:'+n+'"><b>'+v+'</b><span>'+l+'</span></div>';
   const partner=Object.values(p.partners||{}).sort((a,b)=>(b.w/b.p)-(a.w/a.p)||b.p-a.p)[0];
   const nemesis=Object.values(p.opps||{}).filter(o=>o.l>0).sort((a,b)=>b.l-a.l)[0];
-  box.innerHTML='<div id="profAccount"></div><div class="profhero">'+(PROF.founder?'<span class="avwrap fnd" data-n="'+PROF.founder+'" title="Founding member #'+PROF.founder+'">'+avatar('pav big',PROF.name,PROF.photo)+'</span>':avatar('pav big',PROF.name,PROF.photo))+'<div class="phinfo"><h3>'+esc(PROF.name)+(PROF.country?' <span class="flag-e" title="'+esc(countryName(PROF.country))+'">'+flagOf(PROF.country)+'</span>':'')+'</h3>'+(PROF.username?'<span class="handle">@'+esc(PROF.username)+(seemsIn()?'':' <em class="soff">Signed out</em>')+'</span>':'')+(STYLE[PROF.style]?styleTag(PROF.style,true):'<button class="styletag findarch" id="findArch"><span class="stlab"><small>Archetype</small><b>Find yours in 30 seconds</b></span></button>')+(PROF.founder?'<span class="fndline">Founding member #'+PROF.founder+'</span>':'')+'</div><button class="mini" id="profEdit">Edit</button></div>'+
-    (PROF.bio?'<p class="bio">'+esc(PROF.bio)+'</p>':'')+
-    (chips.length?'<div class="pchips">'+chips.map(c=>'<span>'+esc(c)+'</span>').join('')+'</div>':'')+
-    (socials?'<div class="socials">'+socials+'</div>':'')+
+  box.innerHTML='<div id="profAccount"></div>'+profSpotlightHtml(p,i,L,key)+(PROF.bio?'<p class="bio spotbio">'+esc(PROF.bio)+'</p>':'')+(socials?'<div class="socials">'+socials+'</div>':'')+
     ovrCard(overallFor(i>=0?p:{p:0,rating:seedFor(key),maxRating:seedFor(key)}),true)+trustLine(trustStats())+rankLineHtml()+'<button class="secondary sharecardbtn" id="profShare">Share my Courtfolio</button>'+skillCardHtml(skillAgg(),true,PROF.name)+formCardHtml(i>=0?formData(p):null,PROF.name,true)+formInsightsHtml(i>=0?p:null)+highlightsHtml(i>=0?p:null,true)+
     (yipSeason()?'<button class="hmyip" id="profYip" style="margin-top:14px"><span><em>Your '+yipYear()+' in padel</em><b>Your year, wrapped.</b></span><i>Play</i></button>':'')+
     '<div class="frbox">'+friendsHtml()+'</div>'+
     badgesHtml(Object.assign({},p,{ex:myExclusive(),exMine:true}))+
-    '<p class="sh">Your stats</p>'+
-    (i>=0?'<div class="cards c4">'+card(((overallFor(p)||{}).v)||perfScore(p.rating),'Overall',0)+card('#'+(i+1),'of '+L.length+' in league',1)+card(p.p,'Played',2)+card(Math.round(p.w/Math.max(1,p.p)*100)+'%','Win rate',3)+'</div>'+
+    (i>=0?profYearHtml(p,key):'')+'<p class="sh">All-time stats</p>'+
+    (i>=0?'<div class="cards c4">'+card(p.p,'Played',0)+card(Math.round(p.w/Math.max(1,p.p)*100)+'%','Win rate',1)+card('#'+(i+1),'of '+L.length+' in league',2)+card(perfScore(p.maxRating||p.rating),'Best Overall',3)+'</div>'+
       '<table class="stats plain"><tbody><tr><td>Record</td><td>'+p.w+' won, '+p.l+' lost</td></tr><tr><td>Form</td><td>'+formDots(p.form)+'</td></tr>'+
       (partner?'<tr><td>Best partner</td><td>'+esc(partner.name)+' ('+partner.w+' of '+partner.p+' won)</td></tr>':'')+
       (nemesis?'<tr><td>Toughest opponent</td><td>'+esc(nemesis.name)+'</td></tr>':'')+'</tbody></table>'
@@ -4196,7 +4316,7 @@ $('peCancel').onclick=()=>hideSheet();
 
 
 /* ================= home logo and updates ================= */
-const APP_VERSION='2.9.4';
+const APP_VERSION='2.11';
 document.querySelectorAll('.vlogo').forEach(i=>i.src=$('logo').src);
 function goHome(e){
   const el=e&&e.currentTarget;if(el){el.classList.remove('tap');void el.offsetWidth;el.classList.add('tap')}
@@ -6217,7 +6337,7 @@ function renderHome(){try{
   $('hmTour').onclick=()=>startTour();
   syncHomeAvatar();
 
-}finally{(()=>{try{const st=$('hmStart');if(st&&!$('cfCard')){const html=confCardsHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}try{const st=$('hmStart');if(st&&!$('invCard')){const html=invCardsHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}})()}}
+}finally{(()=>{try{const st=$('hmStart');if(st&&!$('cfCard')){const html=confCardsHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}try{const st=$('hmStart');if(st&&!$('invCard')){const html=invCardsHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}try{const st=$('hmStart');if(st&&!$('nightCard')){const html=nightCardsHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}})()}}
 setTimeout(()=>{try{lockSeed()}catch(e){}},1500);
 function syncHomeAvatar(){const b=$('hmAv');if(!b)return;b.innerHTML=$('avBtn').innerHTML;b.className=$('avBtn').className;b.id='hmAv';b.setAttribute('data-n',$('avBtn').getAttribute('data-n')||'')}
 
