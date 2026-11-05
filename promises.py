@@ -23,10 +23,10 @@ def promise(name, where):
 def fresh(p, history=None, profile=None, amer=None):
     b = p.chromium.launch()
     pg = b.new_page(viewport={'width': 390, 'height': 844})
-    pg.add_init_script(AUTO)
+    pg.add_init_script('window.__PC_TEST__=true;' + AUTO)
     errs = []
     pg.on('pageerror', lambda e: errs.append(str(e)[:160]))
-    pg.goto(BASE + '/?selftest=1'); pg.wait_for_timeout(1300)
+    pg.goto(BASE + '/'); pg.wait_for_timeout(1300)
     pg.click('#obStart'); pg.wait_for_timeout(300); pg.click('#obLocal'); pg.wait_for_timeout(300)
     pg.fill('#obName', 'Raza'); pg.click('#obNext'); pg.wait_for_timeout(300); pg.click('#obPlay'); pg.wait_for_timeout(700)
     if history is not None or profile or amer is not None:
@@ -389,8 +389,27 @@ def t_admin_secrets(p):
     revealed = admin['names'] and '???' not in admin['names'] and admin['sub'].startswith('Only you can see these')
     return bool(hidden_normally and revealed and all(n == '???' for n in after['names'])), {'normal player': normal, 'admin': admin, 'admin signed out again': after}
 
+@promise('Invite-only: anyone not approved sees only the invite-only screen, and search engines are told not to list the site', 'Opening padelcred.com')
+def t_gate(p):
+    b = p.chromium.launch(); pg = b.new_page(viewport={'width': 390, 'height': 844})
+    pg.goto(BASE + '/'); pg.wait_for_timeout(2500)
+    shown = pg.evaluate("document.getElementById('gateView').classList.contains('on')")
+    title = pg.evaluate("document.getElementById('gateTitle').innerText")
+    covers = pg.evaluate("(()=>{const e=document.elementFromPoint(innerWidth/2,innerHeight/2);return !!(e&&e.closest('#gateView'))})()")
+    test_window = pg.evaluate("typeof window.__pcTest")
+    pg.goto(BASE + '/?selftest=1'); pg.wait_for_timeout(2000)
+    old_address = pg.evaluate("document.getElementById('gateView').classList.contains('on')")
+    pg.evaluate("document.getElementById('gateIn').click()"); pg.wait_for_timeout(500)
+    signin = pg.evaluate("(()=>{const s=document.getElementById('accountSheet');return s.classList.contains('on')&&getComputedStyle(s).zIndex>getComputedStyle(document.getElementById('gateView')).zIndex})()")
+    import urllib.request
+    robots = 'noindex' in urllib.request.urlopen(BASE + '/').read().decode()
+    b.close()
+    ok = shown and covers and title.startswith('PadelCred is invite-only') and test_window == 'undefined' and old_address and signin and robots
+    return ok, {'gate shown': shown, 'covers the app': covers, 'title': title, 'test window closed to players': test_window == 'undefined',
+                'typing ?selftest=1 gets past': not old_address, 'Sign in opens above the gate': signin, 'hidden from search': robots}
+
 TESTS = [t_start_table, t_tiers, t_weights, t_weight_applied, t_amer_counts, t_league_overall, t_pred, t_dispute, t_evening,
-         t_golden, t_adv, t_tb, t_race, t_bestof, t_stb, t_pairings, t_court, t_form, t_legacy, t_first_serve, t_versions, t_night_roster, t_night_open, t_night_cards, t_night_planner, t_profile, t_admin_secrets]
+         t_golden, t_adv, t_tb, t_race, t_bestof, t_stb, t_pairings, t_court, t_form, t_legacy, t_first_serve, t_versions, t_night_roster, t_night_open, t_night_cards, t_night_planner, t_profile, t_admin_secrets, t_gate]
 
 if __name__ == '__main__':
     with sync_playwright() as p:

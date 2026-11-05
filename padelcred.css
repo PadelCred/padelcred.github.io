@@ -1857,3 +1857,11 @@ img:not([src]),img[src=""]{visibility:hidden}
 .spotyear h4{margin:4px 0 2px;font:800 26px var(--display,var(--heading));color:#F5F7FA}
 .stiles.big .stile b{font-size:30px}
 .spottop .mini{width:auto;flex:none;padding:8px 16px}
+/* v2.12: invite-only gate */
+.gate{position:fixed;inset:0;z-index:19;display:none;align-items:center;justify-content:center;padding:calc(24px + env(safe-area-inset-top,0px)) 24px calc(24px + env(safe-area-inset-bottom,0px));background:radial-gradient(700px 500px at 100% -10%,rgba(110,231,183,.08),transparent 60%),#0B1420}
+.gate.on{display:flex}
+.gatein{max-width:360px;text-align:center;display:grid;gap:12px;justify-items:center}
+.gatein h2{margin:8px 0 0;font:800 28px/1.15 var(--display,var(--heading));color:#F5F7FA}
+.gatein p{margin:0;font-size:16px;line-height:1.5;color:#BAC9D3}
+.gatein .btns{width:100%;margin-top:10px}
+body.gated .scrim{z-index:20!important}body.gated #accountSheet{z-index:21!important}

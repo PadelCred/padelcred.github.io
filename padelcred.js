@@ -2074,7 +2074,7 @@ async function checkAwards(){
 // seasonal: celebrate the first time a season is collected this year
 // the admin screen, only for you
 let awardTarget=null;
-function openAward(){$('awFind').value='';$('awResult').innerHTML='';awardTarget=null;hideSheet();showSheet('awardSheet');renderBugs();loadBugs()}
+function openAward(){$('awFind').value='';$('awResult').innerHTML='';awardTarget=null;hideSheet();showSheet('awardSheet');renderBugs();loadBugs();loadAccessRequests()}
 async function findForAward(){
   const v=$('awFind').value.trim().replace(/^@/,'').toLowerCase();if(!v)return;
   try{const u=await FB.db.collection('usernames').doc(v).get();if(!u.exists){$('awResult').innerHTML='<p class="help">Nobody has that username.</p>';return}
@@ -3277,7 +3277,7 @@ function hrFill(){const st=$('hrStart'),ti=$('hrTiers');if(!st||!ti)return;
 
 
 /* ================= test window: only when opened with ?selftest=1, for the promise tests. Players never see it ================= */
-if(/[?&]selftest=1\b/.test(location.search))setTimeout(()=>{window.__pcTest={perfScore,levelToRating,levelToOvr,ovrTier,matchWeight,winChance,computeLeague,formWord,formBand,legacySeedToRating,pairings,replay,rowOf,allRows,overallFor,cardHighlights,ovrToRating,fourPlayers,currentPairing,K:typeof K!=='undefined'?K:null,nightRoster,nightOpen,nightStatusOf,setNights:(list,me)=>{NIGHTS.list=list;NIGHTS.me=me;nightsRefresh()},setAdmin:(on,uid)=>{FB.admin=!!on;FB.user=on?{uid:uid||'admin1'}:null;renderProfile()}}},0)
+if(window.__PC_TEST__===true)setTimeout(()=>{window.__pcTest={perfScore,levelToRating,levelToOvr,ovrTier,matchWeight,winChance,computeLeague,formWord,formBand,legacySeedToRating,pairings,replay,rowOf,allRows,overallFor,cardHighlights,ovrToRating,fourPlayers,currentPairing,K:typeof K!=='undefined'?K:null,nightRoster,nightOpen,nightStatusOf,setNights:(list,me)=>{NIGHTS.list=list;NIGHTS.me=me;nightsRefresh()},setAdmin:(on,uid)=>{FB.admin=!!on;FB.user=on?{uid:uid||'admin1'}:null;renderProfile()}}},0)
 
 /* ================= shared match nights: everyone invited sees the same live list and ticks themselves in ================= */
 const NIGHTS={list:[],unsub:null,me:null,seen:store.get('db-nseen')||{},hidden:store.get('db-nhide')||{},tok:store.get('db-ntok')||{},push:null};
@@ -3369,6 +3369,42 @@ function planSharedHtml(p){if(!FB.user&&!NIGHTS.me)return'';const n=NIGHTS.list.
   const r=nightRoster(n),joined=(n.joined||[]).map(uid=>({uid,name:(n.names||{})[uid]||'Player'}));
   return'<p class="plsum">'+(n.status==='cancelled'?'<b class="ncan">Cancelled</b>':'<b>'+r.playing.length+' of '+r.spots+' in</b>'+(r.reserves.length?' · '+r.reserves.length+' reserve'+(r.reserves.length>1?'s':''):'')+(r.waiting.length?' · '+r.waiting.length+' waiting':''))+'</p>'+
     (joined.length?'<p class="sh">Joined with the link</p>'+joined.map(j=>{const s=nightStatusOf(n,j.uid);return'<div class="plp"><span class="pljn">'+esc(j.name)+'</span><span class="plst '+s.k+'">'+s.label+'</span></div>'}).join(''):'')}
+
+/* ================= invite-only: until PadelCred is on Google Play, only approved accounts can use it ================= */
+const GATE={state:'unknown',uid:null,busy:false};
+const gateTest=()=>window.__PC_TEST__===true; // automated tests only; the database rules are the real lock
+function gateApprovedHere(){const a=store.get('db-access');return!!a&&!!store.get('db-signed-in')}
+function gateShow(mode){const g=$('gateView');if(!g)return;
+  $('gateTitle').textContent=mode==='wait'?'You\'re on the list':'PadelCred is invite-only for now';
+  $('gateBody').textContent=mode==='wait'?'We\'ll let you in as soon as you\'re approved. Check back soon.':'Coming soon to Google Play. Already invited? Sign in.';
+  $('gateIn').classList.toggle('hide',mode==='wait');$('gateUp').classList.toggle('hide',mode==='wait');$('gateOut').classList.toggle('hide',mode!=='wait');
+  g.classList.add('on');document.body.classList.add('gated')}
+function gateHide(){const g=$('gateView');if(g)g.classList.remove('on');document.body.classList.remove('gated')}
+async function gateCheck(){if(gateTest()){gateHide();return}
+  const u=FB.user;
+  if(!u){if(GATE.uid){GATE.uid=null;store.set('db-access','')}if(FB.authKnown||!store.get('db-signed-in'))gateShow('in');else if(gateApprovedHere())gateHide();return}
+  if(GATE.uid===u.uid||GATE.busy)return;GATE.busy=true;
+  try{const db=FB.db,[ad,ac]=await Promise.all([db.collection('admins').doc(u.uid).get(),db.collection('access').doc(u.uid).get()]);
+    if(ad.exists||ac.exists){GATE.uid=u.uid;GATE.state='yes';store.set('db-access',u.uid);gateHide()}
+    else{GATE.uid=u.uid;GATE.state='no';store.set('db-access','');
+      try{await db.collection('accessRequests').doc(u.uid).set({name:PROF.name||u.displayName||'',email:u.email||'',at:Date.now()})}catch(e){}
+      gateShow('wait')}}
+  catch(e){if(gateApprovedHere())gateHide();else gateShow('in')}finally{GATE.busy=false}}
+// at start: approved on this phone before means straight in (works offline); otherwise the gate until sign-in confirms
+if(!gateTest()&&!gateApprovedHere())setTimeout(()=>{if(!GATE.uid||GATE.state!=='yes')gateShow('in')},0);
+setInterval(()=>{try{gateCheck()}catch(e){}},1500);
+document.addEventListener('click',e=>{const t=e.target;if(!t.closest)return;
+  if(t.closest('#gateIn')){authMode='in';openAccount();return}
+  if(t.closest('#gateUp')){authMode='up';openAccount();return}
+  if(t.closest('#gateOut')){try{signOutNow()}catch(err){}store.set('db-access','');GATE.uid=null;gateShow('in')}});
+// admin: people waiting for access, with Approve
+async function loadAccessRequests(){const box=$('accList');if(!box||!FB.admin)return;
+  try{const s=await FB.db.collection('accessRequests').orderBy('at','desc').limit(50).get();
+    box.innerHTML=s.empty?'<p class="help">Nobody waiting.</p>':s.docs.map(d=>{const r=d.data();return'<div class="cfrow"><span><b>'+esc(r.name||'No name yet')+'</b><em>'+esc(r.email||'')+'</em></span><div class="cfbtns"><button class="mini cfok" data-accok="'+esc(d.id)+'">Approve</button><button class="mini" data-accno="'+esc(d.id)+'">Decline</button></div></div>'}).join('')}
+  catch(e){box.innerHTML='<p class="help">Couldn\'t load the list.</p>'}}
+document.addEventListener('click',async e=>{const t=e.target;if(!t.closest)return;
+  const ok=t.closest('[data-accok]'),no=t.closest('[data-accno]');if(!ok&&!no)return;const uid=(ok||no).dataset[ok?'accok':'accno'];
+  try{if(ok)await FB.db.collection('access').doc(uid).set({by:FB.user.uid,at:Date.now()});await FB.db.collection('accessRequests').doc(uid).delete();toast(ok?'Approved. They\'re in.':'Declined.');loadAccessRequests()}catch(err){toast(fbError(err))}});
 
 /* ================= bug reports ================= */
 const appVersion=()=>((document.querySelector('meta[name="app-version"]')||{}).content||'');
@@ -4318,7 +4354,7 @@ $('peCancel').onclick=()=>hideSheet();
 
 
 /* ================= home logo and updates ================= */
-const APP_VERSION='2.11.1';
+const APP_VERSION='2.12';
 document.querySelectorAll('.vlogo').forEach(i=>i.src=$('logo').src);
 function goHome(e){
   const el=e&&e.currentTarget;if(el){el.classList.remove('tap');void el.offsetWidth;el.classList.add('tap')}
