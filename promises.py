@@ -36,8 +36,10 @@ def fresh(p, history=None, profile=None, amer=None):
                     [history, profile, amer])
         pg.reload(); pg.wait_for_timeout(2200)
     pg.wait_for_function("!!window.__pcTest")
+    pg.evaluate("r=>window.__pcTest.setFriends(r)", ROSTER)
     return b, pg, errs
 
+ROSTER = [{'key': k.lower(), 'name': k, 'uid': 'u_' + k.lower()} for k in ['Ben', 'Ellie', 'James', 'Leo', 'Marta', 'Kwame', 'Sofia']]
 T = lambda pg, js, arg=None: pg.evaluate("(a)=>{const t=window.__pcTest;" + js + "}", arg)
 
 def match(pid, pa, pb, sets, days_ago=1, **extra):
@@ -45,6 +47,8 @@ def match(pid, pa, pb, sets, days_ago=1, **extra):
     h = {'id': pid, 'manual': True, 'date': now - days_ago * 86400000, 'added': now, 'sets': sets, 'notes': '',
          'cfg': {'pa': pa, 'pb': pb, 'an': '', 'bn': '', 'a': ' & '.join(pa), 'b': ' & '.join(pb), 'group': '', 'venue': ''}}
     h['cfg'].update(extra.pop('cfg', {}))
+    if 'ver' not in extra: h['ver'] = {'by': 'u_opponent', 'at': now}
+    elif extra['ver'] is None: extra.pop('ver')
     h.update(extra)
     return h
 
@@ -127,6 +131,8 @@ def t_amer_counts(p):
     scored = sum(1 for ev in nights for r in ev.get('rounds', []) for m in r.get('matches', []) if m.get('sa') is not None and m.get('sb') is not None)
     b, pg, e = fresh(p, history=[], amer=nights)
     pg.wait_for_timeout(600)
+    waiting = T(pg, "return t.allRows().filter(r=>r.h.amer).length")
+    T(pg, "t.verifyAll()"); pg.wait_for_timeout(300)
     rows = T(pg, "return t.allRows().filter(r=>r.h.amer).map(r=>({w:t.matchWeight(r),s:r.h.session,winner:r.winner}))")
     every_half = all(abs(r['w'] - .5) < 1e-9 for r in rows)
     players_in_one = T(pg, "const ev=JSON.parse(localStorage.getItem('db-amer'))[0];return ev.players")
@@ -143,7 +149,7 @@ def t_amer_counts(p):
     nights_left = pg.evaluate("JSON.parse(localStorage.getItem('db-amer')).length")
     expect_left = sum(1 for ev in nights[1:] if True for r in ev.get('rounds', []) for m in r.get('matches', []) if m.get('sa') is not None) if nights_left == len(nights) - 1 else None
     b.close()
-    ok = len(rows) == scored and every_half and played_ok and not broken and nights_left == len(nights) - 1 and left < len(rows)
+    ok = waiting == 0 and len(rows) == scored and every_half and played_ok and not broken and nights_left == len(nights) - 1 and left < len(rows)
     return ok, {'scored rounds in nights': scored, 'results added': len(rows), 'all count half': every_half,
                 'league played (nights each)': {n: [L.get(n), expect_nights[n]] for n in players_in_one}, 'broken values': broken,
                 'after deleting a night': {'nights': nights_left, 'results left': left}}
@@ -408,8 +414,342 @@ def t_gate(p):
     return ok, {'gate shown': shown, 'covers the app': covers, 'title': title, 'test window closed to players': test_window == 'undefined',
                 'typing ?selftest=1 gets past': not old_address, 'Sign in opens above the gate': signin, 'hidden from search': robots}
 
+def night_fill(pg, k, players, sets):
+    blocks = pg.locator('#nrMatches .nrm'); b = blocks.nth(k); i = b.get_attribute('data-i')
+    for j, n in enumerate(players):
+        if n is not None: pg.fill('#nr%s_%d' % (i, j), n)
+    ins = b.locator('.nrset input')
+    for j, (x, y) in enumerate(sets): ins.nth(j * 2).fill(str(x)); ins.nth(j * 2 + 1).fill(str(y))
+
+@promise('Adding a night: rotations rotate everyone, the same four make one evening, everyone\'s record updates, mistakes are caught', 'Add a result, Add the whole night')
+def t_night_add(p):
+    b, pg, e = fresh(p, history=[])
+    pg.evaluate("document.querySelector('#fnav [data-nav=matches]').click()"); pg.wait_for_timeout(600); pg.evaluate("document.getElementById('addResult').click()"); pg.wait_for_timeout(500)
+    pg.evaluate("document.getElementById('arNight').click()"); pg.wait_for_timeout(700)
+    first = pg.evaluate("document.querySelector('#nrMatches .nrm input').value")
+    night_fill(pg, 0, [None, 'Ben', 'Ellie', 'James'], [(6, 3), (6, 4)])
+    pg.evaluate("document.getElementById('nrSwap').click()"); pg.wait_for_timeout(200)
+    pg.evaluate("document.getElementById('nrSwap').click()"); pg.wait_for_timeout(200)
+    rot = pg.evaluate("[...document.querySelectorAll('#nrMatches .nrm')].map(m=>[...m.querySelectorAll('.nrpairs input')].map(i=>i.value))")
+    night_fill(pg, 1, [None] * 4, [(4, 6), (6, 2), (10, 8)]); night_fill(pg, 2, [None] * 4, [(6, 1)])
+    # mistakes are caught before anything saves
+    pg.evaluate("document.getElementById('nrNew').click()"); pg.wait_for_timeout(200)
+    night_fill(pg, 3, [None, 'Leo', 'Leo', 'Kwame'], [(6, 2)])
+    pg.evaluate("document.getElementById('nrSave').click()"); pg.wait_for_timeout(400)
+    dup = pg.evaluate("(document.querySelector('.toast')||document.getElementById('toast')||{}).innerText||''")
+    night_fill(pg, 3, [None, 'Leo', 'Marta', 'Kwame'], [(5, 5)])
+    pg.evaluate("document.getElementById('nrSave').click()"); pg.wait_for_timeout(400)
+    tie = pg.evaluate("(document.querySelector('.toast')||document.getElementById('toast')||{}).innerText||''")
+    saved_early = pg.evaluate("JSON.parse(localStorage.getItem('db-history')||'[]').length")
+    night_fill(pg, 3, [None, 'Leo', 'Marta', 'Kwame'], [(6, 4)])
+    pg.evaluate("document.getElementById('nrSave').click()"); pg.wait_for_timeout(700)
+    pg.evaluate("document.getElementById('askWrap').classList.contains('on')&&document.getElementById('askYes').click()"); pg.wait_for_timeout(900)
+    H = pg.evaluate("JSON.parse(localStorage.getItem('db-history'))")
+    waiting = T(pg, "return t.computeLeague().length")
+    pend = pg.evaluate("(document.getElementById('pendBox')||{innerText:''}).innerText")
+    T(pg, "t.verifyAll()"); pg.wait_for_timeout(300)
+    L = T(pg, "return Object.fromEntries(t.computeLeague().map(x=>[x.name,x.p]))")
+    b.close()
+    partners = set()
+    for r in rot:
+        partners.add(tuple(sorted(r[:2]))); partners.add(tuple(sorted(r[2:])))
+    sess = [h.get('session') for h in sorted(H, key=lambda h: h['date'])]
+    ok = first == 'Raza' and len(rot) == 3 and len(partners) == 6 and all(r[0] == 'Raza' for r in rot) \
+        and 'same player twice' in dup and 'two different scores' in tie and saved_early == 0 \
+        and len(H) == 4 and sess[0] and sess[0] == sess[1] == sess[2] and not sess[3] \
+        and waiting == 0 and 'Waiting for the other team' in pend and L.get('Ben') == 1 and L.get('Ellie') == 1 and L.get('Leo') == 1 and L.get('Raza') == 2
+    return ok, {'you are filled in first': first, 'rotation': rot, 'duplicate caught': dup, 'drawn set caught': tie, 'nothing saved until fixed': saved_early == 0,
+                'sessions in order': sess, 'counted before anyone confirms': waiting, 'league played once confirmed (evening counts once)': L}
+
+@promise('Rate the night: everyone you played with or against appears once, after adding and after confirming', 'Rate the night')
+def t_rate_night(p):
+    now = int(time.time() * 1000)
+    friends = [{'key': 'ben', 'name': 'Ben', 'uid': 'u2'}, {'key': 'ellie', 'name': 'Ellie', 'uid': 'u3'}, {'key': 'james', 'name': 'James', 'uid': 'u4'}]
+    recv = [match('rv%d' % i, pa, pb, [[6, 3]], session='sx', recv=True, recvName='Ben', cs='ask', ver=None, cfg={'bestOf': 1}) for i, (pa, pb) in enumerate([(['Raza', 'Ben'], ['Ellie', 'James']), (['Raza', 'Ellie'], ['James', 'Ben'])])]
+    b, pg, e = fresh(p, history=recv)
+    T(pg, "t.setFriends(a);t.setAdmin(true,'me1')", friends); pg.wait_for_timeout(300)
+    pg.evaluate("document.querySelector('#fnav [data-nav=home]').click()"); pg.wait_for_timeout(600)
+    pg.evaluate("document.querySelector('[data-cfok]').click()"); pg.wait_for_timeout(1500)
+    after_confirm = pg.evaluate("document.getElementById('rateNightSheet').classList.contains('on')?[...document.querySelectorAll('#rnBody .rprow b')].map(x=>x.innerText):null")
+    pg.evaluate("document.querySelectorAll('#rnBody .rprow').forEach(r=>r.dataset.v='4')"); pg.evaluate("document.getElementById('rnDone').click()"); pg.wait_for_timeout(600)
+    pg.evaluate("document.querySelector('[data-cfok]')&&document.querySelector('[data-cfok]').click()"); pg.wait_for_timeout(1500)
+    again = pg.evaluate("document.getElementById('rateNightSheet').classList.contains('on')")
+    pg.evaluate("document.querySelector('#fnav [data-nav=matches]').click()"); pg.wait_for_timeout(600); pg.evaluate("document.getElementById('addResult').click()"); pg.wait_for_timeout(400); pg.evaluate("document.getElementById('arNight').click()"); pg.wait_for_timeout(600)
+    night_fill(pg, 0, [None, 'Ben', 'Ellie', 'James'], [(6, 3)])
+    pg.evaluate("document.getElementById('nrSwap').click()"); pg.wait_for_timeout(200); night_fill(pg, 1, [None] * 4, [(6, 4)])
+    pg.evaluate("document.getElementById('nrSave').click()"); pg.wait_for_timeout(1800)
+    after_add = pg.evaluate("document.getElementById('rateNightSheet').classList.contains('on')?[...document.querySelectorAll('#rnBody .rprow b')].map(x=>x.innerText):null")
+    b.close()
+    ok = after_confirm and sorted(after_confirm) == ['Ben', 'Ellie', 'James'] and not again and after_add and sorted(after_add) == ['Ben', 'Ellie', 'James']
+    return bool(ok), {'after confirming a friend\'s results': after_confirm, 'asked again for the same night': again, 'after adding a night': after_add}
+
+def ask_text(pg):
+    return pg.evaluate("document.getElementById('askWrap').classList.contains('on')?document.getElementById('askWrap').innerText.replace(/\\n+/g,' | '):''")
+
+def add_single(pg, players, sets, date=None):
+    pg.evaluate("document.querySelector('#fnav [data-nav=matches]').click()"); pg.wait_for_timeout(500)
+    pg.evaluate("document.getElementById('addResult').click()"); pg.wait_for_timeout(500)
+    for k, v in zip(['arA1', 'arA2', 'arB1', 'arB2'], players): pg.fill('#' + k, v)
+    if date: pg.fill('#arDate', date)
+    ins = pg.locator('#arSets .setrow input')
+    for j, (x, y) in enumerate(sets): ins.nth(j * 2).fill(str(x)); ins.nth(j * 2 + 1).fill(str(y))
+    pg.evaluate("document.getElementById('arSave').click()"); pg.wait_for_timeout(700)
+
+@promise('Names: friends\' first names, nicknames you linked and your own first name all go to the right person; two friends with one name are asked about', 'Every place you enter players')
+def t_names(p):
+    fr = [{'key': 'ben carter', 'name': 'Ben Carter', 'uid': 'u2', 'username': 'bencarter'}, {'key': 'ellie ward', 'name': 'Ellie Ward', 'uid': 'u3'}, {'key': 'leo smith', 'name': 'Leo Smith', 'uid': 'u6'}]
+    b, pg, e = fresh(p, history=[], profile={'name': 'Raza Khan'})
+    T(pg, "t.setFriends(a)", fr)
+    add_single(pg, ['raza', 'Ben', 'Ellie', 'Leo'], [(6, 3), (6, 4)])
+    first_ask = ask_text(pg); pg.evaluate("document.getElementById('askYes').click()"); pg.wait_for_timeout(800)
+    h1 = pg.evaluate("JSON.parse(localStorage.getItem('db-history'))[0].cfg")
+    T(pg, "t.setFriends(a)", fr + [{'key': 'ben hale', 'name': 'Ben Hale', 'uid': 'u5'}])
+    add_single(pg, ['me', 'Ben', 'Ellie Ward', 'Leo'], [(6, 2), (6, 2)])
+    which = ask_text(pg); pg.evaluate("document.getElementById('askNo').click()"); pg.wait_for_timeout(700)
+    pg.evaluate("document.getElementById('askWrap').classList.contains('on')&&document.getElementById('askYes').click()"); pg.wait_for_timeout(800)
+    h2 = pg.evaluate("JSON.parse(localStorage.getItem('db-history'))[0].cfg")
+    b.close()
+    ok = h1['pa'] == ['Raza Khan', 'Ben Carter'] and h1['pb'] == ['Ellie Ward', 'Leo Smith'] and 'Raza Khan' not in first_ask \
+        and which.startswith('Which Ben?') and h2['pa'] == ['Raza Khan', 'Ben Hale']
+    return ok, {'typed raza, Ben, Ellie, Leo saved as': h1['pa'] + h1['pb'], 'before you save': first_ask, 'two Bens': which, 'picked the second Ben': h2['pa']}
+
+@promise('Linking: a player recorded by first name who becomes a friend is offered a link, and a friend who renames keeps one record', 'Friends')
+def t_linking(p):
+    hist = [match('l1', ['Raza', 'Ali'], ['Leo', 'Marta'], [[6, 2], [6, 2]]), match('l2', ['Raza', 'Ben'], ['Ali', 'Marta'], [[6, 4], [6, 4]], days_ago=2)]
+    b, pg, e = fresh(p, history=hist)
+    T(pg, "t.setFriends(a);t.runUpkeep()", [{'key': 'ben', 'name': 'Ben', 'uid': 'u2'}, {'key': 'ali hussain', 'name': 'Ali Hussain', 'uid': 'u9'}]); pg.wait_for_timeout(1500)
+    offer = ask_text(pg); pg.evaluate("document.getElementById('askWrap').classList.contains('on')&&document.getElementById('askYes').click()"); pg.wait_for_timeout(900)
+    names_after = pg.evaluate("[...new Set(JSON.parse(localStorage.getItem('db-history')).flatMap(h=>h.cfg.pa.concat(h.cfg.pb)))]")
+    alias = T(pg, "return t.alias()")
+    T(pg, "t.setFriends(a);t.runUpkeep()", [{'key': 'benjamin', 'name': 'Benjamin', 'uid': 'u2'}, {'key': 'ali hussain', 'name': 'Ali Hussain', 'uid': 'u9'}]); pg.wait_for_timeout(1500)
+    renamed = pg.evaluate("[...new Set(JSON.parse(localStorage.getItem('db-history')).flatMap(h=>h.cfg.pa.concat(h.cfg.pb)))]")
+    T(pg, "t.runUpkeep()"); pg.wait_for_timeout(1300)
+    asked_again = ask_text(pg)
+    b.close()
+    ok = offer.startswith('Is Ali Ali Hussain?') and 'Ali Hussain' in names_after and 'Ali' not in names_after and alias.get('ali') == 'u9' \
+        and 'Benjamin' in renamed and 'Ben' not in renamed and not asked_again
+    return ok, {'offer': offer, 'names after linking': names_after, 'nickname remembered': alias, 'after Ben renamed himself': renamed, 'asked twice': bool(asked_again)}
+
+@promise('Night results: duplicates, future dates and unusual scores are caught before saving', 'Add the whole night')
+def t_night_guards(p):
+    b, pg, e = fresh(p, history=[])
+    def open_night():
+        pg.evaluate("document.querySelector('#fnav [data-nav=matches]').click()"); pg.wait_for_timeout(500)
+        pg.evaluate("document.getElementById('addResult').click()"); pg.wait_for_timeout(400); pg.evaluate("document.getElementById('arNight').click()"); pg.wait_for_timeout(600)
+    def confirm_all():
+        for _ in range(4):
+            if pg.evaluate("document.getElementById('askWrap').classList.contains('on')"): pg.evaluate("document.getElementById('askYes').click()"); pg.wait_for_timeout(500)
+    open_night(); night_fill(pg, 0, [None, 'Ben', 'Ellie', 'James'], [(6, 3), (6, 4)]); pg.evaluate("document.getElementById('nrSave').click()"); pg.wait_for_timeout(600); confirm_all(); pg.wait_for_timeout(600)
+    n1 = pg.evaluate("JSON.parse(localStorage.getItem('db-history')).length")
+    open_night(); night_fill(pg, 0, [None, 'Ben', 'Ellie', 'James'], [(6, 3), (6, 4)]); pg.evaluate("document.getElementById('nrSave').click()"); pg.wait_for_timeout(700)
+    dup = ''
+    for _ in range(3):
+        t = ask_text(pg)
+        if t.startswith('Already got'): dup = t; break
+        if t: pg.evaluate("document.getElementById('askYes').click()"); pg.wait_for_timeout(500)
+    pg.evaluate("document.getElementById('askYes').click()"); pg.wait_for_timeout(800)
+    n2 = pg.evaluate("JSON.parse(localStorage.getItem('db-history')).length")
+    open_night(); pg.fill('#nrDate', '2099-01-01'); night_fill(pg, 0, [None, 'Ben', 'Ellie', 'James'], [(6, 1)]); pg.evaluate("document.getElementById('nrSave').click()"); pg.wait_for_timeout(500)
+    future = pg.evaluate("(document.querySelector('.toast')||document.getElementById('toast')||{}).innerText||''")
+    pg.evaluate("document.getElementById('nrCancel').click()"); pg.wait_for_timeout(400)
+    open_night(); night_fill(pg, 0, [None, 'Ben', 'Ellie', 'James'], [(6, 5)]); pg.evaluate("document.getElementById('nrSave').click()"); pg.wait_for_timeout(600)
+    odd = ask_text(pg)
+    b.close()
+    ok = n1 == 1 and dup.startswith('Already got this one?') and n2 == 1 and 'in the future' in future and odd.startswith('Unusual score') and '6–5' in odd
+    return ok, {'first save': n1, 'same night again': dup, 'after skipping': n2, 'future date': future, '6-5 set': odd}
+
+@promise('Friends\' ratings: each friend counts once, however many times they rate you', 'How ratings work, Ratings from friends')
+def t_fair_ratings(p):
+    now = int(time.time() * 1000)
+    items = [{'from': 'flooder', 'v': 1, 'at': now - i * 1000} for i in range(20)] + [{'from': 'a', 'v': 4, 'at': now}, {'from': 'b', 'v': 4.5, 'at': now}, {'from': 'c', 'v': 4, 'at': now}]
+    b, pg, e = fresh(p)
+    r = T(pg, "return t.peerAggWith(a)", items)
+    b.close()
+    return r['ready'] and abs(r['avg'] - (1 + 4 + 4.5 + 4) / 4) < 1e-9, {'average with one friend rating 20 times': round(r['avg'], 3), 'if each counts once': round((1 + 4 + 4.5 + 4) / 4, 3), 'raters': r['raters']}
+
+@promise('Accounts only: a player without a PadelCred account can\'t be added anywhere, and the picker offers only accounts plus an invite', 'Every place you enter players')
+def t_accounts(p):
+    b, pg, e = fresh(p, history=[])
+    out = {}
+    pg.evaluate("document.querySelector('#fnav [data-nav=home]').click()"); pg.wait_for_timeout(400)
+    pg.evaluate("document.getElementById('hmStart').click()"); pg.wait_for_timeout(500)
+    for k, v in zip(['pA1', 'pA2', 'pB1', 'pB2'], ['Raza', 'Ben', 'Ellie', 'Zed']): pg.fill('#' + k, v)
+    pg.evaluate("document.getElementById('startBtn').click()"); pg.wait_for_timeout(700)
+    out['match setup'] = ask_text(pg); pg.evaluate("document.getElementById('askNo').click()"); pg.wait_for_timeout(300)
+    pg.focus('#pB2'); pg.wait_for_timeout(300)
+    out['picker'] = pg.evaluate("[...document.querySelectorAll('.pickbox .pickrow')].map(x=>x.querySelector('b').innerText)")
+    pg.evaluate("document.getElementById('scrim').click()"); pg.wait_for_timeout(300)
+    add_single(pg, ['Raza', 'Ben', 'Ellie', 'Zed'], [(6, 3)])
+    out['add a result'] = ask_text(pg); pg.evaluate("document.getElementById('askNo').click()"); pg.wait_for_timeout(300)
+    saved = pg.evaluate("JSON.parse(localStorage.getItem('db-history')||'[]').length")
+    b.close()
+    refused = all(v.startswith('Everyone needs a PadelCred account') and 'Zed' in v for k, v in out.items() if k != 'picker')
+    picker_ok = out['picker'][-1] == 'Invite someone to PadelCred' and 'Zed' not in out['picker'] and set(out['picker'][:-1]) <= {'Raza', 'Ben', 'Ellie', 'James', 'Leo', 'Marta', 'Kwame', 'Sofia', 'Add a friend by username'}
+    return refused and picker_ok and saved == 0, dict(out, saved=saved)
+
+@promise('Confirmation: a result counts only when the other team confirms; a partner confirming isn\'t enough', 'Matches, Waiting for the other team')
+def t_confirm(p):
+    mine = match('c1', ['Raza', 'Ben'], ['Leo', 'Marta'], [[6, 3], [6, 3]], ver=None)
+    theirs = match('c2', ['Raza', 'Leo'], ['Ben', 'Marta'], [[6, 2], [6, 2]], ver=None, recv='u_leo', recvName='Leo', cs='ask', days_ago=2)
+    theirs2 = match('c3', ['Raza', 'Kwame'], ['Leo', 'Sofia'], [[6, 4], [6, 4]], ver=None, recv='u_leo', recvName='Leo', cs='ask', days_ago=3)
+    b, pg, e = fresh(p, history=[mine, theirs, theirs2])
+    T(pg, "t.setAdmin(true,'me1');t.markRatedAll()"); pg.wait_for_timeout(300)
+    played = lambda: T(pg, "const r=t.computeLeague().find(x=>x.name==='Raza');return r?r.p:0")
+    start = played()
+    T(pg, "t.confFrom('c1','u_ben','Ben',true)"); pg.wait_for_timeout(300); partner = played()
+    T(pg, "t.confFrom('c1','u_leo','Leo',true)"); pg.wait_for_timeout(300); opponent = played()
+    pg.evaluate("document.querySelector('#fnav [data-nav=home]').click()"); pg.wait_for_timeout(600)
+    # c2: Leo added it and is my partner, so my confirming doesn't count yet; c3: I'm Leo's opponent, so it counts
+    pg.evaluate("document.querySelector('[data-cfok=\"c2\"]').click()"); pg.wait_for_timeout(700)
+    pg.evaluate("document.getElementById('rnDone')&&document.getElementById('rateNightSheet').classList.contains('on')&&document.getElementById('rnDone').click()"); pg.wait_for_timeout(300)
+    as_partner = played()
+    pg.evaluate("document.querySelector('[data-cfok=\"c3\"]').click()"); pg.wait_for_timeout(700)
+    as_opponent = played()
+    pg.evaluate("document.querySelector('#fnav [data-nav=matches]').click()"); pg.wait_for_timeout(600)
+    waiting = pg.evaluate("(document.getElementById('pendBox')||{innerText:''}).innerText.replace(/\\n+/g,' | ')")
+    b.close()
+    ok = start == 0 and partner == 0 and opponent == 1 and as_partner == 1 and as_opponent == 2 and 'waiting for Ben or Marta' in waiting
+    return ok, {'before anyone confirms': start, 'after my partner confirms': partner, 'after an opponent confirms': opponent,
+                'I confirm as Leo\'s partner': as_partner, 'I confirm as Leo\'s opponent': as_opponent, 'waiting list': waiting[:200]}
+
+@promise('Rating: once per session, at the end, by everyone; no rating after each set; friends can be added from the player picker', 'Rate the night, player picker')
+def t_session_rate(p):
+    b, pg, e = fresh(p, history=[])
+    T(pg, "t.setAdmin(true,'me1')"); pg.wait_for_timeout(300)
+    pg.evaluate("document.querySelector('#fnav [data-nav=home]').click()"); pg.wait_for_timeout(400)
+    pg.evaluate("document.getElementById('hmStart').click()"); pg.wait_for_timeout(500)
+    for k, v in zip(['pA1', 'pA2', 'pB1', 'pB2'], ['Raza', 'Ben', 'Ellie', 'James']): pg.fill('#' + k, v)
+    pg.focus('#pB2'); pg.wait_for_timeout(300)
+    picker = pg.evaluate("[...document.querySelectorAll('.pickbox .pickrow')].map(x=>x.querySelector('b').innerText)")
+    pg.evaluate("(()=>{const b=document.querySelector('[data-pickadd]');b&&b.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}))})()"); pg.wait_for_timeout(300)
+    add_form = pg.evaluate("!!document.querySelector('.pickbox .pickadd #pkFind')")
+    pg.evaluate("document.querySelector('#setup h3').click()"); pg.wait_for_timeout(200)
+    pg.evaluate("(()=>{const q=document.getElementById('fmtQ');if(!q.classList.contains('open'))document.getElementById('fmtChange').click()})()"); pg.wait_for_timeout(200)
+    for sel in ["[data-q1=sets]", "[data-q2=quick]", "#segQ3s [data-q3=set]"]: pg.evaluate("s=>document.querySelector(s).click()", sel); pg.wait_for_timeout(150)
+    pg.evaluate("document.getElementById('startBtn').click()"); pg.wait_for_timeout(700)
+    if pg.evaluate("document.getElementById('askWrap').classList.contains('on')"): pg.evaluate("document.getElementById('askNo').click()"); pg.wait_for_timeout(300)
+    rated_after_set = False
+    for _ in range(80):
+        if pg.evaluate("document.getElementById('done').classList.contains('on')"):
+            rated_after_set = pg.evaluate("!!document.querySelector('#done .ratepeers, #done .rategame')"); break
+        pg.evaluate("document.getElementById('halfUs').click()")
+    pg.wait_for_timeout(8000)
+    rotated = pg.evaluate("(()=>{const s=JSON.parse(window.padelcred.state());return s.us.name+' v '+s.them.name})()")
+    pg.evaluate("document.getElementById('resultsBtn').click()"); pg.wait_for_timeout(1500)
+    sheet = pg.evaluate("document.getElementById('rateNightSheet').classList.contains('on')?[...document.querySelectorAll('#rnBody .rprow b')].map(x=>x.innerText):null")
+    pg.evaluate("document.querySelectorAll('#rnBody .rprow').forEach(r=>r.dataset.v='4')"); pg.evaluate("document.getElementById('rnDone')&&document.getElementById('rnDone').click()"); pg.wait_for_timeout(500)
+    T(pg, "t.verifyAll()"); pg.wait_for_timeout(300)
+    pg.evaluate("document.querySelector('#fnav [data-nav=matches]').click()"); pg.wait_for_timeout(700)
+    pg.evaluate("document.querySelector('#resTable tbody tr[data-id]').click()"); pg.wait_for_timeout(600)
+    detail = pg.evaluate("!!document.querySelector('#rowSheet [data-ratenight]')&&!document.querySelector('#rowSheet .ratepeers')")
+    b.close()
+    ok = (not rated_after_set) and rotated.startswith('Raza & Ellie') and sheet and sorted(sheet) == ['Ben', 'Ellie', 'James'] and detail \
+        and 'Add a friend by username' in picker and add_form
+    return ok, {'rating shown after the set': rated_after_set, 'pairs after the set': rotated, 'rate the night on leaving': sheet,
+                'match details offer Rate the night': detail, 'picker': picker, 'add-friend search opens': add_form}
+
+@promise('Rating questions: "How did X perform today?" for everyone else, never yourself; 1 star or below asks to double-check; old or unplayed nights can\'t be rated', 'Rate the night')
+def t_rate_rules(p):
+    now = int(time.time() * 1000)
+    tonight = [match('q%d' % i, pa, pb, [[6, 3]], session='sq', days_ago=0, added=now) for i, (pa, pb) in enumerate([(['me', 'Ben'], ['Ellie', 'James']), (['Raza', 'Ellie'], ['James', 'Ben'])])]
+    old = [match('o1', ['Raza', 'Ben'], ['Ellie', 'James'], [[6, 2]], session='so', days_ago=8, added=now - 8 * 86400000)]
+    others = [match('x1', ['Leo', 'Marta'], ['Kwame', 'Sofia'], [[6, 1]], session='sx2', days_ago=0, added=now)]
+    b, pg, e = fresh(p, history=tonight + old + others)
+    T(pg, "t.setAdmin(true,'me1')"); pg.wait_for_timeout(300)
+    opened = T(pg, "return t.rateNight(['q0','q1'])"); pg.wait_for_timeout(500)
+    qs = pg.evaluate("[...document.querySelectorAll('#rnBody .rpq')].map(x=>x.innerText)")
+    pg.evaluate("document.querySelector('#rnBody .rprow .rpstars .star[data-k=\"3\"]').click()"); pg.wait_for_timeout(500)
+    asked_for_normal = pg.evaluate("document.getElementById('askWrap').classList.contains('on')")
+    pg.evaluate("document.querySelector('#rnBody .rprow .rpstars .star[data-k=\"1\"]').click()"); pg.wait_for_timeout(500)
+    low = ask_text(pg)
+    pg.evaluate("document.getElementById('askNo').click()"); pg.wait_for_timeout(400)
+    reverted = pg.evaluate("document.querySelector('#rnBody .rprow').dataset.v")
+    pg.evaluate("document.getElementById('rnDone').click()"); pg.wait_for_timeout(400)
+    old_ok = T(pg, "return t.rateNight(['o1'])")
+    pg.wait_for_timeout(200)
+    not_played = T(pg, "return t.rateNight(['x1'])")
+    b.close()
+    ok = opened and sorted(qs) == sorted(['How did Ben perform today?', 'How did Ellie perform today?', 'How did James perform today?']) \
+        and not asked_for_normal and low.startswith('Is that a fair rating?') and reverted in ('0', '') and old_ok is False and not_played is False
+    return ok, {'questions': qs, 'asked about a 3-star rating': asked_for_normal, 'half a star': low[:80], 'after Change it': reverted,
+                'night from 8 days ago can be rated': old_ok, 'night I didn\'t play in can be rated': not_played}
+
+@promise('Rating is compulsory: results count for you once you\'ve rated, results you add are sent once you\'ve rated, confirming means rating, and after 7 days it counts anyway', 'Every match type')
+def t_rate_compulsory(p):
+    now = int(time.time() * 1000)
+    mine = match('rc1', ['Raza', 'Ben'], ['Ellie', 'James'], [[6, 3], [6, 4]], days_ago=0, added=now)
+    old = match('rc0', ['Raza', 'Leo'], ['Marta', 'Kwame'], [[6, 2], [6, 2]], days_ago=8, added=now - 8 * 86400000)
+    theirs = match('rc2', ['Raza', 'Sofia'], ['Leo', 'Marta'], [[6, 1], [6, 1]], days_ago=0, added=now, ver=None, recv='u_leo', recvName='Leo', cs='ask')
+    b, pg, e = fresh(p, history=[mine, old, theirs])
+    T(pg, "t.setAdmin(true,'me1')"); pg.wait_for_timeout(300)
+    played = lambda: T(pg, "const r=t.computeLeague().find(x=>x.name==='Raza');return r?r.p:0")
+    out = {'counts before rating (only the 8-day-old one)': played()}
+    pg.evaluate("document.querySelector('#fnav [data-nav=home]').click()"); pg.wait_for_timeout(600)
+    out['reminder'] = pg.evaluate("(document.getElementById('rateDue')||{innerText:''}).innerText.split('\\n')[0]")
+    pg.evaluate("document.querySelector('#rateDue [data-ratenight]').click()"); pg.wait_for_timeout(700)
+    out['questions'] = pg.evaluate("[...document.querySelectorAll('#rnBody .rpq')].map(x=>x.innerText)")
+    out['button before rating'] = pg.evaluate("document.getElementById('rnDone').innerText")
+    pg.evaluate("document.getElementById('rnDone').click()"); pg.wait_for_timeout(400)
+    out['finished without rating'] = T(pg, "return !!t.rated()['rc1']")
+    pg.evaluate("document.querySelectorAll('#rnBody .rprow').forEach(r=>r.dataset.v='4')"); pg.wait_for_timeout(100)
+    pg.evaluate("document.getElementById('rnDone').click()"); pg.wait_for_timeout(600)
+    out['counts after rating'] = played()
+    pg.evaluate("document.querySelector('#fnav [data-nav=home]').click()"); pg.wait_for_timeout(600)
+    out['confirm button'] = pg.evaluate("(document.querySelector('[data-cfok]')||{innerText:''}).innerText")
+    pg.evaluate("document.querySelector('[data-cfok]').click()"); pg.wait_for_timeout(700)
+    out['confirm opens ratings'] = pg.evaluate("document.getElementById('rateNightSheet').classList.contains('on')?document.getElementById('rnDone').innerText:null")
+    out['confirmed before rating'] = pg.evaluate("JSON.parse(localStorage.getItem('db-history')).find(h=>h.id==='rc2').cs")
+    pg.evaluate("document.querySelectorAll('#rnBody .rprow').forEach(r=>r.dataset.v='3.5')"); pg.evaluate("document.getElementById('rnDone').click()"); pg.wait_for_timeout(700)
+    out['confirmed after rating'] = pg.evaluate("JSON.parse(localStorage.getItem('db-history')).find(h=>h.id==='rc2').cs")
+    out['counts after confirming as their opponent'] = played()
+    add_single(pg, ['Raza', 'Kwame', 'Leo', 'Marta'], [(6, 4), (6, 4)])
+    for _ in range(3):
+        if pg.evaluate("document.getElementById('askWrap').classList.contains('on')"): pg.evaluate("document.getElementById('askYes').click()"); pg.wait_for_timeout(500)
+    newid = pg.evaluate("JSON.parse(localStorage.getItem('db-history'))[0].id")
+    out['held back until rated'] = newid in T(pg, "return t.sendq()")
+    T(pg, "t.markRatedAll()"); pg.wait_for_timeout(400)
+    out['sent once rated'] = newid not in T(pg, "return t.sendq()")
+    pg.evaluate("document.getElementById('scrim')&&document.getElementById('scrim').click()"); pg.wait_for_timeout(300)
+    pg.evaluate("document.querySelector('#fnav [data-nav=home]').click()"); pg.wait_for_timeout(400)
+    pg.evaluate("document.getElementById('hmStart').click()"); pg.wait_for_timeout(500)
+    for k, v in zip(['pA1', 'pA2', 'pB1', 'pB2'], ['Raza', 'Ben', 'Leo', 'Marta']): pg.fill('#' + k, v)
+    pg.evaluate("(()=>{const q=document.getElementById('fmtQ');if(!q.classList.contains('open'))document.getElementById('fmtChange').click()})()"); pg.wait_for_timeout(200)
+    for sel in ["[data-q1=sets]", "[data-q2=quick]", "#segQ3s [data-q3=no]"]: pg.evaluate("s=>{const b=document.querySelector(s);b&&b.click()}", sel); pg.wait_for_timeout(120)
+    pg.evaluate("document.getElementById('startBtn').click()"); pg.wait_for_timeout(700)
+    if pg.evaluate("document.getElementById('askWrap').classList.contains('on')"): pg.evaluate("document.getElementById('askNo').click()"); pg.wait_for_timeout(300)
+    for _ in range(80):
+        if pg.evaluate("document.getElementById('done').classList.contains('on')"): break
+        pg.evaluate("document.getElementById('halfUs').click()")
+    pg.wait_for_timeout(1500)
+    out['court screen'] = pg.evaluate("({rate:(document.querySelector('#done [data-ratenight]')||{innerText:''}).innerText,stars:!!document.querySelector('#done .ratepeers, #done .rategame')})")
+    b.close()
+    ok = out['counts before rating (only the 8-day-old one)'] == 1 and out['reminder'].startswith('Rate to count') and len(out['questions']) == 3 \
+        and out['button before rating'] == 'Rate everyone to finish' and not out['finished without rating'] and out['counts after rating'] == 2 \
+        and out['confirm button'] == 'Rate and confirm' and out['confirm opens ratings'] == 'Rate everyone to confirm' and out['confirmed before rating'] == 'ask' \
+        and out['confirmed after rating'] == 'yes' and out['counts after confirming as their opponent'] == 3 and out['held back until rated'] and out['sent once rated'] \
+        and out['court screen']['rate'] == 'Rate the players' and not out['court screen']['stars']
+    return ok, out
+
+@promise('Awards and achievements celebrate once per account, not once per phone: a new phone or browser doesn\'t celebrate them again', 'Signing in')
+def t_celebrate_once(p):
+    b, pg, e = fresh(p)
+    first = T(pg, "t.celebrate('bug1');return !!document.getElementById('achPop')")
+    seen = T(pg, "return Object.keys((window.__pcTest&&true)?JSON.parse(localStorage.getItem('db-profile')).seen||{}:{})")
+    # a fresh phone: nothing on the phone, but the account's profile says it was celebrated
+    pg.evaluate("localStorage.removeItem('db-ex-seen')"); pg.reload(); pg.wait_for_timeout(2000); pg.wait_for_function("!!window.__pcTest")
+    before = pg.evaluate("JSON.parse(localStorage.getItem('db-profile')).seen.bug1")
+    pg.wait_for_timeout(50); T(pg, "t.celebrate('bug1')"); pg.wait_for_timeout(300)
+    after = pg.evaluate("JSON.parse(localStorage.getItem('db-profile')).seen.bug1")
+    again = before != after
+    # control: something genuinely new does celebrate, and records it
+    T(pg, "t.celebrate('bug2')"); pg.wait_for_timeout(300)
+    fresh_one = pg.evaluate("!!JSON.parse(localStorage.getItem('db-profile')).seen.bug2")
+    merged = T(pg, "return Object.keys(t.mergeProf({seen:{a:1}},{seen:{b:2}}).seen).sort()")
+    b.close()
+    return 'bug1' in seen and not again and fresh_one and merged == ['a', 'b'], {'saved to the account profile': seen, 'celebrated again on a fresh phone': again, 'a new award still celebrates': fresh_one, 'two phones combined': merged}
+
 TESTS = [t_start_table, t_tiers, t_weights, t_weight_applied, t_amer_counts, t_league_overall, t_pred, t_dispute, t_evening,
-         t_golden, t_adv, t_tb, t_race, t_bestof, t_stb, t_pairings, t_court, t_form, t_legacy, t_first_serve, t_versions, t_night_roster, t_night_open, t_night_cards, t_night_planner, t_profile, t_admin_secrets, t_gate]
+         t_golden, t_adv, t_tb, t_race, t_bestof, t_stb, t_pairings, t_court, t_form, t_legacy, t_first_serve, t_versions, t_night_roster, t_night_open, t_night_cards, t_night_planner, t_profile, t_admin_secrets, t_gate, t_night_add, t_rate_night, t_names, t_linking, t_night_guards, t_fair_ratings, t_accounts, t_confirm, t_session_rate, t_rate_rules, t_rate_compulsory, t_celebrate_once]
 
 if __name__ == '__main__':
     with sync_playwright() as p:

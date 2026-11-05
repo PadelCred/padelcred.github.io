@@ -10,13 +10,13 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="PadelCred">
-<meta name="app-version" content="2.12">
+<meta name="app-version" content="2.18.1">
 <title>PadelCred</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="padelcred.css?v=2.12">
+<link rel="stylesheet" href="padelcred.css?v=2.18.1">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="64x64" href="favicon-64.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -119,6 +119,7 @@
       <div class="seg" id="segFilter"><button data-v="all">All</button><button data-v="w">Wins</button><button data-v="l">Losses</button></div>
     </div>
     <p class="count" id="resCount"></p>
+    <div id="pendBox"></div>
     <div id="resTable"></div>
     <p class="vsub hide">Head to head</p>
     <div id="h2hTable" class="hide"></div>
@@ -131,6 +132,7 @@
 <section class="sheet" id="addSheet" aria-label="Add a result">
   <h3 id="addTitle">Add a result</h3>
   <p>For matches you didn't score in the app.</p>
+  <button class="secondary nrbtn" id="arNight">Played several matches? Add the whole night</button>
   <div class="field"><label for="arDate">Date</label><input type="date" id="arDate"></div>
   <div class="teambox">
     <span class="lbl">Your team</span>
@@ -153,6 +155,24 @@
   </div>
   <div class="field"><label for="arNotes">Notes (optional)</label><textarea id="arNotes" placeholder="Venue, partner, how it went"></textarea></div>
   <div class="btns"><button class="primary" id="arSave">Save result</button><button class="secondary" id="arCancel">Cancel</button></div>
+</section>
+
+<section class="sheet" id="nightAddSheet" aria-label="Add the night's results">
+  <h3>Add the night's results</h3>
+  <p>Every match you played, in order. Each player's record updates, and PadelCred friends get the results to confirm.</p>
+  <div class="field"><label for="nrDate">Date</label><input type="date" id="nrDate"></div>
+  <div class="field"><label for="nrVenue">Venue (optional)</label><input type="text" id="nrVenue" list="venueNames" maxlength="40" autocomplete="off" placeholder="For example, Padel Social Club"></div>
+  <div class="field"><label for="nrGroup">Group (optional)</label><input type="text" id="nrGroup" list="groupNames" maxlength="24" autocomplete="off" placeholder="For example, Sunday crew"></div>
+  <div id="nrMatches"></div>
+  <div class="nradd"><button class="secondary" id="nrSwap">Next match: same players, swap partners</button><button class="secondary" id="nrNew">Next match: different players</button></div>
+  <div class="btns"><button class="primary" id="nrSave">Save results</button><button class="secondary" id="nrCancel">Cancel</button></div>
+</section>
+
+<section class="sheet" id="rateNightSheet" aria-label="Rate the night">
+  <h3>Rate the night</h3>
+  <p>Rate everyone you played with and against. You don't rate yourself. Your results count for you once you've rated.</p>
+  <div id="rnBody"></div>
+  <div class="btns"><button class="primary" id="rnDone">Done</button><button class="ghost" id="rnLater">Later</button></div>
 </section>
 
 <section class="sheet" id="rowSheet" aria-label="Match details">
@@ -616,7 +636,7 @@
     <p>Longer matches say more about who's better, so they count for more.</p>
     <table class="stats plain"><tbody><tr><td>Best of 3 or best of 5</td><td>Counts fully</td></tr><tr><td>One 6-game set</td><td>Three-quarters</td></tr><tr><td>First to 5 games, Americano and Mexicano rounds, sets with swapped partners</td><td>Half</td></tr><tr><td>Until time's up</td><td>By games played: 16 games counts fully</td></tr></tbody></table>
     <h4>Ratings from friends</h4>
-    <p>After a match, you can rate the other players from half a star to 5 stars. Tap a star once for half, twice for a full star. Ratings of 1 or below, or 5, ask you to double check they're fair. Ratings only count once at least 3 different people have rated you. The highest and lowest are dropped, and nobody ever sees who gave what, only an average.</p>
+    <p>Everyone who played rates everyone else, once per match or session, never themselves. Your results count for you once you've rated, and confirming a result means rating everyone in it. After 7 days it counts anyway and rating closes. Ratings go from half a star to 5 stars. Tap a star once for half, twice for a full star. Ratings of 1 or below, or 5, ask you to double check they're fair. Ratings only count once at least 3 different people have rated you. The highest and lowest are dropped, and nobody ever sees who gave what, only an average.</p>
     <h4>Form</h4>
     <p>Form shows how you're playing right now, based on your last 10 matches, with the most recent counting most. Beating a stronger pair, or winning lots of games even in a loss, lifts it.</p>
     <table class="stats plain"><tbody><tr><td>On fire</td><td>Playing well above your level</td></tr><tr><td>Steady</td><td>Playing around your level</td></tr><tr><td>Cold</td><td>A rough patch</td></tr></tbody></table>
@@ -667,7 +687,7 @@
     <button class="secondary" id="termsBtn">Terms</button>
     <button class="secondary" id="dataUpdate">Check for updates</button>
   </div>
-  <p class="help" style="text-align:center;margin:14px 0 0">PadelCred v2.12<br><span class="copyr">© 2026 Raza Rebuilt. All rights reserved.</span></p>
+  <p class="help" style="text-align:center;margin:14px 0 0">PadelCred v2.18.1<br><span class="copyr">© 2026 Raza Rebuilt. All rights reserved.</span></p>
 </section>
 
 <section class="camview" id="camView" aria-label="Camera">
@@ -884,7 +904,7 @@
 <canvas class="fx" id="fx"></canvas>
 <div class="toast" id="toast" role="status"></div>
 
-<script src="padelcred.js?v=2.12"></script>
+<script src="padelcred.js?v=2.18.1"></script>
 <script>if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol))addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));</script>
 </body>
 </html>

@@ -523,12 +523,12 @@ function nameFilterFail(ids){
 $('startBtn').onclick=async()=>{
   if(nameFilterFail(['pA1','pA2','pB1','pB2','inA','inB','inGroup','inVenue'])){if($('moreOpts')&&['inA','inB','inGroup','inVenue'].some(i=>$(i)&&$(i).value&&badWords($(i).value)))$('moreOpts').open=true;return}
   setupStarted=true;
-  await checkNames(['pA1','pA2','pB1','pB2']);
+  if(!(await checkNames(['pA1','pA2','pB1','pB2'])))return;
   const cfg=takeDraft();
   if(S.done===null&&M.pts.length>5&&!(await ask('Start a new match?','The current score will be cleared and this match won\'t be saved.','Start new match',true)))return;
   M=newMatch(cfg);S=replay(M.cfg,M.pts);saveM();render();hideSheet();
 };
-$('keepBtn').onclick=async()=>{setupStarted=true;await checkNames(['pA1','pA2','pB1','pB2']);M.cfg=Object.assign(takeDraft(),{setFirst:M.cfg.setFirst});S=replay(M.cfg,M.pts);recordHistory();saveM();render();hideSheet()};
+$('keepBtn').onclick=async()=>{setupStarted=true;if(!(await checkNames(['pA1','pA2','pB1','pB2'])))return;M.cfg=Object.assign(takeDraft(),{setFirst:M.cfg.setFirst});S=replay(M.cfg,M.pts);recordHistory();saveM();render();hideSheet()};
 $('newBtn').onclick=openSetup;
 $('fmtBtn').onclick=openSetup;
 $('doneNew').onclick=openSetup;
@@ -1023,7 +1023,8 @@ function rowOf(h){
   return{id:h.id,h,cfg,date:date||0,a:cfg.a||'Us',b:cfg.b||'Them',sets,winner,sw,gw,pf,pa,dur,score,
     source:h.manual?'Added':h.court?'Court time':h.unfinished?'Ended early':'Scored live',notes:h.notes||'',st,unfinished:!!h.unfinished};
 }
-function allRows(){if(memo.rows&&memo.hv===HV)return memo.rows;memo.hv=HV;return memo.rows=history.filter(h=>!hDisputed(h)).map(rowOf).filter(r=>r.sets.length)}
+function allRows(){const who=FB.user?FB.user.uid:'';if(memo.rows&&memo.hv===HV&&memo.who===who)return memo.rows;memo.hv=HV;memo.who=who;const due=new Set();if(FB.user){const seen=new Set();history.forEach(h=>{const u=unitOf(h);if(!seen.has(u)){seen.add(u);if(needsMyRating(u))due.add(u)}})}
+  return memo.rows=history.filter(h=>!hDisputed(h)&&hVerified(h)&&!due.has(unitOf(h))).map(rowOf).filter(r=>r.sets.length)}
 function filteredRows(){
   const q=RES.q.trim().toLowerCase();
   const rows=allRows().filter(r=>{
@@ -1040,7 +1041,7 @@ function filteredRows(){
 }
 const dShort=ts=>new Date(ts).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'2-digit'});
 const dLong=ts=>new Date(ts).toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-function renderResults(){
+function renderResults(){try{
   updateRecapBtn();
   const all=groupRows(),rows=filteredRows();
   const won=rows.filter(r=>r.winner===0).length,lost=rows.filter(r=>r.winner===1).length;
@@ -1079,7 +1080,8 @@ function renderResults(){
   $('h2hTable').innerHTML='<div class="tablewrap"><table class="grid"><thead><tr><th>Opponents</th><th>Played</th><th>Won</th><th>Lost</th><th>Win rate</th><th>Last played</th></tr></thead><tbody>'+
     list.map(o=>'<tr data-q="'+esc(o.name)+'"><td>'+esc(o.name)+'</td><td class="num">'+o.p+'</td><td class="num">'+o.w+'</td><td class="num">'+o.l+'</td><td class="num">'+(o.w+o.l?Math.round(o.w/(o.w+o.l)*100)+'%':'–')+'</td><td>'+dShort(o.last)+'</td></tr>').join('')+'</tbody></table></div>';
   $('h2hTable').querySelectorAll('tbody tr').forEach(tr=>tr.onclick=()=>{RES.q=tr.dataset.q;$('filterText').value=RES.q;renderResults();$('resultsView').scrollTo({top:0,behavior:'smooth'})});
-}
+
+}finally{try{pendRender()}catch(e){}}}
 function openResults(){segSet('segFilter',RES.filter);$('filterText').value=RES.q;$('resultsView').classList.add('on');$('resultsView').scrollTop=0;setTab(typeof tab!=='undefined'?tab:'matches')}
 $('resultsBtn').onclick=()=>{if(typeof showHome==='function')showHome();else openResults()};
 $('resultsBack').onclick=()=>{$('resultsView').classList.remove('on');if(typeof showHome==='function')showHome()};
@@ -1093,7 +1095,7 @@ function openRow(id){try{
   const r=rowOf(h);rowId=id;
   $('rowTitle').textContent=r.unfinished?(r.h.leader===0?r.a+' led '+r.b:r.h.leader===1?r.b+' led '+r.a:r.a+' v '+r.b):r.winner===0?r.a+' beat '+r.b:r.winner===1?r.b+' beat '+r.a:r.a+' v '+r.b;
   $('rowWhen').textContent=dLong(r.date)+(r.cfg.venue?', '+r.cfg.venue:'')+(groupOf(r.cfg)?', '+groupOf(r.cfg):'')+(r.h.manual?'. Added manually.':r.unfinished?'. Ended early'+(r.h.counts?', counts in the league.':', doesn\'t count in the league.'):'. Scored live.');
-  $('rowBody').innerHTML='<p class="setline">'+esc(r.score)+'</p>'+venueLineHtml(h)+(meKey()&&[0,1].some(s=>members(r.cfg,s).some(n=>pkey(n)===meKey()))&&r.winner!==null?rateHtml(h.id,h.rate,'Your game')+ratePeersHtml(h):'')+awardsHtml(r)+(r.st?statsTable(r.cfg,r.st,h.start,h.end)+(r.st.log.length>3?'<p class="sh">Momentum</p>'+momentumSvg(r.st,r.cfg):''):'');
+  $('rowBody').innerHTML='<p class="setline">'+esc(r.score)+'</p>'+venueLineHtml(h)+(meKey()&&[0,1].some(s=>members(r.cfg,s).some(n=>pkey(n)===meKey()))&&r.winner!==null?(needsMyRating(unitOf(h))||(FB.user&&Date.now()-unitAge(unitEntries(unitOf(h)))<RATE_DAYS*864e5)?'<button class="secondary rnbtn" data-ratenight="'+esc(unitOf(h))+'">'+(h.session?'Rate the session':'Rate the players')+'</button>':''):'')+awardsHtml(r)+(r.st?statsTable(r.cfg,r.st,h.start,h.end)+(r.st.log.length>3?'<p class="sh">Momentum</p>'+momentumSvg(r.st,r.cfg):''):'');
   $('rowCard').onclick=()=>openCard(r);
   if(h.session){$('rowBody').insertAdjacentHTML('afterbegin',sessionHtml(h.session))}
 
@@ -1197,6 +1199,7 @@ async function saveArSession(){
   const entries=rounds.map((r,i)=>{const pa=r.pr[0].slice(),pb=r.pr[1].slice();
     return{id:'m'+now.toString(36)+i,manual:true,date:base+i*60000,sets:r.sets,session:sid,added:now,notes:i===0?notes:'',
       cfg:{pa,pb,an:'',bn:'',group,venue,a:teamNameFrom('',pa[0],pa[1],'Us'),b:teamNameFrom('',pb[0],pb[1],'Them')}}});
+  if(!(await confirmRecipients(entries.map(e=>e.cfg))))return;
   entries.forEach(e=>history.unshift(e));
   if(venue)store.set('db-lastVenue',venue);
   saveH();hideSheet();renderResults();toast(entries.length+' rounds added as one session. Rate your games in each round.');
@@ -1205,9 +1208,10 @@ async function saveArSession(){
   if(mine)setTimeout(()=>{if(!openSheet)openRow(mine.id)},500);
 }
 $('arSave').onclick=async()=>{
-  if($('arRot').checked){if(nameFilterFail(['arA1','arA2','arB1','arB2','arGroup','arVenue']))return;await checkNames(['arA1','arA2','arB1','arB2']);return saveArSession()}
+  if(futureDate($('arDate').value)){toast('That date is in the future. Results are for matches already played.');return}
+  if($('arRot').checked){if(nameFilterFail(['arA1','arA2','arB1','arB2','arGroup','arVenue']))return;if(!(await checkNames(['arA1','arA2','arB1','arB2'])))return;return saveArSession()}
   if(nameFilterFail(['arA1','arA2','arB1','arB2','arA','arB','arGroup','arVenue']))return;
-  await checkNames(['arA1','arA2','arB1','arB2']);
+  if(!(await checkNames(['arA1','arA2','arB1','arB2'])))return;
   const sets=[];let bad=false;
   $('arSets').querySelectorAll('.setrow').forEach(r=>{
     const [x,y]=[...r.querySelectorAll('input')].map(i=>i.value.trim());
@@ -1218,11 +1222,13 @@ $('arSave').onclick=async()=>{
   });
   if(bad){toast('Each set needs two different scores, like 6 and 4.');return}
   if(!sets.length){toast('Add the score for at least one set.');return}
+  if(!editId&&!(await checkOddScores([{label:'This match',sets}])))return;
   const parts=$('arDate').value.split('-').map(Number);
   const date=parts.length===3&&!parts.some(isNaN)?new Date(parts[0],parts[1]-1,parts[2],12).getTime():Date.now();
   const entry={id:editId||('m'+Date.now().toString(36)),manual:true,date,sets,
     cfg:(()=>{const pa=[$('arA1').value.trim(),$('arA2').value.trim()],pb=[$('arB1').value.trim(),$('arB2').value.trim()],an=$('arA').value.trim(),bn=$('arB').value.trim();
       return{pa,pb,an,bn,group:$('arGroup').value.trim(),venue:canonicalVenue($('arVenue').value),a:teamNameFrom(an,pa[0],pa[1],'Us'),b:teamNameFrom(bn,pb[0],pb[1],'Them')}})(),notes:$('arNotes').value.trim()};
+  if(!editId&&!(await confirmRecipients([entry.cfg])))return;
   if(!editId&&findDuplicate(entry)&&!(await ask('Already got this one?','There\'s already a match with these players, on this day, with this score.','Add anyway',false,'Don\'t add'))){hideSheet();return}
   const i=history.findIndex(x=>x.id===entry.id);
   if(i>=0)history[i]=entry;else history.unshift(entry);
@@ -2032,7 +2038,8 @@ function exclusiveHtml(ex,mine){
   return h;
 }
 let exAnnounced=store.get('db-ex-seen')||{};
-function celebrateEx(key,msg,pop){if(exAnnounced[key])return;exAnnounced[key]=1;store.set('db-ex-seen',exAnnounced);if(pop){setTimeout(()=>queuePop([Object.assign({key:'x:'+key},pop)]),900)}else setTimeout(()=>{fxCannons(70);toast(msg)},700)}
+function celebrateEx(key,msg,pop){if(exAnnounced[key]||(PROF.seen&&PROF.seen[key])){exAnnounced[key]=1;store.set('db-ex-seen',exAnnounced);return}exAnnounced[key]=1;store.set('db-ex-seen',exAnnounced);
+  try{PROF.seen=Object.assign({},PROF.seen||{},{[key]:Date.now()});PROF.ft=Object.assign({},PROF.ft||{},{seen:Date.now()});saveProf()}catch(e){}if(pop){setTimeout(()=>queuePop([Object.assign({key:'x:'+key},pop)]),900)}else setTimeout(()=>{fxCannons(70);toast(msg)},700)}
 function setXb(k,v){PROF.xb=Object.assign({},PROF.xb||{},{[k]:v});saveProf()}
 // group starter and recruiter: checked as groups and friends update
 function checkSocialBadges(){
@@ -2067,7 +2074,7 @@ async function ensureFoundingGroups(){
 async function checkAwards(){
   if(!FB.user)return;
   try{const d=await FB.db.collection('awards').doc(FB.user.uid).get();
-    if(d.exists){const a=d.data(),cur=(PROF.xb||{}).bug;if(a.bugs&&(!cur||cur.n!==a.bugs)){setXb('bug',{n:a.bugs,date:a.last||Date.now()});celebrateEx('bug'+a.bugs,'',{id:'bug',name:'Bug hunter',extra:a.bugs>1?'×'+a.bugs:'',tier:'x',desc:'You found a real bug and helped make PadelCred better. Thank you!'})}}}catch(e){}
+    if(d.exists){const a=d.data(),cur=(PROF.xb||{}).bug;if(a.bugs&&(!cur||cur.n!==a.bugs)){setXb('bug',{n:a.bugs,date:a.last||Date.now()});if(a.last&&Date.now()-a.last>14*864e5){exAnnounced['bug'+a.bugs]=1;store.set('db-ex-seen',exAnnounced)}else celebrateEx('bug'+a.bugs,'',{id:'bug',name:'Bug hunter',extra:a.bugs>1?'×'+a.bugs:'',tier:'x',desc:'You found a real bug and helped make PadelCred better. Thank you!'})}}}catch(e){}
   try{const ad=await FB.db.collection('admins').doc(FB.user.uid).get();FB.admin=ad.exists}catch(e){FB.admin=false}
   if(FB.admin)loadBugs(true);
 }
@@ -2165,7 +2172,7 @@ function renderWrap(){
   const box=$('doneWrap');if(!box)return;
   const canRate=WRAP.on&&M&&M.id&&meKey()&&[0,1].some(s=>members(M.cfg,s).some(n=>pkey(n)===meKey()))&&history.some(x=>x.id===M.id);
   if(!WRAP.on||(!WRAP.items.length&&!WRAP.invite&&!canRate)){box.innerHTML='';box.classList.remove('has');return}
-  let h=canRate?rateHtml(M.id,(history.find(x=>x.id===M.id)||{}).rate)+ratePeersHtml(history.find(x=>x.id===M.id)):'';
+  let h=canRate&&!M.session&&needsMyRating(M.id)?'<button class="primary rnbtn" data-ratenight="'+esc(M.id)+'">Rate the players</button>':'';
   if(WRAP.items.length)h+='<div class="wrapach"><p>'+(WRAP.items.length===1?'New achievement':WRAP.items.length+' new achievements')+'</p><div class="wrapchips">'+WRAP.items.map((it,i)=>'<button class="wchip '+(TIERCLS[it.tier]||'t1')+'" data-i="'+i+'" style="--i:'+i+'"><i class="medal">'+badgeSvg(it.id)+'</i><span><b>'+esc(it.name)+(it.extra?' '+esc(it.extra):'')+'</b><em>'+(TIERNAME[it.tier]||'')+'</em></span></button>').join('')+'</div></div>';
   if(WRAP.invite){const n=WRAP.invite,list=n.length>1?n.slice(0,-1).join(', ')+' and '+n[n.length-1]:n[0];
     h+='<div class="wrapinv"><span><b>'+esc(list)+'</b> '+(n.length>1?'aren\'t':'isn\'t')+' on PadelCred yet</span><button class="mini lime" id="wrapInvite">Invite</button></div>'}
@@ -2370,7 +2377,7 @@ function amSyncAll(){let changed=false;const want=new Map();
     if(!w){history.splice(i,1);changed=true;continue}
     if(JSON.stringify([h.sets,h.cfg.pa,h.cfg.pb])!==JSON.stringify([w.sets,w.cfg.pa,w.cfg.pb])){history[i]=Object.assign({},h,{sets:w.sets,cfg:w.cfg,added:Date.now()});changed=true}
     want.delete(h.id)}
-  want.forEach(w=>{history.push(w);changed=true});
+  want.forEach(w=>{history.push(w);changed=true;setTimeout(()=>{try{autoSend(w)}catch(e){}},400)});
   if(changed){history.sort((a,b)=>((b.date||b.start||0)-(a.date||a.start||0)));saveH()}}
 function saveAmer(){store.set('db-amer',AM.list);try{amSyncAll()}catch(e){}if(typeof profChanged==='function')profChanged()}
 function amStandings(ev){
@@ -2409,9 +2416,10 @@ function mexicanoRound(ev){
   for(let i=0;i+3<play.length;i+=4)matches.push({a:[play[i],play[i+3]],b:[play[i+1],play[i+2]],sa:null,sb:null});
   return{matches,sit};
 }
-function amNew(){
+async function amNew(){
   const d=AM.draft;
   if(d.players.length<4){toast('Add at least 4 players.');return}
+  if(!(await needAccounts(d.players)))return;
   if(d.players.some(n=>typeof badWords==='function'&&badWords(n))||(d.venue&&badWords(d.venue))){toast('One of those names isn\'t allowed. Try a different one.');return}
   const courts=Math.max(1,Math.min(d.courts,Math.floor(d.players.length/4)));
   const ev={id:newId(),type:d.type,players:d.players.slice(),pts:d.pts,courts,venue:d.venue||'',created:Date.now(),u:Date.now(),done:false,rounds:[],planned:d.type==='americano'?null:d.rounds};
@@ -2428,7 +2436,7 @@ function amNext(ev){
   if(ev.type==='mexicano')ev.rounds.push(mexicanoRound(ev));
   ev.at++;ev.u=Date.now();saveAmer();renderAmer();window.scrollTo(0,0);$('amerView').scrollTop=0;
 }
-async function amFinish(ev,early){
+async function amFinish(ev,early){setTimeout(()=>{try{if(FB.user&&!NR.rated['am'+ev.id]){const l=history.filter(h=>h.session==='am'+ev.id);if(l.length&&openRateNight(l)){NR.rated['am'+ev.id]=Date.now();store.set('db-rnshown',NR.rated)}}}catch(e){}},1200);
   if(early&&!(await ask('Finish the night now?','The leaderboard is final from the rounds you\'ve scored.','Finish night',false)))return;
   ev.rounds=ev.rounds.filter((r,i)=>i<ev.at||r.matches.some(m=>m.sa!=null));
   ev.rounds.forEach(r=>r.matches=r.matches.filter(m=>m.sa!=null&&m.sb!=null));
@@ -2693,7 +2701,7 @@ function peerAgg(){
   const cut=Date.now()-PEER_DAYS*864e5,list=PR.items.filter(x=>x.at>=cut&&x.v>=.5&&x.v<=5);
   const raters=new Set(list.map(x=>x.from));
   if(raters.size<PEER_MIN)return{ready:false,raters:raters.size,n:list.length};
-  let vs=list.map(x=>x.v).sort((a,b)=>a-b);
+  const per={};list.forEach(x=>{(per[x.from]=per[x.from]||[]).push(x.v)});let vs=Object.values(per).map(a=>a.reduce((s,v)=>s+v,0)/a.length).sort((a,b)=>a-b);
   if(vs.length>=5)vs=vs.slice(1,-1);
   const avg=vs.reduce((a,b)=>a+b,0)/vs.length;
   return{ready:true,avg,raters:raters.size,n:list.length};
@@ -2744,14 +2752,14 @@ async function loadPeer(){
 function starsSvg(v){let h='';for(let k=1;k<=5;k++){const fill=v>=k?1:v>=k-.5?.5:0;h+='<button type="button" class="star" data-k="'+k+'" aria-label="'+k+' star'+(k>1?'s':'')+'"><svg viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradient id="sh'+k+'"><stop offset="50%" stop-color="#6EE7B7"/><stop offset="50%" stop-color="transparent"/></linearGradient></defs><path d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.3L12 17.1l-5.7 3.1 1.2-6.3L2.8 9.5l6.4-.8z" fill="'+(fill===1?'#6EE7B7':fill===.5?'url(#sh'+k+')':'none')+'"/></svg></button>'}return h}
 function ratePeersHtml(h){
   if(!FB.user||!h||!h.cfg)return'';const me=meKey();
-  if(Date.now()-(h.added||h.end||h.start||h.date||0)>3*864e5)return'';
+  if(Date.now()-(h.added||h.end||h.start||h.date||0)>RATE_DAYS*864e5)return'';
   const ppl=[0,1].flatMap(s=>members(h.cfg,s)).filter(n=>{const k=pkey(n);if(k===me)return false;const f=friendForName(k);return f&&f.uid});
   if(!ppl.length)return'';
   return'<div class="ratepeers"><p>Rate the others</p>'+ppl.map(n=>{const f=friendForName(pkey(n)),key=h.id+'_'+f.uid,cur=PR.given[key]||0;
     return'<div class="rprow" data-uid="'+f.uid+'" data-match="'+h.id+'" data-v="'+cur+'"><b>'+esc(n)+'</b><span class="rpstars">'+starsSvg(cur)+'</span><span class="rpval">'+(cur?cur.toFixed(1):'–')+'</span>'+skChipsHtml(key)+'</div>'}).join('')+
     '<span class="rphint">Tap once for half a star, twice for a full star. Picking what stood out is optional. Friends only ever see an average.</span></div>';
 }
-async function saveRating(row,v){
+async function saveRating(row,v){setTimeout(rnSync,0);
   const uid=row.dataset.uid,match=row.dataset.match,key=match+'_'+uid,prev=+row.dataset.v||0;
   const paint=x=>{row.dataset.v=x;row.querySelector('.rpstars').innerHTML=starsSvg(x);row.querySelector('.rpval').textContent=x?x.toFixed(1):'–'};
   paint(v);
@@ -2759,7 +2767,7 @@ async function saveRating(row,v){
     const ok=await ask('Is that a fair rating?','Ratings shape everyone\'s Overall, so please keep them honest. One unfair rating can spoil someone\'s experience.','Yes, it\'s fair',false,'Change it');
     if(!ok){paint(prev);return}
   }
-  try{await FB.db.collection('pratings').doc(uid).collection('items').doc(match+'_'+FB.user.uid).set(Object.assign({from:FB.user.uid,match,h:Math.round(v*2),at:Date.now()},(PR.givenSk[key]||[]).length?{sk:PR.givenSk[key]}:{}));PR.given[key]=v;store.set('db-pr-given',PR.given)}
+  try{await FB.db.collection('pratings').doc(uid).collection('items').doc(match+'_'+FB.user.uid).set(Object.assign({from:FB.user.uid,match,h:Math.round(v*2),at:Date.now()},(PR.givenSk[key]||[]).length?{sk:PR.givenSk[key]}:{}));PR.given[key]=v;store.set('db-pr-given',PR.given);rnSync()}
   catch(err){paint(prev);toast('Couldn\'t save that rating. Check your signal and try again.')}
 }
 document.addEventListener('click',e=>{
@@ -3031,18 +3039,19 @@ async function loadNear(){const d=RANK.data;if(!FB.user||!d||!d.me)return null;i
 /* ================= v2.0: result confirmation and box leagues ================= */
 // --- result confirmation: friends confirm the matches you record with them ---
 function hDisputed(h){if(!h)return false;if(h.cs==='no')return true;if(h.disputeOk)return false;return!!(h.conf&&Object.values(h.conf).some(c=>c&&c.ok===false))}
-function confReceived(e,it){const h=history.find(x=>x.id===e.id);if(!h)return;h.conf=Object.assign({},h.conf||{},{[it.from]:{ok:!!e.ok,n:it.fromName||'',at:Date.now()}});if(e.ok===false)h.disputeOk=false;saveH();
+function confReceived(e,it){const h=history.find(x=>x.id===e.id);if(!h)return;h.conf=Object.assign({},h.conf||{},{[it.from]:{ok:!!e.ok,n:it.fromName||'',at:Date.now()}});if(e.ok===false)h.disputeOk=false;
+  if(e.ok&&!h.ver&&canVerify(h,it.from)){h.ver={by:it.from,at:Date.now()};broadcastVer(h,it.from)}saveH();try{renderResults()}catch(err){}
   const r=rowOf(h),who=it.fromName||'A friend';toast(e.ok?who+' confirmed '+r.a+' v '+r.b+'.':who+' says '+r.a+' v '+r.b+' isn\'t right. Check it on Home.');if(typeof homeOn==='function'&&homeOn())renderHome()}
 async function sendConf(h,ok){if(!FB.user||!h||!h.recv)return;try{await FB.db.collection('inbox').doc(h.recv).collection('items').doc('c_'+h.id+'_'+myUid()).set({from:myUid(),fromName:PROF.name||'',j:JSON.stringify({type:'conf',id:h.id,ok:!!ok}),createdAt:Date.now()})}catch(e){toast('Couldn\'t send that. It\'ll need your signal.')}}
 function confCardsHtml(){
   const now=Date.now(),ask=history.filter(h=>h.cs==='ask'&&now-(h.date||h.start||0)<45*864e5).slice(0,3),bad=history.filter(h=>h.conf&&Object.values(h.conf).some(c=>c&&c.ok===false)&&!h.disputeOk&&h.cs!=='no').slice(0,3);
   if(!ask.length&&!bad.length)return'';let s='<section class="cfcard" id="cfCard">';
-  if(ask.length){s+='<b class="cfttl">Confirm '+(ask.length===1?'this result':'these results')+'</b><p class="cfsub">Friends recorded these with you. Confirming keeps everyone\'s ratings honest.</p>'+ask.map(h=>{const r=rowOf(h);return'<div class="cfrow"><span><b>'+esc(r.winner===0?r.a+' beat '+r.b:r.winner===1?r.b+' beat '+r.a:r.a+' v '+r.b)+'</b><em>'+esc(r.score)+' · '+dShort(r.date)+(h.recvName?' · from '+esc(h.recvName):'')+'</em></span><div class="cfbtns"><button class="mini cfok" data-cfok="'+h.id+'">Confirm</button><button class="mini" data-cfno="'+h.id+'">Not right</button></div></div>'}).join('')}
+  if(ask.length){s+='<b class="cfttl">Confirm '+(ask.length===1?'this result':'these results')+'</b><p class="cfsub">Friends recorded these with you. Confirming keeps everyone\'s ratings honest.</p>'+ask.map(h=>{const r=rowOf(h);return'<div class="cfrow"><span><b>'+esc(r.winner===0?r.a+' beat '+r.b:r.winner===1?r.b+' beat '+r.a:r.a+' v '+r.b)+'</b><em>'+esc(r.score)+' · '+dShort(r.date)+(h.recvName?' · from '+esc(h.recvName):'')+'</em></span><div class="cfbtns"><button class="mini cfok" data-cfok="'+h.id+'">Rate and confirm</button><button class="mini" data-cfno="'+h.id+'">Not right</button></div></div>'}).join('')}
   if(bad.length){s+='<b class="cfttl" style="margin-top:'+(ask.length?'14px':'0')+'">'+(bad.length===1?'This result needs a review':'These results need a review')+'</b>'+bad.map(h=>{const r=rowOf(h),who=Object.values(h.conf).filter(c=>c&&c.ok===false).map(c=>c.n||'A friend').join(' and ');return'<div class="cfrow"><span><b>'+esc(r.a+' v '+r.b)+'</b><em>'+esc(who)+' says this result isn\'t right. Check the match details. It doesn\'t count until it\'s sorted.</em></span><div class="cfbtns"><button class="mini" data-cfopen="'+h.id+'">Check it</button><button class="mini" data-cfkeep="'+h.id+'">Keep it</button></div></div>'}).join('')}
   return s+'</section>'}
 document.addEventListener('click',async e=>{const t=e.target;if(!t.closest)return;
   const ok=t.closest('[data-cfok]'),no=t.closest('[data-cfno]'),op=t.closest('[data-cfopen]'),kp=t.closest('[data-cfkeep]');
-  if(ok){const h=history.find(x=>x.id===ok.dataset.cfok);if(!h)return;h.cs='yes';saveH();sendConf(h,true);toast('Confirmed. Thanks.');renderHome();return}
+  if(ok){const h=history.find(x=>x.id===ok.dataset.cfok);if(!h)return;const u=unitOf(h);if(needsMyRating(u)&&openRateNight(unitEntries(u),{confirm:h}))return;doConfirm(h);return}
   if(no){const h=history.find(x=>x.id===no.dataset.cfno);if(!h)return;if(!(await ask('This result isn\'t right?','It stops counting for you, and '+(h.recvName||'your friend')+' is asked to check it.','Not right',true)))return;h.cs='no';saveH();sendConf(h,false);toast('Thanks. They\'ll be asked to check it.');renderHome();return}
   if(op){openRow(op.dataset.cfopen);return}
   if(kp){const h=history.find(x=>x.id===kp.dataset.cfkeep);if(!h)return;if(!(await ask('Keep this result?','It counts again, even though a friend disagreed.','Keep it',false)))return;h.disputeOk=true;saveH();renderHome();return}});
@@ -3092,10 +3101,10 @@ function renderBox(){
     const addRow=(a,c)=>{const w=$('bxTeams');const n=w.children.length+1;w.insertAdjacentHTML('beforeend','<div class="koteam"><span>'+n+'</span><input type="text" list="bxKnown" placeholder="Player" value="'+esc(a||'')+'"><input type="text" list="bxKnown" placeholder="Player" value="'+esc(c||'')+'"></div>')};
     for(let i=0;i<4;i++)addRow();
     $('bxAdd').onclick=()=>{if($('bxTeams').children.length>=6){toast('Six pairs is the most for one box.');return}addRow()};
-    $('bxCreate').onclick=()=>{const teams=[...$('bxTeams').children].map(r=>({pa:[...r.querySelectorAll('input')].map(i=>i.value.trim())})).filter(t=>t.pa[0]||t.pa[1]);
+    $('bxCreate').onclick=async()=>{const teams=[...$('bxTeams').children].map(r=>({pa:[...r.querySelectorAll('input')].map(i=>i.value.trim())})).filter(t=>t.pa[0]||t.pa[1]);
       if(teams.length<2){toast('Add at least 2 pairs.');return}if(teams.some(t=>!t.pa[0]||!t.pa[1])){toast('Each pair needs two players.');return}
       const all=teams.flatMap(t=>t.pa.map(n=>pkey(n)));if(new Set(all).size!==all.length){toast('Each player can only be in one pair.');return}
-      const nb={id:'b'+Date.now().toString(36),name:$('bxName').value.trim()||($('bxName').placeholder),created:Date.now(),u:Date.now(),teams,fx:boxFixtures(teams.length)};BOX.list.unshift(nb);boxSave();BOX.view=nb.id;renderBox();$('boxView').scrollTop=0};
+      if(!(await needAccounts(teams.flatMap(t=>t.pa))))return;const nb={id:'b'+Date.now().toString(36),name:$('bxName').value.trim()||($('bxName').placeholder),created:Date.now(),u:Date.now(),teams,fx:boxFixtures(teams.length)};BOX.list.unshift(nb);boxSave();BOX.view=nb.id;renderBox();$('boxView').scrollTop=0};
     box.querySelectorAll('[data-box]').forEach(x=>x.onclick=()=>{BOX.view=x.dataset.box;renderBox();$('boxView').scrollTop=0});return}
   const t=boxTable(b),done=b.fx.every(f=>f.sa!=null),played=b.fx.filter(f=>f.sa!=null).length;
   let h=done?'<div class="kochamp"><span class="kotrophy">🏆</span><b>'+esc(boxLabel(b,t[0].i))+'</b><em>'+esc(b.name)+' champions</em><span class="korunner">'+t[0].pts+' points from '+t[0].p+' matches</span></div>':'<p class="help">'+played+' of '+b.fx.length+' matches played. Tap a match to enter the score.</p>';
@@ -3277,7 +3286,7 @@ function hrFill(){const st=$('hrStart'),ti=$('hrTiers');if(!st||!ti)return;
 
 
 /* ================= test window: only when opened with ?selftest=1, for the promise tests. Players never see it ================= */
-if(window.__PC_TEST__===true)setTimeout(()=>{window.__pcTest={perfScore,levelToRating,levelToOvr,ovrTier,matchWeight,winChance,computeLeague,formWord,formBand,legacySeedToRating,pairings,replay,rowOf,allRows,overallFor,cardHighlights,ovrToRating,fourPlayers,currentPairing,K:typeof K!=='undefined'?K:null,nightRoster,nightOpen,nightStatusOf,setNights:(list,me)=>{NIGHTS.list=list;NIGHTS.me=me;nightsRefresh()},setAdmin:(on,uid)=>{FB.admin=!!on;FB.user=on?{uid:uid||'admin1'}:null;renderProfile()}}},0)
+if(window.__PC_TEST__===true)setTimeout(()=>{window.__pcTest={perfScore,levelToRating,levelToOvr,ovrTier,matchWeight,winChance,computeLeague,formWord,formBand,legacySeedToRating,pairings,replay,rowOf,allRows,overallFor,cardHighlights,ovrToRating,fourPlayers,currentPairing,K:typeof K!=='undefined'?K:null,nightRoster,nightOpen,nightStatusOf,setNights:(list,me)=>{NIGHTS.list=list;NIGHTS.me=me;nightsRefresh()},setAdmin:(on,uid)=>{FB.admin=!!on;FB.user=on?{uid:uid||'admin1'}:null;renderProfile()},setFriends:l=>{FRIENDS.length=0;l.forEach(f=>FRIENDS.push(f))},runUpkeep:()=>nameUpkeep(),peerAggWith:items=>{PR.items=items;return peerAgg()},alias:()=>ALIAS,verifyAll:()=>{history.forEach(h=>{if(!h.ver)h.ver={by:'test',at:Date.now()}});saveH()},confFrom:(id,uid,name,ok)=>confReceived({type:'conf',id,ok},{from:uid,fromName:name}),rateNight:(ids,c)=>openRateNight(history.filter(h=>ids.includes(h.id)),c?{confirm:history.find(h=>h.id===c)}:{}),markRatedAll:()=>{const s=new Set(history.map(unitOf));markRated([...s])},rated:()=>RATED,sendq:()=>SENDQ,celebrate:(k)=>celebrateEx(k,'',{id:'bug',name:'Bug hunter',tier:'x',desc:'test'}),mergeProf:(a,b)=>mergeProf(a,b),setProf:o=>{Object.assign(PROF,o)},exSeen:()=>exAnnounced}},0)
 
 /* ================= shared match nights: everyone invited sees the same live list and ticks themselves in ================= */
 const NIGHTS={list:[],unsub:null,me:null,seen:store.get('db-nseen')||{},hidden:store.get('db-nhide')||{},tok:store.get('db-ntok')||{},push:null};
@@ -3362,10 +3371,10 @@ setTimeout(()=>{try{if(NIGHTS.join&&!store.get('db-signed-in')){toast('Sign in o
 
 // planner rows: PadelCred friends tick themselves in, so their row shows their answer instead of a tick button
 function planRowStatus(p,name){if(!FB.user&&!NIGHTS.me)return null;name=(name||'').trim();if(!name)return null;const n=NIGHTS.list.find(x=>x.id===p.id);
-  if(pkey(name)===meKey())return n?nightStatusOf(n,nMe()):{k:'in',label:'In'};const f=friendOf(pkey(name));if(!(f&&f.uid))return null;
+  if(pkey(name)===meKey())return n?nightStatusOf(n,nMe()):{k:'in',label:'In'};const f=friendForName(pkey(name));if(!(f&&f.uid))return{k:'na',label:'Not on PadelCred'};
   return n?nightStatusOf(n,f.uid):{k:'wait',label:'Invited'}}
 function planSharedHtml(p){if(!FB.user&&!NIGHTS.me)return'';const n=NIGHTS.list.find(x=>x.id===p.id);
-  if(!n)return'<p class="help plhelp">PadelCred friends you add will see this night and tick themselves in. Anyone else: share the link.</p>';
+  if(!n)return'<p class="help plhelp">PadelCred friends you add will see this night and tick themselves in. Everyone needs an account: <button class="linkbtn" data-invite="1">invite someone to PadelCred</button>.</p>';
   const r=nightRoster(n),joined=(n.joined||[]).map(uid=>({uid,name:(n.names||{})[uid]||'Player'}));
   return'<p class="plsum">'+(n.status==='cancelled'?'<b class="ncan">Cancelled</b>':'<b>'+r.playing.length+' of '+r.spots+' in</b>'+(r.reserves.length?' · '+r.reserves.length+' reserve'+(r.reserves.length>1?'s':''):'')+(r.waiting.length?' · '+r.waiting.length+' waiting':''))+'</p>'+
     (joined.length?'<p class="sh">Joined with the link</p>'+joined.map(j=>{const s=nightStatusOf(n,j.uid);return'<div class="plp"><span class="pljn">'+esc(j.name)+'</span><span class="plst '+s.k+'">'+s.label+'</span></div>'}).join(''):'')}
@@ -3376,7 +3385,7 @@ const gateTest=()=>window.__PC_TEST__===true; // automated tests only; the datab
 function gateApprovedHere(){const a=store.get('db-access');return!!a&&!!store.get('db-signed-in')}
 function gateShow(mode){const g=$('gateView');if(!g)return;
   $('gateTitle').textContent=mode==='wait'?'You\'re on the list':'PadelCred is invite-only for now';
-  $('gateBody').textContent=mode==='wait'?'We\'ll let you in as soon as you\'re approved. Check back soon.':'Coming soon to Google Play. Already invited? Sign in.';
+  $('gateBody').textContent=mode!=='wait'&&joinCode()?'You\'ve been invited. Create an account or sign in to join.':mode==='wait'?'We\'ll let you in as soon as you\'re approved. Check back soon.':'Coming soon to Google Play. Already invited? Sign in.';
   $('gateIn').classList.toggle('hide',mode==='wait');$('gateUp').classList.toggle('hide',mode==='wait');$('gateOut').classList.toggle('hide',mode!=='wait');
   g.classList.add('on');document.body.classList.add('gated')}
 function gateHide(){const g=$('gateView');if(g)g.classList.remove('on');document.body.classList.remove('gated')}
@@ -3386,6 +3395,7 @@ async function gateCheck(){if(gateTest()){gateHide();return}
   if(GATE.uid===u.uid||GATE.busy)return;GATE.busy=true;
   try{const db=FB.db,[ad,ac]=await Promise.all([db.collection('admins').doc(u.uid).get(),db.collection('access').doc(u.uid).get()]);
     if(ad.exists||ac.exists){GATE.uid=u.uid;GATE.state='yes';store.set('db-access',u.uid);gateHide()}
+    else if(joinCode()&&await joinWithCode(u.uid)){GATE.uid=u.uid;GATE.state='yes';store.set('db-access',u.uid);gateHide()}
     else{GATE.uid=u.uid;GATE.state='no';store.set('db-access','');
       try{await db.collection('accessRequests').doc(u.uid).set({name:PROF.name||u.displayName||'',email:u.email||'',at:Date.now()})}catch(e){}
       gateShow('wait')}}
@@ -3405,6 +3415,245 @@ async function loadAccessRequests(){const box=$('accList');if(!box||!FB.admin)re
 document.addEventListener('click',async e=>{const t=e.target;if(!t.closest)return;
   const ok=t.closest('[data-accok]'),no=t.closest('[data-accno]');if(!ok&&!no)return;const uid=(ok||no).dataset[ok?'accok':'accno'];
   try{if(ok)await FB.db.collection('access').doc(uid).set({by:FB.user.uid,at:Date.now()});await FB.db.collection('accessRequests').doc(uid).delete();toast(ok?'Approved. They\'re in.':'Declined.');loadAccessRequests()}catch(err){toast(fbError(err))}});
+
+/* ================= add the night's results: every match in one go, then rate the night ================= */
+const NR={n:0,rated:store.get('db-rnshown')||{}};
+const nrRot=x=>[x[0],x[2],x[3],x[1]]; // next partner pairing for the same four: everyone partners everyone over three matches
+function nrBlock(players,i){const p=players||['','','',''],id=k=>'nr'+i+'_'+k;
+  const inp=(k,ph)=>'<input type="text" id="'+id(k)+'" list="playerNames" maxlength="20" autocomplete="off" placeholder="'+ph+'" value="'+esc(p[k]||'')+'">';
+  return'<div class="nrm" data-i="'+i+'"><div class="nrhead"><b>Match <span class="nrnum"></span></b><button class="linkbtn nrdel" data-nrdel="'+i+'" aria-label="Remove this match">Remove</button></div>'+
+    '<div class="nrpairs"><div class="pair">'+inp(0,'Player')+inp(1,'Partner')+'</div><span class="nrv">v</span><div class="pair">'+inp(2,'Player')+inp(3,'Partner')+'</div></div>'+
+    '<div class="nrsets">'+[0,1,2].map(s=>'<div class="nrset"><span>Set '+(s+1)+'</span><input type="number" inputmode="numeric" min="0" max="99" aria-label="Set '+(s+1)+', first pair"><span>–</span><input type="number" inputmode="numeric" min="0" max="99" aria-label="Set '+(s+1)+', second pair"></div>').join('')+'</div></div>'}
+function nrPlayers(el){return[0,1,2,3].map(k=>($('nr'+el.dataset.i+'_'+k)||{value:''}).value.trim())}
+function nrNumber(){document.querySelectorAll('#nrMatches .nrm').forEach((m,k,all)=>{m.querySelector('.nrnum').textContent=k+1;m.querySelector('.nrdel').classList.toggle('hide',all.length<2)})}
+function nrAdd(players){NR.n++;$('nrMatches').insertAdjacentHTML('beforeend',nrBlock(players,NR.n));nrNumber()}
+function openNightAdd(){hideSheet();setTimeout(()=>{const d=new Date();$('nrDate').value=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  $('nrVenue').value=store.get('db-lastVenue')||'';$('nrGroup').value=store.get('db-lastGroup')||'';$('nrMatches').innerHTML='';NR.n=0;
+  nrAdd([PROF.name||'','','','']);showSheet('nightAddSheet')},250)}
+document.addEventListener('click',async e=>{const t=e.target;if(!t.closest)return;
+  if(t.closest('#arNight')){openNightAdd();return}
+  if(!t.closest('#nightAddSheet'))return;
+  const del=t.closest('[data-nrdel]');if(del){const m=del.closest('.nrm');if(m)m.remove();nrNumber();return}
+  if(t.closest('#nrSwap')||t.closest('#nrNew')){const all=[...document.querySelectorAll('#nrMatches .nrm')],last=all[all.length-1],p=last?nrPlayers(last):['','','',''];
+    nrAdd(t.closest('#nrSwap')?(p.every(Boolean)?nrRot(p):p):[PROF.name||'','','','']);setTimeout(()=>{const m=[...document.querySelectorAll('#nrMatches .nrm')].pop();m&&m.scrollIntoView({block:'center',behavior:'smooth'})},50);return}
+  if(t.closest('#nrCancel')){hideSheet();return}
+  if(t.closest('#nrSave'))await nrSave()});
+async function nrSave(){const blocks=[...document.querySelectorAll('#nrMatches .nrm')],ids=[];blocks.forEach(b=>[0,1,2,3].forEach(k=>ids.push('nr'+b.dataset.i+'_'+k)));
+  if(nameFilterFail(ids.concat(['nrVenue','nrGroup'])))return;
+  const games=[];for(let k=0;k<blocks.length;k++){const b=blocks[k],p=nrPlayers(b),n=k+1;
+    if(!p.every(Boolean)){toast('Match '+n+' needs all four players.');return}
+    if(new Set(p.map(pkey)).size<4){toast('Match '+n+' has the same player twice.');return}
+    const sets=[];let bad=false;b.querySelectorAll('.nrset').forEach(r=>{const [x,y]=[...r.querySelectorAll('input')].map(i=>i.value.trim());if(x===''&&y==='')return;const a=parseInt(x,10),c=parseInt(y,10);if(isNaN(a)||isNaN(c)||a<0||c<0||a===c){bad=true;return}sets.push([a,c])});
+    if(bad){toast('Match '+n+': each set needs two different scores, like 6 and 4.');return}
+    if(!sets.length){toast('Match '+n+' needs a score.');return}
+    games.push({p,sets})}
+  if(futureDate($('nrDate').value)){toast('That date is in the future. Results are for matches already played.');return}
+  if(!(await checkOddScores(games.map((g,i)=>({label:'Match '+(i+1),sets:g.sets})))))return;
+  if(!(await checkNames(ids)))return;
+  const parts=$('nrDate').value.split('-').map(Number),base=parts.length===3&&!parts.some(isNaN)?new Date(parts[0],parts[1]-1,parts[2],19).getTime():Date.now();
+  const venue=canonicalVenue($('nrVenue').value),group=$('nrGroup').value.trim(),now=Date.now();
+  // the same four players swapping partners make one evening, like any rotation
+  const four=g=>g.p.map(pkey).sort().join('|'),count={};games.forEach(g=>count[four(g)]=(count[four(g)]||0)+1);const sid={};
+  let entries=games.map((g,i)=>{const f=four(g);if(count[f]>1&&!sid[f])sid[f]='s'+now.toString(36)+Object.keys(sid).length;
+    const pa=[g.p[0],g.p[1]],pb=[g.p[2],g.p[3]],e={id:'m'+now.toString(36)+'n'+i,manual:true,date:base+i*60000,sets:g.sets,added:now,notes:'',
+      cfg:{pa,pb,an:'',bn:'',group,venue,a:teamNameFrom('',pa[0],pa[1],'Us'),b:teamNameFrom('',pb[0],pb[1],'Them')}};if(sid[f])e.session=sid[f];return e});
+  {const dups=entries.filter(e=>findDuplicate(e));if(dups.length){const keep=await ask('Already got '+(dups.length===1?'this one':'some of these')+'?',dups.length+' of these matches '+(dups.length===1?'is':'are')+' already in your results, with the same players, date and score.','Skip '+(dups.length===1?'it':'those'),false,'Add them anyway');if(keep)entries=entries.filter(e=>!dups.includes(e));if(!entries.length){hideSheet();toast('Nothing new to add.');return}}}
+  if(!(await confirmRecipients(entries.map(e=>e.cfg))))return;
+  const before=badgeSnapshot();entries.forEach(e=>history.unshift(e));if(venue)store.set('db-lastVenue',venue);if(group)store.set('db-lastGroup',group);
+  saveH();hideSheet();renderResults();try{renderHome()}catch(err){}announceBadges(newBadgesBetween(before,badgeSnapshot()));
+  toast(entries.length===1?'Result added.':entries.length+' results added.');
+  entries.forEach((e,i)=>setTimeout(()=>autoSend(e),300+i*200));
+  setTimeout(()=>{if(!openSheet)openRateNight(entries)},700)}
+// rate the night: everyone you played with or against, once each
+function nightRateRows(entries){if(!FB.user)return'';const cut=Date.now()-RATE_DAYS*864e5,t=rateTargets(entries.filter(h=>(h.added||h.end||h.start||h.date||0)>=cut));
+  return[...t.entries()].map(([uid,{n,h}])=>{const key=h.id+'_'+uid,cur=PR.given[key]||0,d=new Date(h.date||h.start||Date.now()),today=d.toDateString()===new Date().toDateString();
+    const when=today?'today':'on '+d.toLocaleDateString('en-GB',{weekday:'long'});
+    return'<div class="rprow rnq" data-uid="'+uid+'" data-match="'+h.id+'" data-v="'+cur+'"><p class="rpq">How did <b>'+esc(n)+'</b> perform '+when+'?</p><div class="rpline"><span class="rpstars">'+starsSvg(cur)+'</span><span class="rpval">'+(cur?cur.toFixed(1):'–')+'</span></div>'+skChipsHtml(key)+'</div>'}).join('')}
+const RN={units:[],confirm:null};
+function rnAllRated(){const rows=[...document.querySelectorAll('#rnBody .rprow')];return rows.length>0&&rows.every(r=>+r.dataset.v>0)}
+function rnSync(){const b=$('rnDone');if(!b)return;const all=rnAllRated();b.classList.toggle('dim',!all);b.textContent=RN.confirm?(all?'Confirm the result':'Rate everyone to confirm'):(all?'Done':'Rate everyone to finish')}
+function openRateNight(entries,opts){opts=opts||{};const rows=nightRateRows(entries);if(!rows)return false;RN.units=[...new Set(entries.map(unitOf))];RN.confirm=opts.confirm||null;
+  $('rnBody').innerHTML='<div class="ratepeers rnlist">'+rows+'<span class="rphint">Tap a star once for half, twice for a full star. Picking what stood out is optional. Nobody sees who gave what, only an average.</span></div>';
+  showSheet('rateNightSheet');rnSync();return true}
+document.addEventListener('click',e=>{const t=e.target;if(!t.closest)return;if(t.closest('#rnLater')){hideSheet();return}
+  if(t.closest('#rnDone')){if(!rnAllRated()){toast('Rate everyone first. Your results count once you have.');return}markRated(RN.units);const c=RN.confirm;RN.confirm=null;hideSheet();if(c)doConfirm(c);else toast('Thanks. Your ratings are in.')}});
+document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('.rprow .rpstars .star'))setTimeout(rnSync,60)});
+// after confirming a result a friend sent, rate the night it belongs to (once per night)
+function rateAfterConfirm(h){if(!h||!FB.user)return;const key=h.session||h.id;if(NR.rated[key])return;
+  const list=h.session?history.filter(x=>x.session===h.session&&x.cs!=='no'):[h];
+  setTimeout(()=>{if(!openSheet&&openRateNight(list)){NR.rated[key]=Date.now();store.set('db-rnshown',NR.rated)}},600)}
+
+/* ================= players: one name per real person, linked to their account wherever possible ================= */
+const ALIAS=store.get('db-alias')||{}; // typed name -> friend's uid, for nicknames you've linked
+const firstKey=n=>pkey(String(n||'').split(' ')[0]||'');
+function friendsLike(k){const fs=FRIENDS.filter(f=>f.uid);if(ALIAS[k]){const f=fs.find(x=>x.uid===ALIAS[k]);if(f)return[f]}
+  const exact=fs.filter(f=>pkey(f.name||'')===k||pkey(f.username||'')===k.replace(/^@/,''));if(exact.length)return exact;return fs.filter(f=>firstKey(f.name)===k)}
+function isMeTyped(k){if(!PROF.name)return false;if(k===pkey(PROF.name))return false;
+  return k==='me'||k==='you'||k==='myself'||(PROF.username&&k.replace(/^@/,'')===pkey(PROF.username))||(k===firstKey(PROF.name)&&!FRIENDS.some(f=>firstKey(f.name)===k))}
+// turn what was typed into the right person: you, a friend's exact PadelCred name, or a new name
+async function resolveName(el){const v=tidyName(el.value),k=pkey(v);if(!k)return;
+  if(PROF.name&&isMeTyped(k)){el.value=PROF.name;return}
+  if(FRIENDS.some(f=>pkey(f.name||'')===k))return;
+  const c=friendsLike(k);
+  if(c.length===1){el.value=c[0].name;return}
+  if(c.length===2){const first=await ask('Which '+v+'?','You have two PadelCred friends called '+v+'. Pick the one who played, so it goes to the right person.',c[0].name,false,c[1].name);el.value=first?c[0].name:c[1].name;return}
+  if(c.length>2)toast('You have several friends called '+v+'. Pick the right one from the list.')}
+// before saving results: say who gets them, and who's only recorded on this phone
+async function confirmRecipients(cfgs){const to=new Set(),only=new Set(),me=meKey();
+  const mine=PROF.name?pkey(PROF.name):'';cfgs.forEach(c=>[0,1].forEach(s=>members(c,s).forEach(n=>{const k=pkey(n);if(!k||k===me||k===mine)return;const f=friendForName(k);if(f&&f.uid)to.add(f.name||n);else only.add(n)})));
+  const list=a=>{a=[...a];return a.length>1?a.slice(0,-1).join(', ')+' and '+a[a.length-1]:a[0]};
+  let text=FB.user?(to.size?'Sent to '+list(to)+' to confirm. ':'Nobody in these matches is a PadelCred friend yet, so nothing is sent. '):'You\'re not signed in, so these results stay on this phone. ';
+  if(only.size)text+='Recorded only in your results for '+list(only)+' (not on PadelCred).';
+  if(FB.user&&!only.size&&to.size)return true;
+  return await ask('Before you save',text.trim(),'Save',false,'Go back')}
+// results can't be from the future
+function futureDate(v){const p=String(v||'').split('-').map(Number);if(p.length!==3||p.some(isNaN))return false;const d=new Date(p[0],p[1]-1,p[2]);const t=new Date();t.setHours(0,0,0,0);return d>t}
+// a set score that doesn't look finished: a nudge, not a block, because people play all sorts of formats
+function oddSet(a,b,last){const hi=Math.max(a,b),lo=Math.min(a,b),d=hi-lo;
+  if(hi<=9)return!(d>=2||(hi===7&&lo===6)||(hi<=5&&d>=1));
+  return!(last&&d>=2)}
+async function checkOddScores(list){const odd=[];list.forEach(({label,sets})=>sets.forEach((s,i)=>{if(oddSet(s[0],s[1],i===sets.length-1))odd.push(label+(sets.length>1?', set '+(i+1):'')+': '+s[0]+'–'+s[1])}));
+  if(!odd.length)return true;return await ask('Unusual score',odd.slice(0,3).join('. ')+(odd.length>3?'…':'')+'. That isn\'t a usual finished set. Save anyway?','Save anyway',false,'Go back')}
+// linking: someone recorded by name who's now a PadelCred friend, and friends who change their name
+const LINK={asked:store.get('db-linkasked')||{},names:store.get('db-fnames')||{},busy:false};
+function nameUpkeep(){if(LINK.busy)return;LINK.busy=true;setTimeout(async()=>{try{
+  // a friend renamed themselves: move their record across, it's the same account
+  for(const f of FRIENDS.filter(x=>x.uid)){const old=LINK.names[f.uid];LINK.names[f.uid]=f.name;
+    if(old&&pkey(old)!==pkey(f.name)&&knownNames().some(n=>pkey(n)===pkey(old))){renameEverywhere(pkey(old),f.name);saveH();toast(old+' is now '+f.name+'. Their results moved across.')}}
+  store.set('db-fnames',LINK.names);
+  // someone in your results by first name only, who's now a friend: offer to link (once per friend)
+  const taken=new Set(FRIENDS.map(f=>pkey(f.name||'')).concat(PROF.name?[pkey(PROF.name)]:[]));
+  for(const f of FRIENDS.filter(x=>x.uid&&!LINK.asked[x.uid])){
+    const cand=knownNames().find(n=>{const k=pkey(n);return!taken.has(k)&&k!==pkey(f.name)&&(k===firstKey(f.name)||k===pkey(f.username||''))});
+    if(!cand)continue;LINK.asked[f.uid]=Date.now();store.set('db-linkasked',LINK.asked);
+    if(typeof openSheet!=='undefined'&&openSheet)continue;
+    if(await ask('Is '+cand+' '+f.name+'?','Your results have matches with '+cand+'. If that\'s '+f.name+', their record joins up and they get those results to confirm.','Link them',false,'Not the same person')){
+      ALIAS[pkey(cand)]=f.uid;store.set('db-alias',ALIAS);renameEverywhere(pkey(cand),f.name);saveH();
+      const mine=history.filter(h=>!h.recv&&[0,1].some(s=>members(h.cfg,s).some(n=>pkey(n)===pkey(f.name))));
+      mine.forEach((h,i)=>setTimeout(()=>autoSend(h),300+i*250));toast('Linked. '+mine.length+' result'+(mine.length===1?'':'s')+' sent to '+f.name+'.');
+      try{renderResults()}catch(e){}}}
+}catch(e){}finally{LINK.busy=false}},800)}
+// the player picker: you, PadelCred friends, then people you've played before
+const PICK={el:null,box:null};
+function pickClose(){if(PICK.box)PICK.box.remove();PICK.box=null;PICK.el=null;PICK.add=false}
+function pickRender(){const el=PICK.el;if(!el)return;const q=pkey(el.value||''),me=PROF.name||'',seen=new Set(),rows=[];
+  const add=(name,tag,cls)=>{const k=pkey(name);if(!name||seen.has(k))return;if(q){const u=((tag||'').toLowerCase().split('@')[1]||'').trim();if(!k.includes(q)&&!(u&&u.includes(q.replace(/^@/,''))))return}seen.add(k);rows.push({name,tag,cls})};
+  if(me)add(me,'You','me');
+  FRIENDS.filter(f=>f.uid).sort((a,b)=>a.name.localeCompare(b.name)).forEach(f=>add(f.name,'On PadelCred'+(f.username?' · @'+f.username:''),'pc'));
+  const shown=rows.slice(0,8);
+  try{(SOC.links||[]).filter(l=>l.status==='pending'&&l.from===myUid()).slice(0,3).forEach(l=>shown.push({wait:true,name:l.toName||('@'+(l.toUsername||''))}))}catch(e){}
+  shown.push({addf:true});shown.push({invite:true});
+  if(!PICK.box){PICK.box=document.createElement('div');PICK.box.className='pickbox';PICK.box.setAttribute('role','listbox');document.body.appendChild(PICK.box)}
+  if(PICK.add)return;PICK.box.innerHTML=shown.map(r=>r.wait?'<div class="pickrow wait"><b>'+esc(r.name)+'</b><span>Friend request sent · waiting for them to accept</span></div>':r.addf?'<button type="button" class="pickrow inv" data-pickadd="1"><b>Add a friend by username</b><span>For people already on PadelCred</span></button>':r.invite?'<button type="button" class="pickrow inv" data-pickinvite="1"><b>Invite someone to PadelCred</b><span>Everyone needs an account to be added</span></button>':'<button type="button" role="option" class="pickrow '+r.cls+'" data-pick="'+esc(r.name)+'"><b>'+esc(r.name)+'</b><span>'+esc(r.tag)+'</span></button>').join('');
+  const r=el.getBoundingClientRect(),h=Math.min(320,shown.length*52+8),below=innerHeight-r.bottom>h+8;
+  Object.assign(PICK.box.style,{left:Math.max(8,r.left)+'px',width:Math.min(innerWidth-16,Math.max(r.width,240))+'px',top:(below?r.bottom+4:Math.max(8,r.top-h-4))+'px'})}
+document.addEventListener('focusin',e=>{const el=e.target;if(!el.matches)return;
+  if(el.matches('input[list="playerNames"],input[data-pl]')&&!['obName','peName','rnName'].includes(el.id)){if(el.getAttribute('list')){el.dataset.pl='1';el.removeAttribute('list')}PICK.el=el;pickRender()}else if(PICK.box&&!el.closest('.pickbox'))pickClose()});
+document.addEventListener('input',e=>{if(e.target===PICK.el&&!PICK.add)pickRender()});
+document.addEventListener('pointerdown',e=>{const pa=e.target.closest&&e.target.closest('[data-pickadd]');if(pa){e.preventDefault();pickAddForm();return}
+  const iv=e.target.closest&&e.target.closest('[data-pickinvite]');if(iv){e.preventDefault();pickClose();openInvite();return}
+  const b=e.target.closest&&e.target.closest('[data-pick]');if(b){e.preventDefault();const el=PICK.el;if(el){el.value=b.dataset.pick;el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}))}pickClose();return}
+  if(PICK.box&&!(e.target.closest&&(e.target.closest('.pickbox')||e.target===PICK.el)))pickClose()},true);
+document.addEventListener('scroll',e=>{if(PICK.box&&!PICK.add&&!(e.target&&e.target.closest&&e.target.closest('.pickbox')))pickRender()},true);
+
+/* ================= accounts: every player has a PadelCred account, so every result can be confirmed ================= */
+function isAccountName(n){const k=pkey(n||'');if(!k)return false;if(k===meKey()||(PROF.name&&k===pkey(PROF.name)))return true;const f=friendForName(k);return!!(f&&f.uid)}
+async function needAccounts(names){const list=names.map(n=>(n||'').trim()),bad=[...new Set(list.filter(n=>n&&!isAccountName(n)))],blank=list.some(n=>!n);
+  if(!bad.length&&!blank)return true;
+  const msg=bad.length?(bad.join(', ')+(bad.length===1?' isn\'t':' aren\'t')+' on PadelCred yet. Everyone needs an account so results can be confirmed. Invite them, then add them once they\'ve joined.'):'Every player needs to be someone on PadelCred. Pick each player from your friends.';
+  if(await ask('Everyone needs a PadelCred account',msg,'Invite a player',false,'OK'))openInvite();return false}
+// invite links: whoever joins through yours is approved straight away and sends you a friend request
+function newCode(){const a=new Uint8Array(12);crypto.getRandomValues(a);return[...a].map(x=>x.toString(16).padStart(2,'0')).join('')}
+async function openInvite(){if(!FB.user){toast('Sign in to invite players.');return}
+  const code=newCode();try{await FB.db.collection('joinCodes').doc(code).set({by:myUid(),byName:PROF.name||'',byUsername:PROF.username||'',at:Date.now()})}catch(e){toast(fbError(e));return}
+  const link=location.origin+location.pathname+'?join='+code,txt=(PROF.name||'A friend')+' invited you to PadelCred, where we record our padel results. Join here: '+link;
+  try{if(navigator.share){await navigator.share({text:txt});return}}catch(e){return}window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank')}
+(()=>{try{const m=location.search.match(/[?&]join=([a-f0-9]{24})\b/);if(m){sessionStorage.setItem('pc-join',m[1]);history.replaceState(null,'',location.pathname+location.hash)}}catch(e){}})();
+const joinCode=()=>{try{return sessionStorage.getItem('pc-join')}catch(e){return null}};
+async function joinWithCode(uid){const code=joinCode();if(!code)return false;
+  try{const d=await FB.db.collection('joinCodes').doc(code).get();if(!d.exists){sessionStorage.removeItem('pc-join');toast('That invite link has expired. Ask for a new one.');return false}
+    const inv=d.data();await FB.db.collection('access').doc(uid).set({via:code,by:inv.by,at:Date.now()});sessionStorage.removeItem('pc-join');
+    if(inv.by&&inv.by!==uid)setTimeout(()=>{try{sendRequest(inv.by,{name:inv.byName,username:inv.byUsername})}catch(e){}},2500);
+    toast('Welcome to PadelCred. '+(inv.byName||'Your friend')+' will get your friend request.');return true}
+  catch(e){return false}}
+/* ================= confirmation: a result counts once the other team confirms it ================= */
+const hCreator=h=>h.recv||myUid();
+function sideOf(h,uid){const mine=uid===myUid(),nm=mine?(PROF.name||''):((friendByUid(uid)||{}).name||''),ks=[pkey(nm)];if(mine&&meKey())ks.push(meKey());
+  for(const s of[0,1])if(members(h.cfg,s).some(n=>ks.includes(pkey(n))))return s;return null}
+// who can confirm: anyone on the other team; for an evening of swapped partners or an Americano night, any other player
+function canVerify(h,uid){if(!uid||uid===hCreator(h))return false;if(h.session)return true;const a=sideOf(h,uid),c=sideOf(h,hCreator(h));return a!==null&&c!==null&&a!==c}
+const hVerified=h=>!!(h&&h.ver);
+function waitingFor(h){const c=sideOf(h,hCreator(h));if(h.session)return members(h.cfg,0).concat(members(h.cfg,1)).filter(n=>{const k=pkey(n);return k!==meKey()&&!(PROF.name&&k===pkey(PROF.name))});return c===null?[]:members(h.cfg,1-c)}
+async function broadcastVer(h,skip){if(!FB.user)return;const me=myUid(),targets=[...new Set(Object.values(uidsFor(h.cfg)))].filter(u=>u&&u!==me&&u!==skip);
+  for(const u of targets){try{await FB.db.collection('inbox').doc(u).collection('items').doc('v_'+h.id+'_'+me).set({from:me,fromName:PROF.name||'',j:JSON.stringify({type:'ver',id:h.id}),createdAt:Date.now()})}catch(e){}}}
+function verReceived(e,it){const h=history.find(x=>x.id===e.id);if(!h||h.ver)return;h.ver={by:it.from,at:Date.now()};saveH();try{renderResults()}catch(err){}}
+// the matches waiting for the other team, at the top of Matches
+function pendList(){return history.filter(h=>!hVerified(h)&&!hDisputed(h)&&h.cs!=='ask'&&(h.sets&&h.sets.length||h.pts&&h.pts.length)).sort((a,b)=>(b.date||b.start||0)-(a.date||a.start||0))}
+function pendRender(){const box=$('pendBox');if(!box)return;const list=pendList();
+  if(!list.length){box.innerHTML='';return}
+  box.innerHTML='<section class="cfcard pendcard"><b class="cfttl">Waiting for the other team</b><p class="cfsub">These count once someone on the other team confirms.</p>'+list.slice(0,8).map(h=>{let r;try{r=rowOf(h)}catch(e){return''}const w=waitingFor(h);
+    return'<div class="cfrow"><span><b>'+esc(r.a+' v '+r.b)+'</b><em>'+esc(r.score||'')+' · '+dShort(r.date)+(w.length?' · waiting for '+esc(w.join(' or ')):'')+'</em></span>'+(h.recv?'':'<div class="cfbtns"><button class="mini" data-remind="'+esc(h.id)+'">Remind</button></div>')+'</div>'}).join('')+'</section>'}
+document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('[data-invite]')){openInvite();return}const b=e.target.closest&&e.target.closest('[data-remind]');if(!b)return;const h=history.find(x=>x.id===b.dataset.remind);if(!h)return;
+  if(!FB.user){toast('Sign in to send it again.');return}const sent=store.get('db-sent')||{};delete sent[h.id];store.set('db-sent',sent);autoSend(h);toast('Sent again.')});
+
+/* ================= rating: once per session, by everyone who played ================= */
+// the scorer is asked when they leave the court after the last set; everyone else when they confirm the night
+function maybeRateSession(){try{if(!M||!FB.user)return;const sid=M.session?(M.session.id||M.session):(S.done!==null?M.id:null);if(!sid||NR.rated[sid]||!needsMyRating(sid))return;
+  if(M.session&&M.pts&&M.pts.length&&S.done===null)return; // still mid-set: the evening isn't over
+  const list=unitEntries(sid).filter(h=>!h.recv);if(!list.length)return;
+  setTimeout(()=>{if(!openSheet&&openRateNight(list)){NR.rated[sid]=Date.now();store.set('db-rnshown',NR.rated)}},700)}catch(e){}}
+document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-ratenight]');if(!b)return;const sid=b.dataset.ratenight;hideSheet();
+  setTimeout(()=>{if(!openRateNight(unitEntries(sid)))toast('Rating for this one has closed, or there\'s nobody else to rate.')},350)});
+/* ================= picker: add a friend by username without leaving match setup ================= */
+function pickAddForm(){if(!PICK.box)return;if(!FB.user){toast('Sign in to add friends.');pickClose();return}PICK.add=true;
+  PICK.box.innerHTML='<div class="pickadd"><b>Add a friend by username</b><div class="pickaddrow"><input type="text" id="pkFind" placeholder="@username" autocomplete="off" autocapitalize="none" maxlength="21"><button type="button" class="mini" id="pkGo">Find</button></div><div id="pkRes" class="pickres"></div></div>';
+  setTimeout(()=>{const i=$('pkFind');if(i)i.focus()},30)}
+async function pickFind(){const v=($('pkFind').value||'').trim().replace(/^@/,'').toLowerCase(),out=$('pkRes');if(!out)return;
+  if(!USER_RE.test(v)){out.innerHTML='<p class="help">Usernames are 3 to 20 letters, numbers, dots or underscores.</p>';return}
+  out.innerHTML='<p class="help">Looking…</p>';
+  try{const u=await FB.db.collection('usernames').doc(v).get();if(!u.exists){out.innerHTML='<p class="help">Nobody\'s using @'+esc(v)+'. Check the spelling, or invite them.</p>';return}
+    const uid=u.data().uid;if(uid===myUid()){out.innerHTML='<p class="help">That\'s you.</p>';return}
+    const p=await FB.db.collection('profiles').doc(uid).get(),pd=p.exists?p.data():{username:v,name:v};
+    const link=SOC.links.find(l=>l.id===linkId(myUid(),uid)),state=!link?'none':link.status==='accepted'?'friends':link.from===myUid()?'sent':'incoming';
+    PICK.found={uid,pd,link};
+    out.innerHTML='<div class="pickfound"><span><b>'+esc(pd.name||v)+'</b><em>@'+esc(pd.username||v)+'</em></span>'+
+      (state==='friends'?'<button type="button" class="mini cfok" data-pick="'+esc(pd.name||v)+'">Add to match</button>':state==='sent'?'<em class="pkwait">Request sent</em>':state==='incoming'?'<button type="button" class="mini cfok" id="pkAccept">Accept</button>':'<button type="button" class="mini cfok" id="pkSend">Send friend request</button>')+'</div>'+
+      (state==='none'||state==='sent'?'<p class="help">They\'ll appear in your players as soon as they accept.</p>':'')}
+  catch(e){out.innerHTML='<p class="help">Couldn\'t search right now. Check your signal.</p>'}}
+document.addEventListener('click',async e=>{const t=e.target;if(!t.closest||!t.closest('.pickbox'))return;
+  if(t.closest('#pkGo')){pickFind();return}
+  if(t.closest('#pkSend')&&PICK.found){await sendRequest(PICK.found.uid,PICK.found.pd);const o=$('pkRes');if(o)o.innerHTML='<p class="help">Request sent to '+esc(PICK.found.pd.name||'them')+'. They\'ll appear in your players as soon as they accept.</p>';return}
+  if(t.closest('#pkAccept')&&PICK.found&&PICK.found.link){await acceptRequest(PICK.found.link);const o=$('pkRes');if(o)o.innerHTML='<p class="help">You\'re now friends. Pick them from your players.</p>'}});
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target&&e.target.id==='pkFind'){e.preventDefault();pickFind()}});
+
+/* ================= compulsory rating: every result is rated by everyone who played, never themselves ================= */
+// a rating unit is a session (Americano night, swapped-partner evening, court time) or a standalone match
+const unitOf=h=>h.session||h.id;
+const unitEntries=u=>history.filter(h=>unitOf(h)===u&&h.cs!=='no');
+const RATE_DAYS=7,RATED=store.get('db-rated')||{},SENDQ=store.get('db-sendq')||{};
+function unitAge(list){return list.reduce((m,h)=>Math.max(m,h.added||h.end||h.start||h.date||0),0)}
+// who I need to rate in these results: everyone I played with or against who's on PadelCred
+function rateTargets(entries){const me=meKey(),mine=PROF.name?pkey(PROF.name):'',out=new Map(),isMe=n=>{const k=pkey(n);return k===me||k===mine};
+  entries.forEach(h=>{if(!h||!h.cfg)return;if(![0,1].some(s=>members(h.cfg,s).some(isMe)))return;
+    [0,1].flatMap(s=>members(h.cfg,s)).forEach(n=>{if(isMe(n))return;const f=friendForName(pkey(n));if(f&&f.uid&&f.uid!==myUid())out.set(f.uid,{n,h})})});
+  return out}
+function needsMyRating(u){if(!FB.user||RATED[u])return false;const list=unitEntries(u);if(!list.length)return false;
+  if(Date.now()-unitAge(list)>=RATE_DAYS*864e5)return false; // window closed: it counts anyway, rating's closed
+  return rateTargets(list).size>0}
+function markRated(units){let any=false;units.forEach(u=>{if(!RATED[u]){RATED[u]=Date.now();any=true}});if(!any)return;store.set('db-rated',RATED);bumpHV();flushSends()}
+// results someone added or scored are sent out once they've rated (or once the window has closed)
+function flushSends(){if(!FB.user)return;Object.keys(SENDQ).forEach(u=>{if(needsMyRating(u))return;delete SENDQ[u];unitEntries(u).filter(h=>!h.recv).forEach((h,i)=>setTimeout(()=>autoSend(h),200+i*200))});store.set('db-sendq',SENDQ)}
+setInterval(()=>{try{flushSends()}catch(e){}},60000);
+// Home: sessions and matches still waiting for your rating
+function rateDueHtml(){if(!FB.user)return'';const seen=new Set(),due=[];
+  history.forEach(h=>{const u=unitOf(h);if(seen.has(u))return;seen.add(u);if(h.recv&&h.cs==='ask')return;if(needsMyRating(u))due.push(u)});
+  if(!due.length)return'';
+  return'<section class="cfcard" id="rateDue"><b class="cfttl">Rate to count '+(due.length===1?'it':'them')+'</b><p class="cfsub">Your results count for you once you\'ve rated everyone who played.</p>'+due.slice(0,3).map(u=>{const l=unitEntries(u),t=rateTargets(l),d=new Date(unitAge(l)||Date.now()),when=d.toDateString()===new Date().toDateString()?'Today':d.toLocaleDateString('en-GB',{weekday:'long'});
+    return'<div class="cfrow"><span><b>'+esc(when+(l.length>1?'\'s session':'\'s match'))+'</b><em>'+esc([...t.values()].map(x=>x.n).join(', '))+'</em></span><div class="cfbtns"><button class="mini cfok" data-ratenight="'+esc(u)+'">Rate now</button></div></div>'}).join('')+'</section>'}
+// confirming someone else's result: rate everyone in it first, then it's confirmed
+function doConfirm(h){const list=h.session?history.filter(x=>x.session===h.session&&x.recv===h.recv&&x.cs==='ask'):[h];const counts=canVerify(h,myUid()||'me');
+  list.forEach(x=>{x.cs='yes';if(counts&&!x.ver)x.ver={by:myUid()||'me',at:Date.now()};sendConf(x,true);if(counts)broadcastVer(x,x.recv)});saveH();
+  toast(counts?'Confirmed. It counts for everyone now.':'Confirmed. It counts once someone on the other team confirms.');renderHome();try{renderResults()}catch(err){}}
 
 /* ================= bug reports ================= */
 const appVersion=()=>((document.querySelector('meta[name="app-version"]')||{}).content||'');
@@ -3884,11 +4133,12 @@ function renderKo(){
     for(let i=0;i<4;i++)addRow();
     $('koAddTeam').onclick=()=>{if($('koTeams').children.length>=16){toast('16 pairs is the most for one bracket.');return}addRow()};
     $('koSeed').onclick=e=>{const b=e.target.closest('button');if(!b)return;$('koSeed').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)))};
-    $('koCreate').onclick=()=>{
+    $('koCreate').onclick=async()=>{
       const teams=[...$('koTeams').children].map(r=>{const v=[...r.querySelectorAll('input')].map(i=>i.value.trim());return{pa:v}}).filter(t=>t.pa[0]||t.pa[1]);
       if(teams.length<2){toast('Add at least 2 pairs.');return}
       if(teams.some(t=>!t.pa[0]||!t.pa[1])){toast('Each pair needs two players.');return}
       const all=teams.flatMap(t=>t.pa.map(n=>pkey(n)));if(new Set(all).size!==all.length){toast('Each player can only be in one pair.');return}
+      if(!(await needAccounts(teams.flatMap(t=>t.pa))))return;
       const seeding=$('koSeed').querySelector('[aria-pressed="true"]').dataset.v;
       const t={id:'k'+Date.now().toString(36),name:$('koName').value.trim()||'Knockout',created:Date.now(),u:Date.now(),venue:canonicalVenue($('koVenue').value),seeding,teams,rounds:koBuild(teams,seeding),done:false,champion:null,runner:null};
       koAdvance(t);KO.list.unshift(t);koSave();KO.view=t.id;renderKo();$('koView').scrollTop=0;
@@ -4186,7 +4436,7 @@ const saveProf=()=>{try{const prev=store.get('db-profile')||{},now=Date.now();PR
 // two copies of a profile meet: each field keeps its most recent real edit, and a blank never wipes a filled-in field unless it was cleared on purpose
 const pEmpty=v=>v===undefined||v===null||v===''||(Array.isArray(v)&&!v.length);
 function mergeProf(a,b){a=a||{};b=b||{};const fa=a.ft||{},fb=b.ft||{},out={},ft={};
-  new Set(Object.keys(PROF_DEF).concat(Object.keys(a),Object.keys(b))).forEach(k=>{if(k==='ft')return;const ta=fa[k]||0,tb=fb[k]||0;
+  new Set(Object.keys(PROF_DEF).concat(Object.keys(a),Object.keys(b))).forEach(k=>{if(k==='ft')return;if(k==='seen'){out.seen=Object.assign({},b.seen||{},a.seen||{});ft.seen=Math.max(fa.seen||0,fb.seen||0);return}const ta=fa[k]||0,tb=fb[k]||0;
     out[k]=ta>tb?a[k]:tb>ta?b[k]:(!pEmpty(a[k])?a[k]:b[k]);ft[k]=Math.max(ta,tb);if(out[k]===undefined)delete out[k];if(!ft[k])delete ft[k]});
   out.ft=ft;return Object.assign({},PROF_DEF,out)}
 const LEVELS=['New to padel','Beginner','Improver','Intermediate','Advanced','Competitive'];
@@ -4354,7 +4604,7 @@ $('peCancel').onclick=()=>hideSheet();
 
 
 /* ================= home logo and updates ================= */
-const APP_VERSION='2.12';
+const APP_VERSION='2.18.1';
 document.querySelectorAll('.vlogo').forEach(i=>i.src=$('logo').src);
 function goHome(e){
   const el=e&&e.currentTarget;if(el){el.classList.remove('tap');void el.offsetWidth;el.classList.add('tap')}
@@ -4407,7 +4657,7 @@ syncAvatar();
 /* ================= friends (no server: everything travels in links) ================= */
 let FRIENDS=store.get('db-friends')||[];
 const saveFriendsRaw=()=>store.set('db-friends',FRIENDS);
-const saveFriends=()=>{saveFriendsRaw();if(typeof profChanged==='function')profChanged()};
+const saveFriends=()=>{saveFriendsRaw();try{nameUpkeep()}catch(e){}if(typeof profChanged==='function')profChanged()};
 const friendOf=key=>FRIENDS.find(f=>f.key===key);
 const appUrl=()=>location.href.split('#')[0].split('?')[0];
 const b64u={
@@ -5030,7 +5280,7 @@ function doSwap(p){
   toast('New pairs: '+cfg.a+' v '+cfg.b+'. Next set, 0–0.');
 }
 $('doneSwap').onclick=()=>openSwap(true);
-$('doneHome').onclick=()=>{M=newMatch(Object.assign({},M.cfg));S=replay(M.cfg,M.pts);prevL=null;saveM();render();showHome()};
+$('doneHome').onclick=()=>{maybeRateSession();M=newMatch(Object.assign({},M.cfg));S=replay(M.cfg,M.pts);prevL=null;saveM();render();showHome()};
 
 
 
@@ -5049,11 +5299,15 @@ function similarName(name){
   return score<9?best:null;
 }
 async function checkNames(ids){
+  for(const id of ids){if($(id))await resolveName($(id))}
+  const vis=ids.filter(id=>$(id)&&$(id).offsetParent!==null);if(!(await needAccounts(vis.map(id=>$(id).value))))return false;
   for(const id of ids){
     const el=$(id),v=tidyName(el.value);el.value=v;if(!v)continue;
+    if(FRIENDS.some(f=>pkey(f.name||'')===pkey(v))||(PROF.name&&pkey(v)===pkey(PROF.name)))continue;
     const near=similarName(v);
     if(near&&await ask('Did you mean '+near+'?','You\'ve played with '+near+' before. Using the same name keeps their record and rating in one place.','Use '+near,false,'Keep '+v))el.value=near;
   }
+  return true;
 }
 function renameEverywhere(fromKey,to){
   const fix=list=>(list||[]).map(n=>pkey(n||'')===fromKey?to:n);
@@ -6059,6 +6313,7 @@ function uidsFor(cfg){
   return out;
 }
 async function autoSend(h){
+  if(FB.user&&h&&!h.recv&&needsMyRating(unitOf(h))){SENDQ[unitOf(h)]=Date.now();store.set('db-sendq',SENDQ);return}
   if(FB.user&&h)groupSend(h).catch(()=>{});
   if(!FB.user||!autoSendOn()||!h)return;
   const me=myUid(),uids=uidsFor(h.cfg),targets=[...new Set(Object.values(uids).filter(u=>u!==me))];
@@ -6080,7 +6335,7 @@ function receiveResults(items){
   const me=myUid();let added=0,updated=0;const from=new Set();
   items.forEach(it=>{
     let e;try{e=JSON.parse(it.j)}catch(err){return}
-    if(e&&(e.type==='conf'||e.type==='plan'||e.type==='planr')){try{if(e.type==='conf')confReceived(e,it);else if(e.type==='plan')planInviteReceived(e,it);else planReplyReceived(e,it)}catch(err){}FB.db.collection('inbox').doc(me).collection('items').doc(it._id).delete().catch(()=>{});return}
+    if(e&&(e.type==='conf'||e.type==='ver'||e.type==='plan'||e.type==='planr')){try{if(e.type==='conf')confReceived(e,it);else if(e.type==='ver')verReceived(e,it);else if(e.type==='plan')planInviteReceived(e,it);else planReplyReceived(e,it)}catch(err){}FB.db.collection('inbox').doc(me).collection('items').doc(it._id).delete().catch(()=>{});return}
     if(e.uids){const map={};Object.entries(e.uids).forEach(([n,u])=>{if(u===me&&PROF.name)map[pkey(n)]=PROF.name;else{const f=friendByUid(u);if(f)map[pkey(n)]=f.name}});
       const c=Object.assign({},e.cfg),fix=l=>(l||[]).map(n=>map[pkey(n||'')]||n);c.pa=fix(c.pa);c.pb=fix(c.pb);
       if(!c.an&&c.pa.filter(Boolean).length)c.a=joinNames(c.pa);if(!c.bn&&c.pb.filter(Boolean).length)c.b=joinNames(c.pb);e=Object.assign({},e,{cfg:c})}
@@ -6318,10 +6573,11 @@ function renderLiveSheet(){
 let setupStarted=false,setupFromHome=false;
 const homeOn=()=>$('homeView').classList.contains('on');
 function greeting(){const h=new Date().getHours();return h<12?'Morning':h<18?'Afternoon':'Evening'}
-function showHome(){
+function showHome(){try{
   if(rec)return; // never cover the camera while filming
   renderHome();$('homeView').classList.add('on');$('homeView').scrollTop=0;
-}
+
+}finally{maybeRateSession()}}
 function hideHome(){$('homeView').classList.remove('on')}
 function renderHome(){try{
   const box=$('homeBody');if(!box)return;
@@ -6375,7 +6631,7 @@ function renderHome(){try{
   $('hmTour').onclick=()=>startTour();
   syncHomeAvatar();
 
-}finally{(()=>{try{const st=$('hmStart');if(st&&!$('cfCard')){const html=confCardsHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}try{const st=$('hmStart');if(st&&!$('invCard')){const html=invCardsHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}try{const st=$('hmStart');if(st&&!$('nightCard')){const html=nightCardsHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}})()}}
+}finally{(()=>{try{const st=$('hmStart');if(st&&!$('cfCard')){const html=confCardsHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}try{const st=$('hmStart');if(st&&!$('invCard')){const html=invCardsHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}try{const st=$('hmStart');if(st&&!$('nightCard')){const html=nightCardsHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}try{const st=$('hmStart');if(st&&!$('rateDue')){const html=rateDueHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}})()}}
 setTimeout(()=>{try{lockSeed()}catch(e){}},1500);
 function syncHomeAvatar(){const b=$('hmAv');if(!b)return;b.innerHTML=$('avBtn').innerHTML;b.className=$('avBtn').className;b.id='hmAv';b.setAttribute('data-n',$('avBtn').getAttribute('data-n')||'')}
 

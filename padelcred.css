@@ -1865,3 +1865,48 @@ img:not([src]),img[src=""]{visibility:hidden}
 .gatein p{margin:0;font-size:16px;line-height:1.5;color:#BAC9D3}
 .gatein .btns{width:100%;margin-top:10px}
 body.gated .scrim{z-index:20!important}body.gated #accountSheet{z-index:21!important}
+/* v2.13: add the night's results */
+.nrbtn{width:100%;margin:2px 0 10px}
+.nrm{margin:12px 0;padding:12px;border-radius:16px;background:#142132;border:1.5px solid #22314A}
+.nrhead{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}.nrhead b{font:800 15px var(--heading);color:#F5F7FA}
+.nrhead .linkbtn{font-size:13.5px}
+.nrpairs{display:grid;gap:6px}.nrpairs .pair{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.nrv{text-align:center;font-size:13px;font-weight:700;color:#9FB0C3}
+.nrsets{display:grid;gap:6px;margin-top:10px}
+.nrset{display:grid;grid-template-columns:48px 1fr 14px 1fr;gap:6px;align-items:center}
+.nrset span{font-size:13px;color:#BAC9D3;text-align:center}.nrset span:first-child{text-align:left}
+.nrset input{text-align:center;font-weight:700}
+.nradd{display:grid;gap:8px;margin:6px 0 12px}
+.nrm input{box-sizing:border-box;width:100%;min-width:0;padding:11px 12px;border-radius:12px;border:1.5px solid #334155;background:#0F1A28;color:#F5F7FA;font:500 16px var(--body)}
+.nrm input:focus{outline:none;border-color:#6EE7B7}
+.nrm input::placeholder{color:#8A9BB0}
+.nrpairs .pair{min-width:0}.nrpairs .pair input{flex:none}
+.nrset input{padding:9px 6px;font-weight:700}
+/* v2.14: player picker */
+.pickbox{position:fixed;z-index:30;display:grid;gap:2px;max-height:320px;overflow-y:auto;padding:4px;border-radius:14px;background:#142132;border:1.5px solid #334155;box-shadow:0 12px 30px rgba(0,0,0,.45)}
+.pickrow{display:grid;gap:1px;text-align:left;padding:9px 12px;border-radius:10px;background:none;border:0;color:#F5F7FA;cursor:pointer;min-height:48px}
+.pickrow:hover,.pickrow:focus{background:#1B2B40;outline:none}
+.pickrow b{font:600 15px var(--body)}.pickrow span{font-size:12.5px;color:#9FB0C3}
+.pickrow.pc span,.pickrow.me span{color:#6EE7B7}.pickrow.new span{color:#E9C46A}
+/* v2.15: accounts and confirmation */
+.pickrow.inv{border-top:1px solid #22314A;border-radius:0 0 10px 10px}.pickrow.inv b{color:#6EE7B7}
+.plst.na{border-color:#E9C46A;color:#E9C46A;font-size:12.5px}
+.pendcard{margin-bottom:12px}
+/* v2.16: session rating, add friends in the picker */
+.rnbtn{width:100%;margin:10px 0}
+.pickrow.wait{cursor:default}.pickrow.wait span{color:#E9C46A}
+.pickadd{display:grid;gap:8px;padding:8px}.pickadd b{font:700 14.5px var(--heading);color:#F5F7FA}
+.pickaddrow{display:grid;grid-template-columns:1fr auto;gap:6px}
+.pickaddrow input{box-sizing:border-box;width:100%;min-width:0;padding:10px 12px;border-radius:12px;border:1.5px solid #334155;background:#0F1A28;color:#F5F7FA;font:500 16px var(--body)}
+.pickfound{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px;border-radius:12px;background:#0F1A28}
+.pickfound span{display:grid}.pickfound em{font-style:normal;font-size:12.5px;color:#9FB0C3}.pkwait{font-style:normal;color:#E9C46A;font-size:13px}
+.pickres .help{margin:0;font-size:13px}
+/* v2.17: one question per player */
+.rnlist .rprow.rnq{display:grid;gap:6px;padding:12px 0;border-bottom:1px solid #22314A}
+.rpq{margin:0;font-size:16px;color:#F5F7FA;line-height:1.35}.rpq b{font-weight:800}
+.rpline{display:flex;align-items:center;gap:10px}
+.rnlist .rprow.rnq{display:grid!important;grid-template-columns:1fr!important;align-items:start}
+.rnlist .rprow.rnq>*{grid-column:1/-1!important}
+.rnlist .rpq{white-space:normal}
+/* v2.18: compulsory rating */
+#rnDone.dim{opacity:.55}
