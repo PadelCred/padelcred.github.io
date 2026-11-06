@@ -748,8 +748,20 @@ def t_celebrate_once(p):
     b.close()
     return 'bug1' in seen and not again and fresh_one and merged == ['a', 'b'], {'saved to the account profile': seen, 'celebrated again on a fresh phone': again, 'a new award still celebrates': fresh_one, 'two phones combined': merged}
 
+@promise('On a new phone, signed in with nothing stored yet, you\'re still recognised as you everywhere, including the planner', 'Signing in on a new phone')
+def t_new_phone_me(p):
+    b, pg, e = fresh(p, history=[match('np1', ['Raza', 'Ben'], ['Ellie', 'James'], [[6, 3], [6, 3]])])
+    pg.evaluate("localStorage.removeItem('db-me')"); pg.reload(); pg.wait_for_timeout(2000); pg.wait_for_function("!!window.__pcTest")
+    T(pg, "t.setFriends(a);t.setAdmin(true,'me1')", ROSTER); pg.wait_for_timeout(300)
+    pg.evaluate("document.querySelector('#fnav [data-nav=home]').click()"); pg.wait_for_timeout(400)
+    pg.evaluate("document.getElementById('hmPlan').click()"); pg.wait_for_timeout(800)
+    me_row = pg.evaluate("(document.querySelector('#plPlayers .plst')||{innerText:'(no label)'}).innerText")
+    first = pg.evaluate("(document.querySelector('#plPlayers input')||{value:''}).value")
+    b.close()
+    return me_row == 'In' and first == 'Raza', {'your row in the planner': me_row, 'name filled in': first}
+
 TESTS = [t_start_table, t_tiers, t_weights, t_weight_applied, t_amer_counts, t_league_overall, t_pred, t_dispute, t_evening,
-         t_golden, t_adv, t_tb, t_race, t_bestof, t_stb, t_pairings, t_court, t_form, t_legacy, t_first_serve, t_versions, t_night_roster, t_night_open, t_night_cards, t_night_planner, t_profile, t_admin_secrets, t_gate, t_night_add, t_rate_night, t_names, t_linking, t_night_guards, t_fair_ratings, t_accounts, t_confirm, t_session_rate, t_rate_rules, t_rate_compulsory, t_celebrate_once]
+         t_golden, t_adv, t_tb, t_race, t_bestof, t_stb, t_pairings, t_court, t_form, t_legacy, t_first_serve, t_versions, t_night_roster, t_night_open, t_night_cards, t_night_planner, t_profile, t_admin_secrets, t_gate, t_night_add, t_rate_night, t_names, t_linking, t_night_guards, t_fair_ratings, t_accounts, t_confirm, t_session_rate, t_rate_rules, t_rate_compulsory, t_celebrate_once, t_new_phone_me]
 
 if __name__ == '__main__':
     with sync_playwright() as p:
