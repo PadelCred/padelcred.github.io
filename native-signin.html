@@ -4,49 +4,46 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<meta name="theme-color"
+<meta name="theme-color" content="#0B1420">
 <title>PadelCred sign-in</title>
 <style>
   :root { color-scheme: dark; }
-  html, body { margin: 0; #0B1420; color: #F5F7FA; }
-  body { font: 16px/1.5 Inter, system-ui, -apple-system, "Segoe UI", Roboto,
-sans-serif; display: flextify-content: center;padding: 24px; box-sizing: border-box; text-align: center; }
-  main { max-width: 360px
+  html, body { margin: 0; height: 100%; background: #0B1420; color: #F5F7FA; }
+  body { font: 16px/1.5 Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; display: flex; align-items: center; justify-content: center; padding: 24px; box-sizing: border-box; text-align: center; }
+  main { max-width: 360px; }
   h1 { font: 800 24px/1.25 Manrope, Inter, system-ui, sans-serif; margin: 0 0 8px; }
   p { margin: 0 0 24px; color: #B8C2CF; }
-  a.btn { display: inline7; color: #0B1420;font-weight: 700; text-decoration: none; padding: 14px 28px; border-radius:
-999px; }
+  a.btn { display: inline-block; background: #6EE7B7; color: #0B1420; font-weight: 700; text-decoration: none; padding: 14px 28px; border-radius: 999px; }
   .hide { display: none; }
 </style>
 </head>
 <body>
 <main>
-  <!-- Shown when Google om the PadelCred Androidapp. -->
-  <div id="back" class="h
+  <!-- Shown when Google sends someone back here from the PadelCred Android app. -->
+  <div id="back" class="hide">
     <h1>Nearly there</h1>
-    <p>Tap below to finisred app.</p>
+    <p>Tap below to finish signing in to the PadelCred app.</p>
     <a class="btn" id="go" href="#">Back to PadelCred</a>
   </div>
   <!-- Shown if someone opens this page any other way. -->
   <div id="other">
     <h1>PadelCred</h1>
-    <p>This page finishesdelCred Android app.</p>
+    <p>This page finishes Google sign-in for the PadelCred Android app.</p>
     <a class="btn" href="/">Open PadelCred</a>
   </div>
 </main>
 <script>
-  // Google puts the sign-in reply after the #. Hand it to the Android app,
-and only to the PadelCred
+  // Google puts the sign-in reply after the #. Hand it to the Android app, and only to the PadelCred app.
   (function () {
-    var reply = location.
+    var reply = location.hash.slice(1);
     if (!/(^|&)state=/.test(reply)) return;
-    history.replaceState(e);
+    history.replaceState(null, '', location.pathname);
     var link = 'intent://' + location.host + location.pathname + '?' + reply +
-      '#Intent;scheme=httnd';
+      '#Intent;scheme=https;package=app.padelcred;end';
     document.getElementById('go').href = link;
-    document.getElementBy'hide');
+    document.getElementById('other').classList.add('hide');
     document.getElementById('back').classList.remove('hide');
-    // Chrome usually neeht away in case it doesn't.
+    // Chrome usually needs the tap, but try straight away in case it doesn't.
     try { location.href = link; } catch (e) {}
   })();
 </script>
