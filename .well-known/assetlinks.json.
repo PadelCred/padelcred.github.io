@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.padelcred",
+      "sha256_cert_fingerprints": [
+        "83:69:8F:76:E1:CB:7B:D8:E1:C6:AD:E6:3B:38:87:31:F1:B7:56:89:41:3C:9B:77:FE:31:67:5A:76:0B:05:B8"
+      ]
+    }
+  }
+]
