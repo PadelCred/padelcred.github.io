@@ -3371,7 +3371,7 @@ setTimeout(()=>{try{if(NIGHTS.join&&!store.get('db-signed-in')){toast('Sign in o
 
 // planner rows: PadelCred friends tick themselves in, so their row shows their answer instead of a tick button
 function planRowStatus(p,name){if(!FB.user&&!NIGHTS.me)return null;name=(name||'').trim();if(!name)return null;const n=NIGHTS.list.find(x=>x.id===p.id);
-  if(pkey(name)===meKey())return n?nightStatusOf(n,nMe()):{k:'in',label:'In'};const f=friendForName(pkey(name));if(!(f&&f.uid))return{k:'na',label:'Not on PadelCred'};
+  if(pkey(name)===meKey()||(PROF.name&&pkey(name)===pkey(PROF.name))||isMeTyped(pkey(name)))return n?nightStatusOf(n,nMe()):{k:'in',label:'In'};const f=friendForName(pkey(name));if(!(f&&f.uid))return{k:'na',label:'Not on PadelCred'};
   return n?nightStatusOf(n,f.uid):{k:'wait',label:'Invited'}}
 function planSharedHtml(p){if(!FB.user&&!NIGHTS.me)return'';const n=NIGHTS.list.find(x=>x.id===p.id);
   if(!n)return'<p class="help plhelp">PadelCred friends you add will see this night and tick themselves in. Everyone needs an account: <button class="linkbtn" data-invite="1">invite someone to PadelCred</button>.</p>';
@@ -4320,7 +4320,7 @@ function newBadgesHtml(){
 }
 
 /* ================= this is me ================= */
-const meKey=()=>store.get('db-me')||'';
+const meKey=()=>{const k=store.get('db-me');if(k)return k;try{return typeof PROF!=='undefined'&&PROF&&PROF.name?pkey(PROF.name):''}catch(e){return''}};
 function setMe(k){store.set('db-me',k);}
 
 /* ================= weekly recap ================= */
@@ -4604,7 +4604,7 @@ $('peCancel').onclick=()=>hideSheet();
 
 
 /* ================= home logo and updates ================= */
-const APP_VERSION='2.18.1';
+const APP_VERSION='2.18.2';
 document.querySelectorAll('.vlogo').forEach(i=>i.src=$('logo').src);
 function goHome(e){
   const el=e&&e.currentTarget;if(el){el.classList.remove('tap');void el.offsetWidth;el.classList.add('tap')}
