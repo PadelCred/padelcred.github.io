@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<meta name="theme-color"
+<title>PadelCred sign-in</title>
+<style>
+  :root { color-scheme: dark; }
+  html, body { margin: 0; #0B1420; color: #F5F7FA; }
+  body { font: 16px/1.5 Inter, system-ui, -apple-system, "Segoe UI", Roboto,
+sans-serif; display: flextify-content: center;padding: 24px; box-sizing: border-box; text-align: center; }
+  main { max-width: 360px
+  h1 { font: 800 24px/1.25 Manrope, Inter, system-ui, sans-serif; margin: 0 0 8px; }
+  p { margin: 0 0 24px; color: #B8C2CF; }
+  a.btn { display: inline7; color: #0B1420;font-weight: 700; text-decoration: none; padding: 14px 28px; border-radius:
+999px; }
+  .hide { display: none; }
+</style>
+</head>
+<body>
+<main>
+  <!-- Shown when Google om the PadelCred Androidapp. -->
+  <div id="back" class="h
+    <h1>Nearly there</h1>
+    <p>Tap below to finisred app.</p>
+    <a class="btn" id="go" href="#">Back to PadelCred</a>
+  </div>
+  <!-- Shown if someone opens this page any other way. -->
+  <div id="other">
+    <h1>PadelCred</h1>
+    <p>This page finishesdelCred Android app.</p>
+    <a class="btn" href="/">Open PadelCred</a>
+  </div>
+</main>
+<script>
+  // Google puts the sign-in reply after the #. Hand it to the Android app,
+and only to the PadelCred
+  (function () {
+    var reply = location.
+    if (!/(^|&)state=/.test(reply)) return;
+    history.replaceState(e);
+    var link = 'intent://' + location.host + location.pathname + '?' + reply +
+      '#Intent;scheme=httnd';
+    document.getElementById('go').href = link;
+    document.getElementBy'hide');
+    document.getElementById('back').classList.remove('hide');
+    // Chrome usually neeht away in case it doesn't.
+    try { location.href = link; } catch (e) {}
+  })();
+</script>
+</body>
+</html>
