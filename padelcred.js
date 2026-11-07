@@ -2076,7 +2076,7 @@ async function checkAwards(){
   if(!FB.user)return;
   try{const d=await FB.db.collection('awards').doc(FB.user.uid).get();
     if(d.exists){const a=d.data(),cur=(PROF.xb||{}).bug;if(a.bugs&&(!cur||cur.n!==a.bugs)){setXb('bug',{n:a.bugs,date:a.last||Date.now()});if(awFirst||(a.last&&Date.now()-a.last>14*864e5)){exAnnounced['bug'+a.bugs]=1;store.set('db-ex-seen',exAnnounced);try{PROF.seen=Object.assign({},PROF.seen||{},{['bug'+a.bugs]:Date.now()});saveProf()}catch(e){}}else celebrateEx('bug'+a.bugs,'',{id:'bug',name:'Bug hunter',extra:a.bugs>1?'×'+a.bugs:'',tier:'x',desc:'You found a real bug and helped make PadelCred better. Thank you!'})}}}catch(e){}
-  try{const ad=await FB.db.collection('admins').doc(FB.user.uid).get();FB.admin=ad.exists}catch(e){FB.admin=false}
+  try{const ad=await FB.db.collection('admins').doc(FB.user.uid).get();FB.admin=ad.exists;store.set('db-admin-uid',ad.exists?FB.user.uid:'');try{renderHome()}catch(e){}}catch(e){FB.admin=false}
   if(FB.admin)loadBugs(true);
   try{if(FB.user)store.set('db-aw-init-'+FB.user.uid,Date.now())}catch(e){}
 }
@@ -3295,7 +3295,7 @@ function hrFill(){const st=$('hrStart'),ti=$('hrTiers');if(!st||!ti)return;
 
 
 /* ================= test window: only when opened with ?selftest=1, for the promise tests. Players never see it ================= */
-if(window.__PC_TEST__===true)setTimeout(()=>{window.__pcTest={perfScore,levelToRating,levelToOvr,ovrTier,matchWeight,winChance,computeLeague,formWord,formBand,legacySeedToRating,pairings,replay,rowOf,allRows,overallFor,cardHighlights,ovrToRating,fourPlayers,currentPairing,K:typeof K!=='undefined'?K:null,nightRoster,nightOpen,nightStatusOf,setNights:(list,me)=>{NIGHTS.list=list;NIGHTS.me=me;nightsRefresh()},setAdmin:(on,uid)=>{FB.admin=!!on;FB.user=on?{uid:uid||'admin1'}:null;renderProfile()},setFriends:l=>{FRIENDS.length=0;l.forEach(f=>FRIENDS.push(f))},runUpkeep:()=>nameUpkeep(),peerAggWith:items=>{PR.items=items;return peerAgg()},alias:()=>ALIAS,verifyAll:()=>{history.forEach(h=>{if(!h.ver)h.ver={by:'test',at:Date.now()}});saveH()},confFrom:(id,uid,name,ok)=>confReceived({type:'conf',id,ok},{from:uid,fromName:name}),rateNight:(ids,c)=>openRateNight(history.filter(h=>ids.includes(h.id)),c?{confirm:history.find(h=>h.id===c)}:{}),markRatedAll:()=>{const s=new Set(history.map(unitOf));markRated([...s])},rated:()=>RATED,sendq:()=>SENDQ,setAdmq:l=>{ADMQ.list=l;FB.admin=true;renderHome()},awInit:()=>FB.user?store.get('db-aw-init-'+FB.user.uid):null,formData:p=>formData(p),newcomer:()=>{FB.user={uid:'new1',email:'new@example.com'};FB.admin=false;PROF.username='';PROF.name='';GATE.state='no';gateShow('wait');openUsername()},loadAdmin:()=>loadAdminPlayers(),adminInv:()=>adminInvites($('admInvites'),[{uid:'n1',via:'live1'}]),renderAdminPl:l=>renderAdminPlayers(l),adminBar:()=>adminBarHtml(),setBugs:l=>{BUGS.list=l;renderBugs()},seasonTable:(f,t)=>seasonTable(f,t),seasonRange:(m,r)=>seasonRange(m,r),celebrate:(k)=>celebrateEx(k,'',{id:'bug',name:'Bug hunter',tier:'x',desc:'test'}),mergeProf:(a,b)=>mergeProf(a,b),setProf:o=>{Object.assign(PROF,o)},exSeen:()=>exAnnounced}},0)
+if(window.__PC_TEST__===true)setTimeout(()=>{window.__pcTest={perfScore,levelToRating,levelToOvr,ovrTier,matchWeight,winChance,computeLeague,formWord,formBand,legacySeedToRating,pairings,replay,rowOf,allRows,overallFor,cardHighlights,ovrToRating,fourPlayers,currentPairing,K:typeof K!=='undefined'?K:null,nightRoster,nightOpen,nightStatusOf,setNights:(list,me)=>{NIGHTS.list=list;NIGHTS.me=me;nightsRefresh()},setAdmin:(on,uid)=>{FB.admin=!!on;FB.user=on?{uid:uid||'admin1'}:null;renderProfile()},setFriends:l=>{FRIENDS.length=0;l.forEach(f=>FRIENDS.push(f))},runUpkeep:()=>nameUpkeep(),peerAggWith:items=>{PR.items=items;return peerAgg()},alias:()=>ALIAS,verifyAll:()=>{history.forEach(h=>{if(!h.ver)h.ver={by:'test',at:Date.now()}});saveH()},confFrom:(id,uid,name,ok)=>confReceived({type:'conf',id,ok},{from:uid,fromName:name}),rateNight:(ids,c)=>openRateNight(history.filter(h=>ids.includes(h.id)),c?{confirm:history.find(h=>h.id===c)}:{}),markRatedAll:()=>{const s=new Set(history.map(unitOf));markRated([...s])},rated:()=>RATED,sendq:()=>SENDQ,setAdmq:l=>{ADMQ.list=l;FB.admin=true;renderHome()},awInit:()=>FB.user?store.get('db-aw-init-'+FB.user.uid):null,formData:p=>formData(p),userOnly:uid=>{FB.user={uid};FB.admin=false;try{renderHome()}catch(e){}},newcomer:()=>{FB.user={uid:'new1',email:'new@example.com'};FB.admin=false;PROF.username='';PROF.name='';GATE.state='no';gateShow('wait');openUsername()},loadAdmin:()=>loadAdminPlayers(),adminInv:()=>adminInvites($('admInvites'),[{uid:'n1',via:'live1'}]),renderAdminPl:l=>renderAdminPlayers(l),adminBar:()=>adminBarHtml(),setBugs:l=>{BUGS.list=l;renderBugs()},seasonTable:(f,t)=>seasonTable(f,t),seasonRange:(m,r)=>seasonRange(m,r),celebrate:(k)=>celebrateEx(k,'',{id:'bug',name:'Bug hunter',tier:'x',desc:'test'}),mergeProf:(a,b)=>mergeProf(a,b),setProf:o=>{Object.assign(PROF,o)},exSeen:()=>exAnnounced}},0)
 
 /* ================= shared match nights: everyone invited sees the same live list and ticks themselves in ================= */
 const NIGHTS={list:[],unsub:null,me:null,seen:store.get('db-nseen')||{},hidden:store.get('db-nhide')||{},tok:store.get('db-ntok')||{},push:null};
@@ -3398,7 +3398,8 @@ function gateShow(mode){const g=$('gateView');if(!g)return;
   $('gateIn').classList.toggle('hide',mode==='wait');$('gateUp').classList.toggle('hide',mode==='wait');$('gateOut').classList.toggle('hide',mode!=='wait');
   g.classList.add('on');document.body.classList.add('gated')}
 function gateHide(){const g=$('gateView');if(g)g.classList.remove('on');document.body.classList.remove('gated')}
-async function gateCheck(){if(gateTest()){gateHide();return}
+async function gateCheck(){if(FB.user&&!FB.admin&&store.get('db-admin-uid')===FB.user.uid){FB.admin=true;setTimeout(()=>{try{adminQueueLoad();loadBugs(true);renderHome()}catch(e){}},50)}
+  if(gateTest()){gateHide();return}
   const u=FB.user;
   if(!u){if(GATE.uid){GATE.uid=null;store.set('db-access','')}if(FB.authKnown||!store.get('db-signed-in'))gateShow('in');else if(gateApprovedHere())gateHide();return}
   if(GATE.uid===u.uid||GATE.busy)return;GATE.busy=true;
@@ -3684,7 +3685,7 @@ document.addEventListener('focusout',e=>{const el=e.target;if(!el.matches||!el.m
 document.addEventListener('input',e=>{if(e.target.classList&&e.target.classList.contains('needpick'))e.target.classList.remove('needpick')});
 /* ================= admin: people waiting for access, on Home ================= */
 const ADMQ={list:[],at:0};
-async function adminQueueLoad(){if(!FB.user||!FB.admin)return;try{const s=await FB.db.collection('accessRequests').orderBy('at','desc').limit(20).get();ADMQ.list=s.docs.map(d=>Object.assign({id:d.id},d.data()));ADMQ.at=Date.now();if(typeof homeOn==='function'&&homeOn())renderHome()}catch(e){}}
+async function adminQueueLoad(){if(!FB.user||!FB.admin)return;try{loadBugs(true).then(()=>{try{if(homeOn())renderHome()}catch(e){}})}catch(e){}try{const s=await FB.db.collection('accessRequests').orderBy('at','desc').limit(20).get();ADMQ.list=s.docs.map(d=>Object.assign({id:d.id},d.data()));ADMQ.at=Date.now();if(typeof homeOn==='function'&&homeOn())renderHome()}catch(e){}}
 setInterval(()=>{if(FB.user&&FB.admin&&Date.now()-ADMQ.at>60000)adminQueueLoad()},5000);
 function adminWaitHtml(){if(!FB.admin||!ADMQ.list.length)return'';
   return'<section class="cfcard" id="admWait"><b class="cfttl">'+ADMQ.list.length+' waiting for access</b><p class="cfsub">Only you see this. Approve the people you know.</p>'+ADMQ.list.slice(0,6).map(r=>'<div class="cfrow"><span><b>'+esc(r.name||'No name yet')+(r.username?' <em class="admu">@'+esc(r.username)+'</em>':'')+'</b><em>'+esc(r.email||'')+'</em></span><div class="cfbtns"><button class="mini cfok" data-accok="'+esc(r.id)+'">Approve</button><button class="mini" data-accno="'+esc(r.id)+'">Decline</button></div></div>').join('')+'</section>'}
@@ -3729,12 +3730,12 @@ document.addEventListener('click',async e=>{const btn=e.target.closest&&e.target
     try{await FB.db.collection('rankBlock').doc(m[1]).set({by:FB.user.uid,at:Date.now(),report:b.id});try{await FB.db.collection('rankings').doc(m[1]).delete()}catch(err){}toast('Removed from the rankings.')}catch(err){toast(fbError(err))}}});
 
 /* ================= admin: one place for waiting players, players, invites, achievements and reports ================= */
-async function loadAdminPlayers(){const box=$('admPlayers'),inv=$('admInvites');if(!box||!FB.admin)return;box.innerHTML='<p class="help">Loading…</p>';let rows=[];
+async function loadAdminPlayers(){const box=$('admPlayers'),inv=$('admInvites');if(!box||!FB.admin)return;const cached=store.get('db-adm-pl');if(cached&&cached.length)renderAdminPlayers(cached);else box.innerHTML='<p class="help">Loading…</p>';let rows=[];
   try{const s=await FB.db.collection('access').get();rows=s.docs.map(d=>Object.assign({uid:d.id},d.data()));
     const all=[{uid:myUid(),me:true,at:0}].concat(rows.filter(r=>r.uid!==myUid())).slice(0,150);
     const got=await Promise.all(all.map(r=>Promise.all([FB.db.collection('profiles').doc(r.uid).get().then(d=>d.exists?d.data():{}).catch(()=>({})),FB.db.collection('rankings').doc(r.uid).get().then(d=>d.exists?d.data():null).catch(()=>null)])));
-    renderAdminPlayers(all.map((r,i)=>{const pr=got[i][0]||{},rk=got[i][1];return{uid:r.uid,me:!!r.me,name:pr.name||(r.me?PROF.name:'')||'',username:pr.username||(r.me?PROF.username:'')||'',photo:pr.photo||(r.me?PROF.photo:'')||'',ovr:rk?rk.ovr:null,played:rk?rk.played:0,at:r.at||0,via:!!r.via}}))}
-  catch(e){box.innerHTML='<p class="help">Couldn\'t load players: '+esc(fbError(e))+'</p>'}
+    const fresh=all.map((r,i)=>{const pr=got[i][0]||{},rk=got[i][1];return{uid:r.uid,me:!!r.me,name:pr.name||(r.me?PROF.name:'')||'',username:pr.username||(r.me?PROF.username:'')||'',photo:pr.photo||(r.me?PROF.photo:'')||'',ovr:rk?rk.ovr:null,played:rk?rk.played:0,at:r.at||0,via:!!r.via}});store.set('db-adm-pl',fresh);renderAdminPlayers(fresh)}
+  catch(e){if(!(cached&&cached.length))box.innerHTML='<p class="help">Couldn\'t load players: '+esc(fbError(e))+'</p>'} // keep the last list if a refresh fails
   adminInvites(inv,rows)}
 // everyone with access: you first, then newest first; tap one to open their profile
 function renderAdminPlayers(list){const box=$('admPlayers');if(!box)return;ADM_PL=list;
@@ -3743,7 +3744,7 @@ function renderAdminPlayers(list){const box=$('admPlayers');if(!box)return;ADM_P
     const av=x.photo?'<img class="admav" src="'+esc(x.photo)+'" alt="">':'<span class="admav">'+esc(initials(x.name||x.username||'?'))+'</span>';
     const stat=x.ovr?'Overall '+x.ovr+' · '+x.played+' match'+(x.played===1?'':'es'):'No matches yet';
     const how=x.me?'You · admin':'Joined '+(x.at?dShort(x.at):'')+' · '+(x.via?'with an invite link':'approved by you');
-    return'<button class="admpl" data-admprof="'+esc(x.uid)+'"'+(x.me?' disabled':'')+'>'+av+'<span class="admtx"><b>'+esc(x.name||'No name yet')+(x.username?' <em class="admu">@'+esc(x.username)+'</em>':'')+'</b><em>'+stat+'</em><em>'+how+'</em></span></button>'}).join('')}
+    return'<div class="admrow"><button class="admpl" data-admprof="'+esc(x.uid)+'"'+(x.me?' disabled':'')+'>'+av+'<span class="admtx"><b>'+esc(x.name||'No name yet')+(x.username?' <em class="admu">@'+esc(x.username)+'</em>':'')+'</b><em>'+stat+'</em><em>'+how+'</em></span></button>'+(x.me?'':'<button class="mini" data-admrm="'+esc(x.uid)+'">Remove</button>')+'</div>'}).join('')}
 let ADM_PL=[];
 document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-admprof]');if(!b||b.disabled)return;const x=ADM_PL.find(p=>p.uid===b.dataset.admprof);hideSheet();setTimeout(()=>{try{openPublicProfile(b.dataset.admprof,x?{name:x.name,username:x.username,photo:x.photo}:null)}catch(err){toast('Couldn\'t open that profile.')}},300)});
 // your invite links: whether each still works, how many joined with it, and Cancel
@@ -3751,12 +3752,19 @@ function adminInvites(inv,rows){if(!inv)return;const byInvite=rows.filter(r=>r.v
   inv.innerHTML='<p class="help">'+byInvite+' joined with an invite link. A link works for anyone you send it to for 7 days, and they\'re approved straight away.</p>'+
     mine.map(c=>{const live=!c.cancelled&&c.exp>now;return'<div class="cfrow"><span><b>Link made '+dShort(c.at)+'</b><em>'+(c.cancelled?'Cancelled':live?'Works until '+dShort(c.exp):'Expired')+' · '+joined(c.code)+' joined</em></span>'+(live?'<div class="cfbtns"><button class="mini" data-cancelcode="'+esc(c.code)+'">Cancel</button></div>':'')+'</div>'}).join('')+
     '<button class="secondary nrbtn" data-invite="1">Make an invite link</button>'}
-function adminBarHtml(){if(!FB.admin||!FB.user)return'';const n=ADMQ.list.length;return'<button class="admbar" data-openadmin="1"><b>Admin</b><span>'+(n?n+' waiting for access':'Players, invites, achievements and reports')+'</span></button>'}
+function adminBarHtml(){if(!FB.admin||!FB.user)return'';const n=ADMQ.list.length,r=(BUGS.list||[]).filter(b=>b.status==='new').length,bits=[];if(n)bits.push(n+' waiting for access');if(r)bits.push(r+' new report'+(r===1?'':'s'));return'<button class="admbar'+(bits.length?' due':'')+'" data-openadmin="1"><b>Admin</b><span>'+(bits.length?bits.join(' · '):'Players, invites, achievements and reports')+'</span></button>'}
 document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('[data-openadmin]'))openAward()});
 
 document.addEventListener('click',async e=>{const b=e.target.closest&&e.target.closest('[data-cancelcode]');if(!b)return;const code=b.dataset.cancelcode;
   if(!(await ask('Cancel this invite link?','Anyone who hasn\'t used it yet won\'t be able to join with it. People who already joined stay in.','Cancel the link',true,'Keep it')))return;
   try{await FB.db.collection('joinCodes').doc(code).delete()}catch(err){}const mine=store.get('db-mycodes')||[];const c=mine.find(x=>x.code===code);if(c)c.cancelled=Date.now();store.set('db-mycodes',mine);toast('Link cancelled.');loadAdminPlayers()});
+// remove a player: their approval, profile, username and ranking go; their sign-in is deleted in Firebase Authentication
+document.addEventListener('click',async e=>{const b=e.target.closest&&e.target.closest('[data-admrm]');if(!b)return;const uid=b.dataset.admrm,x=ADM_PL.find(p=>p.uid===uid)||{};
+  if(!(await ask('Remove '+(x.name||'this player')+'?','They lose access straight away, and their profile, username and ranking are deleted. Results already shared with friends stay in those friends\' records. To stop them signing in at all, also delete them in Firebase, Authentication.','Remove player',true)))return;
+  const db=FB.db,jobs=[db.collection('access').doc(uid).delete(),db.collection('rankings').doc(uid).delete(),db.collection('profiles').doc(uid).delete(),db.collection('accessRequests').doc(uid).delete()];
+  if(x.username)jobs.push(db.collection('usernames').doc(String(x.username).toLowerCase()).delete());
+  const res=await Promise.allSettled(jobs),failed=res.filter(r=>r.status==='rejected').length;
+  ADM_PL=ADM_PL.filter(p=>p.uid!==uid);store.set('db-adm-pl',ADM_PL);renderAdminPlayers(ADM_PL);toast(failed?'Removed, but some details couldn\'t be deleted. Check the rules are up to date.':'Removed.')});
 /* ================= bug reports ================= */
 const appVersion=()=>((document.querySelector('meta[name="app-version"]')||{}).content||'');
 const bugDevice=()=>{const ua=navigator.userAgent;const os=/iPhone|iPad/.test(ua)?'iPhone':/Android/.test(ua)?'Android':/Mac/.test(ua)?'Mac':/Windows/.test(ua)?'Windows':'Other';const br=/SamsungBrowser/.test(ua)?'Samsung Internet':/CriOS|Chrome/.test(ua)?'Chrome':/Safari/.test(ua)?'Safari':/Firefox/.test(ua)?'Firefox':'Browser';return os+', '+br+(window.matchMedia('(display-mode: standalone)').matches?', home screen app':'')+(window.PadelCredNative?', Android app':'')+', '+innerWidth+'×'+innerHeight};
@@ -3789,7 +3797,7 @@ async function loadBugs(quiet){
   try{const s=await FB.db.collection('reports').get(),list=[];s.forEach(d=>list.push(Object.assign({id:d.id},d.data())));BUGS.list=list.sort((a,b)=>b.at-a.at)}catch(e){return}
   const n=BUGS.list.filter(b=>b.status==='new').length;
   const seen=store.get('db-bugs-seen')||0,newest=BUGS.list.length?BUGS.list[0].at:0;
-  if(quiet&&n&&newest>seen){toast(n+' new bug report'+(n===1?'':'s')+'. See them in Award badges.');store.set('db-bugs-seen',newest)}
+  if(quiet&&n&&newest>seen){toast(n+' new report'+(n===1?'':'s')+'. See them in Admin.');store.set('db-bugs-seen',newest)}
   if(openSheet&&openSheet.id==='awardSheet')renderBugs();
 }
 function renderBugs(){
@@ -4706,7 +4714,7 @@ $('peCancel').onclick=()=>hideSheet();
 
 
 /* ================= home logo and updates ================= */
-const APP_VERSION='2.25';
+const APP_VERSION='2.26';
 document.querySelectorAll('.vlogo').forEach(i=>i.src=$('logo').src);
 function goHome(e){
   const el=e&&e.currentTarget;if(el){el.classList.remove('tap');void el.offsetWidth;el.classList.add('tap')}
