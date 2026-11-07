@@ -3295,7 +3295,7 @@ function hrFill(){const st=$('hrStart'),ti=$('hrTiers');if(!st||!ti)return;
 
 
 /* ================= test window: only when opened with ?selftest=1, for the promise tests. Players never see it ================= */
-if(window.__PC_TEST__===true)setTimeout(()=>{window.__pcTest={perfScore,levelToRating,levelToOvr,ovrTier,matchWeight,winChance,computeLeague,formWord,formBand,legacySeedToRating,pairings,replay,rowOf,allRows,overallFor,cardHighlights,ovrToRating,fourPlayers,currentPairing,K:typeof K!=='undefined'?K:null,nightRoster,nightOpen,nightStatusOf,setNights:(list,me)=>{NIGHTS.list=list;NIGHTS.me=me;nightsRefresh()},setAdmin:(on,uid)=>{FB.admin=!!on;FB.user=on?{uid:uid||'admin1'}:null;renderProfile()},setFriends:l=>{FRIENDS.length=0;l.forEach(f=>FRIENDS.push(f))},runUpkeep:()=>nameUpkeep(),peerAggWith:items=>{PR.items=items;return peerAgg()},alias:()=>ALIAS,verifyAll:()=>{history.forEach(h=>{if(!h.ver)h.ver={by:'test',at:Date.now()}});saveH()},confFrom:(id,uid,name,ok)=>confReceived({type:'conf',id,ok},{from:uid,fromName:name}),rateNight:(ids,c)=>openRateNight(history.filter(h=>ids.includes(h.id)),c?{confirm:history.find(h=>h.id===c)}:{}),markRatedAll:()=>{const s=new Set(history.map(unitOf));markRated([...s])},rated:()=>RATED,sendq:()=>SENDQ,setAdmq:l=>{ADMQ.list=l;FB.admin=true;renderHome()},awInit:()=>FB.user?store.get('db-aw-init-'+FB.user.uid):null,formData:p=>formData(p),loadAdmin:()=>loadAdminPlayers(),adminInv:()=>adminInvites($('admInvites'),[{uid:'n1',via:'live1'}]),adminBar:()=>adminBarHtml(),setBugs:l=>{BUGS.list=l;renderBugs()},seasonTable:(f,t)=>seasonTable(f,t),seasonRange:(m,r)=>seasonRange(m,r),celebrate:(k)=>celebrateEx(k,'',{id:'bug',name:'Bug hunter',tier:'x',desc:'test'}),mergeProf:(a,b)=>mergeProf(a,b),setProf:o=>{Object.assign(PROF,o)},exSeen:()=>exAnnounced}},0)
+if(window.__PC_TEST__===true)setTimeout(()=>{window.__pcTest={perfScore,levelToRating,levelToOvr,ovrTier,matchWeight,winChance,computeLeague,formWord,formBand,legacySeedToRating,pairings,replay,rowOf,allRows,overallFor,cardHighlights,ovrToRating,fourPlayers,currentPairing,K:typeof K!=='undefined'?K:null,nightRoster,nightOpen,nightStatusOf,setNights:(list,me)=>{NIGHTS.list=list;NIGHTS.me=me;nightsRefresh()},setAdmin:(on,uid)=>{FB.admin=!!on;FB.user=on?{uid:uid||'admin1'}:null;renderProfile()},setFriends:l=>{FRIENDS.length=0;l.forEach(f=>FRIENDS.push(f))},runUpkeep:()=>nameUpkeep(),peerAggWith:items=>{PR.items=items;return peerAgg()},alias:()=>ALIAS,verifyAll:()=>{history.forEach(h=>{if(!h.ver)h.ver={by:'test',at:Date.now()}});saveH()},confFrom:(id,uid,name,ok)=>confReceived({type:'conf',id,ok},{from:uid,fromName:name}),rateNight:(ids,c)=>openRateNight(history.filter(h=>ids.includes(h.id)),c?{confirm:history.find(h=>h.id===c)}:{}),markRatedAll:()=>{const s=new Set(history.map(unitOf));markRated([...s])},rated:()=>RATED,sendq:()=>SENDQ,setAdmq:l=>{ADMQ.list=l;FB.admin=true;renderHome()},awInit:()=>FB.user?store.get('db-aw-init-'+FB.user.uid):null,formData:p=>formData(p),newcomer:()=>{FB.user={uid:'new1',email:'new@example.com'};FB.admin=false;PROF.username='';PROF.name='';GATE.state='no';gateShow('wait');openUsername()},loadAdmin:()=>loadAdminPlayers(),adminInv:()=>adminInvites($('admInvites'),[{uid:'n1',via:'live1'}]),renderAdminPl:l=>renderAdminPlayers(l),adminBar:()=>adminBarHtml(),setBugs:l=>{BUGS.list=l;renderBugs()},seasonTable:(f,t)=>seasonTable(f,t),seasonRange:(m,r)=>seasonRange(m,r),celebrate:(k)=>celebrateEx(k,'',{id:'bug',name:'Bug hunter',tier:'x',desc:'test'}),mergeProf:(a,b)=>mergeProf(a,b),setProf:o=>{Object.assign(PROF,o)},exSeen:()=>exAnnounced}},0)
 
 /* ================= shared match nights: everyone invited sees the same live list and ticks themselves in ================= */
 const NIGHTS={list:[],unsub:null,me:null,seen:store.get('db-nseen')||{},hidden:store.get('db-nhide')||{},tok:store.get('db-ntok')||{},push:null};
@@ -3406,8 +3406,8 @@ async function gateCheck(){if(gateTest()){gateHide();return}
     if(ad.exists||ac.exists){GATE.uid=u.uid;GATE.state='yes';store.set('db-access',u.uid);gateHide()}
     else if(joinCode()&&await joinWithCode(u.uid)){GATE.uid=u.uid;GATE.state='yes';store.set('db-access',u.uid);gateHide()}
     else{GATE.uid=u.uid;GATE.state='no';store.set('db-access','');
-      try{await db.collection('accessRequests').doc(u.uid).set({name:PROF.name||u.displayName||'',email:u.email||'',at:Date.now()})}catch(e){}
-      gateShow('wait')}}
+      gateRequestWrite();
+      gateShow('wait');if(needsUsername())setTimeout(()=>{if(needsUsername())openUsername()},400)}}
   catch(e){if(gateApprovedHere())gateHide();else gateShow('in')}finally{GATE.busy=false}}
 // at start: approved on this phone before means straight in (works offline); otherwise the gate until sign-in confirms
 if(!gateTest()&&!gateApprovedHere())setTimeout(()=>{if(!GATE.uid||GATE.state!=='yes')gateShow('in')},0);
@@ -3419,7 +3419,7 @@ document.addEventListener('click',e=>{const t=e.target;if(!t.closest)return;
 // admin: people waiting for access, with Approve
 async function loadAccessRequests(){const box=$('accList');if(!box||!FB.admin)return;
   try{const s=await FB.db.collection('accessRequests').orderBy('at','desc').limit(50).get();
-    box.innerHTML=s.empty?'<p class="help">Nobody waiting.</p>':s.docs.map(d=>{const r=d.data();return'<div class="cfrow"><span><b>'+esc(r.name||'No name yet')+'</b><em>'+esc(r.email||'')+'</em></span><div class="cfbtns"><button class="mini cfok" data-accok="'+esc(d.id)+'">Approve</button><button class="mini" data-accno="'+esc(d.id)+'">Decline</button></div></div>'}).join('')}
+    box.innerHTML=s.empty?'<p class="help">Nobody waiting.</p>':s.docs.map(d=>{const r=d.data();return'<div class="cfrow"><span><b>'+esc(r.name||'No name yet')+(r.username?' <em class="admu">@'+esc(r.username)+'</em>':'')+'</b><em>'+esc(r.email||'')+(r.username?'':' · no username yet')+'</em></span><div class="cfbtns"><button class="mini cfok" data-accok="'+esc(d.id)+'">Approve</button><button class="mini" data-accno="'+esc(d.id)+'">Decline</button></div></div>'}).join('')}
   catch(e){box.innerHTML='<p class="help">Couldn\'t load the list.</p>'}}
 document.addEventListener('click',async e=>{const t=e.target;if(!t.closest)return;
   const ok=t.closest('[data-accok]'),no=t.closest('[data-accno]');if(!ok&&!no)return;const uid=(ok||no).dataset[ok?'accok':'accno'];
@@ -3587,6 +3587,8 @@ async function joinWithCode(uid){const code=joinCode();if(!code)return false;
     if(inv.by&&inv.by!==uid)setTimeout(()=>{try{sendRequest(inv.by,{name:inv.byName,username:inv.byUsername})}catch(e){}},2500);
     toast('Welcome to PadelCred. '+(inv.byName||'Your friend')+' will get your friend request.');return true}
   catch(e){return false}}
+// the waiting list entry the admin sees: name, email and username
+async function gateRequestWrite(){const u=FB.user;if(!u||GATE.state==='yes')return;try{await FB.db.collection('accessRequests').doc(u.uid).set({name:PROF.name||u.displayName||'',email:u.email||'',username:PROF.username||'',at:Date.now()})}catch(e){}}
 /* ================= confirmation: a result counts once the other team confirms it ================= */
 const hCreator=h=>h.recv||myUid();
 function sideOf(h,uid){const mine=uid===myUid(),nm=mine?(PROF.name||''):((friendByUid(uid)||{}).name||''),ks=[pkey(nm)];if(mine&&meKey())ks.push(meKey());
@@ -3685,7 +3687,7 @@ const ADMQ={list:[],at:0};
 async function adminQueueLoad(){if(!FB.user||!FB.admin)return;try{const s=await FB.db.collection('accessRequests').orderBy('at','desc').limit(20).get();ADMQ.list=s.docs.map(d=>Object.assign({id:d.id},d.data()));ADMQ.at=Date.now();if(typeof homeOn==='function'&&homeOn())renderHome()}catch(e){}}
 setInterval(()=>{if(FB.user&&FB.admin&&Date.now()-ADMQ.at>60000)adminQueueLoad()},5000);
 function adminWaitHtml(){if(!FB.admin||!ADMQ.list.length)return'';
-  return'<section class="cfcard" id="admWait"><b class="cfttl">'+ADMQ.list.length+' waiting for access</b><p class="cfsub">Only you see this. Approve the people you know.</p>'+ADMQ.list.slice(0,6).map(r=>'<div class="cfrow"><span><b>'+esc(r.name||'No name yet')+'</b><em>'+esc(r.email||'')+'</em></span><div class="cfbtns"><button class="mini cfok" data-accok="'+esc(r.id)+'">Approve</button><button class="mini" data-accno="'+esc(r.id)+'">Decline</button></div></div>').join('')+'</section>'}
+  return'<section class="cfcard" id="admWait"><b class="cfttl">'+ADMQ.list.length+' waiting for access</b><p class="cfsub">Only you see this. Approve the people you know.</p>'+ADMQ.list.slice(0,6).map(r=>'<div class="cfrow"><span><b>'+esc(r.name||'No name yet')+(r.username?' <em class="admu">@'+esc(r.username)+'</em>':'')+'</b><em>'+esc(r.email||'')+'</em></span><div class="cfbtns"><button class="mini cfok" data-accok="'+esc(r.id)+'">Approve</button><button class="mini" data-accno="'+esc(r.id)+'">Decline</button></div></div>').join('')+'</section>'}
 document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-accok],[data-accno]');if(!b)return;const id=b.dataset.accok||b.dataset.accno;ADMQ.list=ADMQ.list.filter(r=>r.id!==id);setTimeout(()=>{try{renderHome()}catch(err){}},400)});
 /* ================= log a session: same four players, partners swapping, scores typed in rows ================= */
 const LS={rows:0};
@@ -3728,12 +3730,22 @@ document.addEventListener('click',async e=>{const btn=e.target.closest&&e.target
 
 /* ================= admin: one place for waiting players, players, invites, achievements and reports ================= */
 async function loadAdminPlayers(){const box=$('admPlayers'),inv=$('admInvites');if(!box||!FB.admin)return;box.innerHTML='<p class="help">Loading…</p>';let rows=[];
-  try{const s=await FB.db.collection('access').get();rows=s.docs.map(d=>Object.assign({uid:d.id},d.data())).sort((a,b)=>(b.at||0)-(a.at||0));
-    const profs=await Promise.all(rows.slice(0,150).map(r=>FB.db.collection('profiles').doc(r.uid).get().then(d=>d.exists?d.data():{}).catch(()=>({}))));
-    box.innerHTML='<p class="help">'+(rows.length+1)+' player'+(rows.length?'s':'')+', including you.</p>'+rows.slice(0,150).map((r,i)=>{const pr=profs[i]||{};
-      return'<div class="cfrow"><span><b>'+esc(pr.name||'No name yet')+(pr.username?' <em class="admu">@'+esc(pr.username)+'</em>':'')+'</b><em>Joined '+(r.at?dShort(r.at):'')+' · '+(r.via?'with an invite link':'approved by you')+'</em></span></div>'}).join('')}
+  try{const s=await FB.db.collection('access').get();rows=s.docs.map(d=>Object.assign({uid:d.id},d.data()));
+    const all=[{uid:myUid(),me:true,at:0}].concat(rows.filter(r=>r.uid!==myUid())).slice(0,150);
+    const got=await Promise.all(all.map(r=>Promise.all([FB.db.collection('profiles').doc(r.uid).get().then(d=>d.exists?d.data():{}).catch(()=>({})),FB.db.collection('rankings').doc(r.uid).get().then(d=>d.exists?d.data():null).catch(()=>null)])));
+    renderAdminPlayers(all.map((r,i)=>{const pr=got[i][0]||{},rk=got[i][1];return{uid:r.uid,me:!!r.me,name:pr.name||(r.me?PROF.name:'')||'',username:pr.username||(r.me?PROF.username:'')||'',photo:pr.photo||(r.me?PROF.photo:'')||'',ovr:rk?rk.ovr:null,played:rk?rk.played:0,at:r.at||0,via:!!r.via}}))}
   catch(e){box.innerHTML='<p class="help">Couldn\'t load players: '+esc(fbError(e))+'</p>'}
   adminInvites(inv,rows)}
+// everyone with access: you first, then newest first; tap one to open their profile
+function renderAdminPlayers(list){const box=$('admPlayers');if(!box)return;ADM_PL=list;
+  const me=list.filter(x=>x.me),rest=list.filter(x=>!x.me).sort((a,b)=>(b.at||0)-(a.at||0));
+  box.innerHTML='<p class="help">'+list.length+' player'+(list.length===1?'':'s')+', including you. Tap a player to see their profile.</p>'+me.concat(rest).map(x=>{
+    const av=x.photo?'<img class="admav" src="'+esc(x.photo)+'" alt="">':'<span class="admav">'+esc(initials(x.name||x.username||'?'))+'</span>';
+    const stat=x.ovr?'Overall '+x.ovr+' · '+x.played+' match'+(x.played===1?'':'es'):'No matches yet';
+    const how=x.me?'You · admin':'Joined '+(x.at?dShort(x.at):'')+' · '+(x.via?'with an invite link':'approved by you');
+    return'<button class="admpl" data-admprof="'+esc(x.uid)+'"'+(x.me?' disabled':'')+'>'+av+'<span class="admtx"><b>'+esc(x.name||'No name yet')+(x.username?' <em class="admu">@'+esc(x.username)+'</em>':'')+'</b><em>'+stat+'</em><em>'+how+'</em></span></button>'}).join('')}
+let ADM_PL=[];
+document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-admprof]');if(!b||b.disabled)return;const x=ADM_PL.find(p=>p.uid===b.dataset.admprof);hideSheet();setTimeout(()=>{try{openPublicProfile(b.dataset.admprof,x?{name:x.name,username:x.username,photo:x.photo}:null)}catch(err){toast('Couldn\'t open that profile.')}},300)});
 // your invite links: whether each still works, how many joined with it, and Cancel
 function adminInvites(inv,rows){if(!inv)return;const byInvite=rows.filter(r=>r.via).length,mine=(store.get('db-mycodes')||[]).slice(0,10),now=Date.now(),joined=c=>rows.filter(r=>r.via===c).length;
   inv.innerHTML='<p class="help">'+byInvite+' joined with an invite link. A link works for anyone you send it to for 7 days, and they\'re approved straight away.</p>'+
@@ -4694,7 +4706,7 @@ $('peCancel').onclick=()=>hideSheet();
 
 
 /* ================= home logo and updates ================= */
-const APP_VERSION='2.23';
+const APP_VERSION='2.25';
 document.querySelectorAll('.vlogo').forEach(i=>i.src=$('logo').src);
 function goHome(e){
   const el=e&&e.currentTarget;if(el){el.classList.remove('tap');void el.offsetWidth;el.classList.add('tap')}
@@ -6134,7 +6146,7 @@ function renderAccount(){
   }
   $('acTitle').textContent=authMode==='up'?'Create your account':'Sign in';
   const inApp=!!window.PadelCredNative;
-  b.innerHTML='<p class="help" style="margin:-4px 2px 12px">Keep your results safe and use PadelCred on any phone. Scoring still works without an account.</p>'+
+  b.innerHTML='<p class="help" style="margin:-4px 2px 12px">'+(authMode==='up'?'Create your account, then pick a username. It\'s how friends find and add you.':'Welcome back. Sign in to carry on where you left off.')+'</p>'+
     (inApp?'':'<button class="gbtn" id="acGoogle"><svg viewBox="0 0 24 24" width="20" height="20"><path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.4h6.5a5.6 5.6 0 0 1-2.4 3.6v3h3.9c2.3-2.1 3.5-5.2 3.5-8.7z"/><path fill="#34A853" d="M12 24c3.2 0 6-1.1 8-2.9l-3.9-3c-1.1.7-2.5 1.2-4.1 1.2-3.1 0-5.8-2.1-6.7-5H1.3v3.1A12 12 0 0 0 12 24z"/><path fill="#FBBC05" d="M5.3 14.3a7.2 7.2 0 0 1 0-4.6V6.6h-4a12 12 0 0 0 0 10.8z"/><path fill="#EA4335" d="M12 4.8c1.8 0 3.3.6 4.6 1.8l3.4-3.4A11.5 11.5 0 0 0 12 0 12 12 0 0 0 1.3 6.6l4 3.1C6.2 6.9 8.9 4.8 12 4.8z"/></svg>Continue with Google</button><div class="ordiv"><span>or with email</span></div>')+
     '<div class="field"><label for="acEmail">Email</label><input type="email" id="acEmail" name="db-e-'+Date.now().toString(36)+'" inputmode="email" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-form-type="other" readonly data-unlock="1" placeholder="you@example.com"></div>'+
     '<div class="field"><label for="acPass">Password</label><input type="password" id="acPass" name="db-p-'+Date.now().toString(36)+'" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" data-lpignore="true" data-form-type="other" readonly data-unlock="1" placeholder="'+(authMode==='up'?'At least 6 characters':'Your password')+'"></div>'+
@@ -6246,7 +6258,7 @@ $('unInput').oninput=()=>{
     catch(e){$('unMsg').textContent='Couldn\'t check right now.';$('unMsg').className='help'}
   },450);
 };
-$('unSave').onclick=async()=>{
+$('unSave').onclick=async()=>{setTimeout(()=>{try{if(GATE.state==='no')gateRequestWrite()}catch(e){}},2500);
   if(!$('unNameWrap').classList.contains('hide')){const nm2=tidyName($('unName').value);if(!nm2){toast('Add your name first.');$('unName').focus();return}if(nameFilterFail(['unName']))return;PROF.name=nm2;if(!PROF.id)PROF.id=newId();saveProf();setMe(pkey(nm2));syncAvatar()}
   const v=$('unInput').value.trim().toLowerCase();if(!USER_RE.test(v)){toast('Use 3 to 20 letters, numbers, dots or underscores.');return}
   if(badWords(v)){toast('That username isn\'t allowed. Try another.');return}

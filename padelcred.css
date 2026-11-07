@@ -1924,3 +1924,10 @@ input.needpick{border-color:#FF8C80!important;box-shadow:0 0 0 2px rgba(255,140,
 .admbar{display:grid;gap:2px;width:100%;text-align:left;margin:0 0 12px;padding:12px 14px;border-radius:16px;border:1.5px solid #E9C46A;background:rgba(233,196,106,.08);color:#F5F7FA;cursor:pointer}
 .admbar b{font:800 15px var(--heading);color:#E9C46A}.admbar span{font-size:13px;color:#BAC9D3}
 .admu{font-style:normal;font-weight:500;color:#9FB0C3;font-size:13px}
+/* v2.24: admin players list */
+.admpl{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:10px 4px;background:none;border:0;border-bottom:1px solid #22314A;color:#F5F7FA;cursor:pointer}
+.admpl:disabled{cursor:default;opacity:1}
+.admav{flex:none;width:42px;height:42px;border-radius:50%;object-fit:cover;display:grid;place-items:center;background:#142132;border:1.5px solid #334155;font:800 14px var(--heading);color:#6EE7B7}
+.admtx{display:grid;gap:1px;min-width:0}.admtx b{font-size:15px;overflow-wrap:anywhere}.admtx em{font-style:normal;font-size:12.5px;color:#9FB0C3}
+/* v2.25: picking a username shows above the waiting screen */
+body.gated #usernameSheet{z-index:21!important}
