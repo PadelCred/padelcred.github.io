@@ -1910,3 +1910,13 @@ body.gated .scrim{z-index:20!important}body.gated #accountSheet{z-index:21!impor
 .rnlist .rpq{white-space:normal}
 /* v2.18: compulsory rating */
 #rnDone.dim{opacity:.55}
+/* v2.19 */
+input.needpick{border-color:#FF8C80!important;box-shadow:0 0 0 2px rgba(255,140,128,.25)}
+.lsp{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.lsp input,.lsscore input{box-sizing:border-box;width:100%;min-width:0;padding:11px 12px;border-radius:12px;border:1.5px solid #334155;background:#0F1A28;color:#F5F7FA;font:500 16px var(--body)}
+#lsRows{display:grid;gap:8px;margin:6px 0 10px}
+.lsrow{display:grid;gap:6px;padding:10px 12px;border-radius:14px;background:#142132;border:1.5px solid #22314A}
+.lsl{font-size:14.5px;color:#F5F7FA;font-weight:600;line-height:1.35}.lsl i{font-style:normal;color:#9FB0C3;font-weight:500}
+.lsscore{display:grid;grid-template-columns:1fr 16px 1fr;gap:6px;align-items:center}.lsscore span{text-align:center;color:#9FB0C3}.lsscore input{text-align:center;font-weight:700}
+/* v2.21 */
+.rptrow{display:flex;flex-wrap:wrap;gap:6px 18px;justify-content:center;margin:14px 0 4px}

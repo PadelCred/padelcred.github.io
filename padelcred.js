@@ -92,7 +92,7 @@
    - country flags
    - accounts and sync (Firebase, free plan)
    - stage two: friends by username and results that send themselves
-   - stage three: shared groups and live scores
+   - stage three: leagues and live scores
    - opening screen: matches the splash, then hands over
    - home screen
    - richer friend profiles
@@ -1294,10 +1294,10 @@ function fillNameList(){const fr=FRIENDS.map(f=>f.name),seen=new Set(fr.map(pkey
 /* ================= league (Elo-style ratings) ================= */
 const START_RATING=1000,K=32;
 // your Playtomic level (0 to 7) sets where you start; no level means the 0.5 starting point
-// Playtomic 0.5 (or no level) starts at 45, evenly up to 7.0 at 99; starting above the floor of 40 leaves room to drop
-function levelToOvr(L){L=parseFloat(String(L||'').replace(',','.'));if(!isFinite(L)||L<=0)L=.5;L=Math.max(.5,Math.min(7,L));return 45+(L-.5)/6.5*54}
+// Playtomic 0.5 (or no level) starts at 50, evenly up to 7.0 at about 95
+function levelToOvr(L){L=parseFloat(String(L||'').replace(',','.'));if(!isFinite(L)||L<=0)L=.5;L=Math.max(.5,Math.min(7,L));return 50+(L-.5)/6.5*45}
 // the exact opposite of perfScore (40 at 500, 0.06 Overall per rating point), so a level shows back as the Overall it promises
-const ovrToRating=o=>500+(o-40)/0.06;
+const ovrToRating=o=>{o=Math.max(40.2,Math.min(98.6,o));return o>=50?500-400*Math.log((99-o)/49):500+150*Math.log((o-40)/10)};
 // starting points saved before v2.9.3 were stored as numbers on the old scale: turn them back into a level
 function legacySeedToRating(s){const o=40+(s-700)*55/600,L=Math.round((.5+(o-40)*6.5/59)*100)/100;return levelToRating(L)}
 // a friend's starting point: their locked level if their app shares it, else their old stored number, else their current level
@@ -2018,18 +2018,18 @@ function exclusiveHtml(ex,mine){
   let i=0;const tiles=[],progBar=(a,z)=>'<em class="prog"><i style="width:'+Math.min(100,Math.round(a/z*100))+'%"></i></em><span class="pn">'+Math.min(a,z)+' of '+z+'</span>';
   if(ex.founder)tiles.push(founderTile(ex.founder.date||Date.now(),ex.founder.n,i++));else if(mine){const t=founderTile(null,0,i);if(t){tiles.push(t);i++}}
   const fleft=(()=>{const c=store.get('db-fgr-count');return c===null||c===undefined?null:Math.max(0,FGROUP_LIMIT-c)})();
-  if(ex.fgroup)tiles.push(exTile('tx','fgroup','Founding group <small>#'+ex.fgroup.n+'</small>','Started one of the first '+FGROUP_LIMIT+' shared groups on PadelCred.',true,i++));
-  else if(mine&&fleft!==0)tiles.push(exTile('tx','fgroup','Founding group','Create one of the first '+FGROUP_LIMIT+' shared groups'+(fleft!==null?'. '+fleft+(fleft===1?' spot':' spots')+' left.':'.'),false,i++));
-  if(ex.gstarter)tiles.push(exTile('tx','gstarter','Group starter','Built a shared group of 8 or more.',true,i++,'','Unlocked '+dShort(ex.gstarter)));
-  else if(mine){const me=FB.user?FB.user.uid:null,best=Math.max(0,...(typeof GRP!=='undefined'?GRP.list:[]).filter(g=>g.createdBy===me).map(g=>(g.members||[]).length));tiles.push(exTile('tx','gstarter','Group starter','Create a shared group that reaches 8 members.',false,i++,best?progBar(best,8):''))}
+  if(ex.fgroup)tiles.push(exTile('tx','fgroup','Founding league <small>#'+ex.fgroup.n+'</small>','Started one of the first '+FGROUP_LIMIT+' leagues on PadelCred.',true,i++));
+  else if(mine&&fleft!==0)tiles.push(exTile('tx','fgroup','Founding league','Create one of the first '+FGROUP_LIMIT+' leagues'+(fleft!==null?'. '+fleft+(fleft===1?' spot':' spots')+' left.':'.'),false,i++));
+  if(ex.gstarter)tiles.push(exTile('tx','gstarter','League starter','Built a league of 8 or more.',true,i++,'','Unlocked '+dShort(ex.gstarter)));
+  else if(mine){const me=FB.user?FB.user.uid:null,best=Math.max(0,...(typeof GRP!=='undefined'?GRP.list:[]).filter(g=>g.createdBy===me).map(g=>(g.members||[]).length));tiles.push(exTile('tx','gstarter','League starter','Create a league that reaches 8 members.',false,i++,best?progBar(best,8):''))}
   if(ex.recruiter)tiles.push(exTile('tx','recruiter','Recruiter','Connected with 5 friends on PadelCred.',true,i++,'','Unlocked '+dShort(ex.recruiter)));
   else if(mine){const n=typeof SOC!=='undefined'?SOC.links.filter(l=>l.status==='accepted').length:0;tiles.push(exTile('tx','recruiter','Recruiter','Connect with 5 friends on PadelCred.',false,i++,n?progBar(n,5):''))}
   if(ex.bug&&ex.bug.n)tiles.push(exTile('tx','bug','Bug hunter'+(ex.bug.n>1?' <small>×'+ex.bug.n+'</small>':''),'Found a real bug and helped make PadelCred better.',true,i++,'',ex.bug.date?'Unlocked '+dShort(ex.bug.date):''));
   else if(mine)tiles.push(exTile('tx','bug','Bug hunter','Spot a real bug and report it from Your data. Awarded by the PadelCred team.',false,i++));
   if(!mine&&ex.friend){
     if(!ex.founder)tiles.unshift(exTile('tx','founder','Founding member','One of the first '+FOUNDER_LIMIT+' to join PadelCred.',false,i++));
-    if(!ex.fgroup)tiles.push(exTile('tx','fgroup','Founding group','Started one of the first '+FGROUP_LIMIT+' shared groups.',false,i++));
-    if(!ex.gstarter)tiles.push(exTile('tx','gstarter','Group starter','Built a shared group of 8 or more.',false,i++));
+    if(!ex.fgroup)tiles.push(exTile('tx','fgroup','Founding league','Started one of the first '+FGROUP_LIMIT+' leagues.',false,i++));
+    if(!ex.gstarter)tiles.push(exTile('tx','gstarter','League starter','Built a league of 8 or more.',false,i++));
     if(!ex.recruiter)tiles.push(exTile('tx','recruiter','Recruiter','Connected with 5 friends on PadelCred.',false,i++));
     if(!(ex.bug&&ex.bug.n))tiles.push(exTile('tx','bug','Bug hunter','Found a real bug and helped make PadelCred better.',false,i++));
   }
@@ -2044,10 +2044,10 @@ function setXb(k,v){PROF.xb=Object.assign({},PROF.xb||{},{[k]:v});saveProf()}
 // group starter and recruiter: checked as groups and friends update
 function checkSocialBadges(){
   if(!FB.user)return;const me=FB.user.uid,xb=PROF.xb||{};
-  if(!xb.gstarter&&(GRP.list||[]).some(g=>g.createdBy===me&&(g.members||[]).length>=8)){setXb('gstarter',Date.now());celebrateEx('gstarter','',{id:'gstarter',name:'Group starter',tier:'x',desc:'You built a shared group of 8 or more.'})}
+  if(!xb.gstarter&&(GRP.list||[]).some(g=>g.createdBy===me&&(g.members||[]).length>=8)){setXb('gstarter',Date.now());celebrateEx('gstarter','',{id:'gstarter',name:'League starter',tier:'x',desc:'You built a league of 8 or more.'})}
   if(!xb.recruiter&&SOC.links.filter(l=>l.status==='accepted').length>=5){setXb('recruiter',Date.now());celebrateEx('recruiter','',{id:'recruiter',name:'Recruiter',tier:'x',desc:'You connected with 5 friends on PadelCred.'})}
 }
-// founding group: the first ten shared groups ever made
+// founding group: the first ten leagues ever made
 async function ensureFoundingGroups(){
   if(!FB.user||PROF.fgroup)return;
   const me=FB.user.uid,db=FB.db,meta=db.collection('meta').doc('groups');
@@ -2064,7 +2064,7 @@ async function ensureFoundingGroups(){
       });
       if(n){PROF.fgroup=n;PROF.fgroupAt=Date.now();saveProf();store.set('db-fgr-count',n);
         db.collection('groups').doc(g.id).update({fn:n}).catch(()=>{});
-        celebrateEx('fgroup','',{id:'fgroup',name:'Founding group',extra:'#'+n,tier:'x',desc:'You started one of the first '+FGROUP_LIMIT+' shared groups on PadelCred.'});return}
+        celebrateEx('fgroup','',{id:'fgroup',name:'Founding league',extra:'#'+n,tier:'x',desc:'You started one of the first '+FGROUP_LIMIT+' leagues on PadelCred.'});return}
       const m=await meta.get();store.set('db-fgr-count',m.exists?(m.data().count||0):0);return;
     }catch(e){}
   }
@@ -2072,11 +2072,13 @@ async function ensureFoundingGroups(){
 }
 // bug hunter: awarded by an admin, read on each sync
 async function checkAwards(){
+  const awFirst=FB.user?!store.get('db-aw-init-'+FB.user.uid):false;
   if(!FB.user)return;
   try{const d=await FB.db.collection('awards').doc(FB.user.uid).get();
-    if(d.exists){const a=d.data(),cur=(PROF.xb||{}).bug;if(a.bugs&&(!cur||cur.n!==a.bugs)){setXb('bug',{n:a.bugs,date:a.last||Date.now()});if(a.last&&Date.now()-a.last>14*864e5){exAnnounced['bug'+a.bugs]=1;store.set('db-ex-seen',exAnnounced)}else celebrateEx('bug'+a.bugs,'',{id:'bug',name:'Bug hunter',extra:a.bugs>1?'×'+a.bugs:'',tier:'x',desc:'You found a real bug and helped make PadelCred better. Thank you!'})}}}catch(e){}
+    if(d.exists){const a=d.data(),cur=(PROF.xb||{}).bug;if(a.bugs&&(!cur||cur.n!==a.bugs)){setXb('bug',{n:a.bugs,date:a.last||Date.now()});if(awFirst||(a.last&&Date.now()-a.last>14*864e5)){exAnnounced['bug'+a.bugs]=1;store.set('db-ex-seen',exAnnounced);try{PROF.seen=Object.assign({},PROF.seen||{},{['bug'+a.bugs]:Date.now()});saveProf()}catch(e){}}else celebrateEx('bug'+a.bugs,'',{id:'bug',name:'Bug hunter',extra:a.bugs>1?'×'+a.bugs:'',tier:'x',desc:'You found a real bug and helped make PadelCred better. Thank you!'})}}}catch(e){}
   try{const ad=await FB.db.collection('admins').doc(FB.user.uid).get();FB.admin=ad.exists}catch(e){FB.admin=false}
   if(FB.admin)loadBugs(true);
+  try{if(FB.user)store.set('db-aw-init-'+FB.user.uid,Date.now())}catch(e){}
 }
 // seasonal: celebrate the first time a season is collected this year
 // the admin screen, only for you
@@ -2695,8 +2697,9 @@ function rateStatsHtml(key){
 const PR={items:store.get('db-pr')||[],given:store.get('db-pr-given')||{}};
 const OVR_W_RESULTS=.7,OVR_W_PEER=.3,PEER_MIN=3,PEER_DAYS=90,OVR_STEP=3;
 // Overall from the rating engine: 40 at 500, three Overall points for every 50 rating points, up to 99
-const OVR_PER_POINT=0.06;
-const perfScore=rating=>Math.max(40,Math.min(99,Math.round(40+(rating-500)*OVR_PER_POINT)));
+const OVR_PER_POINT=0.12; // the slope near the starting level, used for match previews
+// rating 500 is Overall 50; above it Overall climbs towards 99 ever more slowly, below it it eases towards 40 without piling up
+const perfScore=rating=>{const r=isFinite(+rating)?+rating:500,o=r>=500?99-49*Math.exp(-(r-500)/400):40+10*Math.exp((r-500)/150);return Math.max(40,Math.min(99,Math.round(o)))};
 function peerAgg(){
   const cut=Date.now()-PEER_DAYS*864e5,list=PR.items.filter(x=>x.at>=cut&&x.v>=.5&&x.v<=5);
   const raters=new Set(list.map(x=>x.from));
@@ -2935,7 +2938,7 @@ function renderPlan(){
   const known=(()=>{try{return computeLeague().map(x=>x.name)}catch(e){return[]}})();
   box.innerHTML='<div class="plgrid"><label class="field"><span class="lbl">Date</span><input type="date" id="plDate" value="'+dv+'"></label><label class="field"><span class="lbl">Time</span><input type="time" id="plTime" value="'+tv+'"></label></div>'+
     '<label class="field"><span class="lbl">Venue</span><input type="text" id="plVenue" list="plVenues" maxlength="60" placeholder="Where you\'re playing" value="'+esc(p.venue||'')+'"></label><datalist id="plVenues">'+allVenues().map(v=>'<option value="'+esc(v)+'">').join('')+'</datalist>'+
-    (FB.user||NIGHTS.me?'<div class="field"><span class="lbl">Spots</span><div class="seg" id="plSpots"><button type="button" data-spots="4" aria-pressed="'+((p.spots||4)===4)+'">4 · one court</button><button type="button" data-spots="8" aria-pressed="'+(p.spots===8)+'">8 · two courts</button></div></div>':'')+'<p class="sh" style="margin-top:12px">Players</p><div id="plPlayers">'+p.players.map((n,i)=>{const isIn=!!(p.ok&&p.ok[i]),isOut=!isIn&&!!(p.no&&p.no[i]);const ls=planRowStatus(p,n);return'<div class="plp"><input type="text" list="plKnown" placeholder="Player '+(i+1)+'" value="'+esc(n||'')+'">'+(ls?'<span class="plst '+ls.k+'">'+ls.label+'</span>':'<button class="plok'+(isIn?' on':'')+(isOut?' out':'')+'" data-plok="'+i+'" aria-pressed="'+isIn+'">'+(isIn?'In':isOut?'Out':'Tick when in')+'</button>')+'</div>'}).join('')+'</div><datalist id="plKnown">'+known.map(n=>'<option value="'+esc(n)+'">').join('')+'</datalist>'+
+    (FB.user||NIGHTS.me?'<div class="field"><span class="lbl">Spots</span><div class="seg" id="plSpots"><button type="button" data-spots="4" aria-pressed="'+((p.spots||4)===4)+'">4 · one court</button><button type="button" data-spots="8" aria-pressed="'+(p.spots===8)+'">8 · two courts</button></div></div>':'')+'<p class="sh" style="margin-top:12px">Players</p><div id="plPlayers">'+p.players.map((n,i)=>{const isIn=!!(p.ok&&p.ok[i]),isOut=!isIn&&!!(p.no&&p.no[i]);const ls=planRowStatus(p,n);return'<div class="plp"><input type="text" list="playerNames" placeholder="Player '+(i+1)+'" value="'+esc(n||'')+'">'+(ls?'<span class="plst '+ls.k+'">'+ls.label+'</span>':'<button class="plok'+(isIn?' on':'')+(isOut?' out':'')+'" data-plok="'+i+'" aria-pressed="'+isIn+'">'+(isIn?'In':isOut?'Out':'Tick when in')+'</button>')+'</div>'}).join('')+'</div><datalist id="plKnown">'+known.map(n=>'<option value="'+esc(n)+'">').join('')+'</datalist>'+
     (p.players.length<8?'<button class="secondary" id="plAdd">Add a player</button>':'')+
     '<label class="field" style="margin-top:12px"><span class="lbl">Notes (optional)</span><input type="text" id="plNotes" maxlength="120" placeholder="Bring balls, court 3" value="'+esc(p.notes||'')+'"></label>'+
     '<div id="plTeams"></div>'+
@@ -3019,14 +3022,19 @@ $('termsBtn').onclick=()=>{hideSheet();setTimeout(()=>showSheet('termsSheet'),15
 $('acTerms').onclick=()=>{hideSheet();setTimeout(()=>showSheet('termsSheet'),150)};$('acPriv').onclick=()=>{hideSheet();setTimeout(()=>showSheet('privacySheet'),150)};
 const RP_REASONS=['Their Overall or results look wrong','Offensive photo','Offensive name or username','Pretending to be someone else','Fake or spam account','Something else'];
 const RPT={uid:null,name:'',user:''};
-function addReportBtn(uid,name,user){const box=$('playerBody');if(!box||!uid||!FB.user||uid===myUid()||box.querySelector('.rptbtn'))return;box.insertAdjacentHTML('beforeend','<button class="linkbtn rptbtn" data-report="'+esc(uid)+'" data-rname="'+esc(name||'')+'" data-ruser="'+esc(user||'')+'">Report this profile</button>')}
+function addReportBtn(uid,name,user){const box=$('playerBody');if(!box||!uid||!FB.user||uid===myUid()||box.querySelector('.rptbtn'))return;box.insertAdjacentHTML('beforeend','<div class="rptrow"><button class="linkbtn rptbtn" data-reportovr="1">Report suspicious Overall</button><button class="linkbtn rptbtn" data-report="'+esc(uid)+'" data-rname="'+esc(name||'')+'" data-ruser="'+esc(user||'')+'">Report this profile</button></div>')}
+document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-reportovr]');if(!b)return;const r=document.querySelector('#playerBody [data-report]');if(!r)return;r.click();setTimeout(()=>{const o=document.querySelector('#rpReasons [data-rpr="0"]');if(o&&o.getAttribute('aria-pressed')!=='true')o.click()},120)});
+function ovrEvidence(){try{const k=pkey(RPT.name||''),me=meKey(),L=computeLeague(),p=L.find(x=>x.key===k||pkey(x.name)===k);let w=0,l=0,tog=0;
+  allRows().forEach(r=>{const a=members(r.cfg,0).map(pkey),b=members(r.cfg,1).map(pkey),t=a.includes(k)?0:b.includes(k)?1:null,m=a.includes(me)?0:b.includes(me)?1:null;if(t===null||m===null)return;if(t===m){tog++;return}if(r.winner===m)w++;else if(r.winner===t)l++});
+  const rk=(RANK.data&&RANK.data.list||[]).find(x=>x.uid===RPT.uid);
+  return'\nEvidence: Overall '+(rk?rk.ovr:p?perfScore(p.rating):'unknown')+(rk&&rk.played?' from '+rk.played+' matches':'')+(p?' · '+p.p+' matches in my results ('+p.w+' won)':'')+' · me against them: '+w+' won, '+l+' lost · played together: '+tog}catch(e){return''}}
 document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-report]');if(!b)return;RPT.uid=b.dataset.report;RPT.name=b.dataset.rname;RPT.user=b.dataset.ruser;
   $('rpReasons').innerHTML=RP_REASONS.map((r,i)=>'<button type="button" class="rpr" data-rpr="'+i+'" aria-pressed="false">'+r+'</button>').join('');$('rpText').value='';hideSheet();setTimeout(()=>showSheet('reportSheet'),150)});
 document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('.rpr');if(!b)return;$('rpReasons').querySelectorAll('.rpr').forEach(x=>x.setAttribute('aria-pressed',String(x===b)))});
 $('rpCancel').onclick=()=>hideSheet();
 $('rpSend').onclick=async()=>{const sel=$('rpReasons').querySelector('[aria-pressed="true"]');if(!sel){toast('Pick a reason first.');return}if(!FB.user){toast('Sign in to send a report.');return}
   const reason=RP_REASONS[+sel.dataset.rpr],more=$('rpText').value.trim();$('rpSend').disabled=true;
-  try{await FB.db.collection('reports').doc(newId()).set({from:FB.user.uid,username:PROF.username||'',name:PROF.name||'',text:('PROFILE REPORT: '+(RPT.name||'Unknown')+(RPT.user?' (@'+RPT.user+')':'')+'\nReason: '+reason+(more?'\nDetails: '+more:'')).slice(0,1500),steps:('Reported account ID: '+RPT.uid).slice(0,800),version:appVersion(),device:'Profile report',theme:'dark',at:Date.now(),status:'new'});hideSheet();toast('Thanks. Your report has been sent.')}
+  try{await FB.db.collection('reports').doc(newId()).set({from:FB.user.uid,username:PROF.username||'',name:PROF.name||'',text:('PROFILE REPORT: '+(RPT.name||'Unknown')+(RPT.user?' (@'+RPT.user+')':'')+'\nReason: '+reason+(more?'\nDetails: '+more:'')+(+sel.dataset.rpr===0?ovrEvidence():'')).slice(0,1500),steps:('Reported account ID: '+RPT.uid).slice(0,800),version:appVersion(),device:'Profile report',theme:'dark',at:Date.now(),status:'new'});hideSheet();toast('Thanks. Your report has been sent.')}
   catch(e){toast(fbError(e))}finally{$('rpSend').disabled=false}};
 /* openPublicProfile: built into the function itself */
 /* openFriend: built into the function itself */
@@ -3182,7 +3190,7 @@ function matchWeight(r){if(r&&r.h&&r.h.court){const g=(r.gw?r.gw[0]+r.gw[1]:0);r
 function adminAchievementsHtml(){
   const sec=(title,rows)=>'<p class="sh">'+title+' <span class="muted">'+rows.length+'</span></p><table class="grid adachtbl"><tbody>'+rows.map(r=>'<tr><td><b>'+esc(r[0])+'</b></td><td>'+esc(r[1])+'</td></tr>').join('')+'</tbody></table>';
   const tierName={1:'Bronze',2:'Silver',3:'Gold',4:'Elite'};
-  return sec('Exclusive',[['Founding member','One of the first 50 accounts. Numbered.'],['Founding group','Started one of the first '+FGROUP_LIMIT+' shared groups. Numbered.'],['Group starter','Create a shared group that reaches 8 members.'],['Recruiter','Connect with 5 friends on PadelCred.'],['Bug hunter','Awarded by you for a real bug report. Can be given more than once.']])+
+  return sec('Exclusive',[['Founding member','One of the first 50 accounts. Numbered.'],['Founding league','Started one of the first '+FGROUP_LIMIT+' leagues. Numbered.'],['League starter','Create a league that reaches 8 members.'],['Recruiter','Connect with 5 friends on PadelCred.'],['Bug hunter','Awarded by you for a real bug report. Can be given more than once.']])+
     sec('Secret',SECRET_ONE.map(s=>[s[1],s[2]+'.']))+
     sec('Seasonal (every year)',SEASONAL.map(s=>[s[1],s[4]+'.']))+
     sec('Match achievements',BADGES.map(b=>[b[1]+(tierName[b[2]]?' · '+tierName[b[2]]:''),b[3]+'.']));
@@ -3286,7 +3294,7 @@ function hrFill(){const st=$('hrStart'),ti=$('hrTiers');if(!st||!ti)return;
 
 
 /* ================= test window: only when opened with ?selftest=1, for the promise tests. Players never see it ================= */
-if(window.__PC_TEST__===true)setTimeout(()=>{window.__pcTest={perfScore,levelToRating,levelToOvr,ovrTier,matchWeight,winChance,computeLeague,formWord,formBand,legacySeedToRating,pairings,replay,rowOf,allRows,overallFor,cardHighlights,ovrToRating,fourPlayers,currentPairing,K:typeof K!=='undefined'?K:null,nightRoster,nightOpen,nightStatusOf,setNights:(list,me)=>{NIGHTS.list=list;NIGHTS.me=me;nightsRefresh()},setAdmin:(on,uid)=>{FB.admin=!!on;FB.user=on?{uid:uid||'admin1'}:null;renderProfile()},setFriends:l=>{FRIENDS.length=0;l.forEach(f=>FRIENDS.push(f))},runUpkeep:()=>nameUpkeep(),peerAggWith:items=>{PR.items=items;return peerAgg()},alias:()=>ALIAS,verifyAll:()=>{history.forEach(h=>{if(!h.ver)h.ver={by:'test',at:Date.now()}});saveH()},confFrom:(id,uid,name,ok)=>confReceived({type:'conf',id,ok},{from:uid,fromName:name}),rateNight:(ids,c)=>openRateNight(history.filter(h=>ids.includes(h.id)),c?{confirm:history.find(h=>h.id===c)}:{}),markRatedAll:()=>{const s=new Set(history.map(unitOf));markRated([...s])},rated:()=>RATED,sendq:()=>SENDQ,celebrate:(k)=>celebrateEx(k,'',{id:'bug',name:'Bug hunter',tier:'x',desc:'test'}),mergeProf:(a,b)=>mergeProf(a,b),setProf:o=>{Object.assign(PROF,o)},exSeen:()=>exAnnounced}},0)
+if(window.__PC_TEST__===true)setTimeout(()=>{window.__pcTest={perfScore,levelToRating,levelToOvr,ovrTier,matchWeight,winChance,computeLeague,formWord,formBand,legacySeedToRating,pairings,replay,rowOf,allRows,overallFor,cardHighlights,ovrToRating,fourPlayers,currentPairing,K:typeof K!=='undefined'?K:null,nightRoster,nightOpen,nightStatusOf,setNights:(list,me)=>{NIGHTS.list=list;NIGHTS.me=me;nightsRefresh()},setAdmin:(on,uid)=>{FB.admin=!!on;FB.user=on?{uid:uid||'admin1'}:null;renderProfile()},setFriends:l=>{FRIENDS.length=0;l.forEach(f=>FRIENDS.push(f))},runUpkeep:()=>nameUpkeep(),peerAggWith:items=>{PR.items=items;return peerAgg()},alias:()=>ALIAS,verifyAll:()=>{history.forEach(h=>{if(!h.ver)h.ver={by:'test',at:Date.now()}});saveH()},confFrom:(id,uid,name,ok)=>confReceived({type:'conf',id,ok},{from:uid,fromName:name}),rateNight:(ids,c)=>openRateNight(history.filter(h=>ids.includes(h.id)),c?{confirm:history.find(h=>h.id===c)}:{}),markRatedAll:()=>{const s=new Set(history.map(unitOf));markRated([...s])},rated:()=>RATED,sendq:()=>SENDQ,setAdmq:l=>{ADMQ.list=l;FB.admin=true;renderHome()},awInit:()=>FB.user?store.get('db-aw-init-'+FB.user.uid):null,formData:p=>formData(p),setBugs:l=>{BUGS.list=l;renderBugs()},seasonTable:(f,t)=>seasonTable(f,t),seasonRange:(m,r)=>seasonRange(m,r),celebrate:(k)=>celebrateEx(k,'',{id:'bug',name:'Bug hunter',tier:'x',desc:'test'}),mergeProf:(a,b)=>mergeProf(a,b),setProf:o=>{Object.assign(PROF,o)},exSeen:()=>exAnnounced}},0)
 
 /* ================= shared match nights: everyone invited sees the same live list and ticks themselves in ================= */
 const NIGHTS={list:[],unsub:null,me:null,seen:store.get('db-nseen')||{},hidden:store.get('db-nhide')||{},tok:store.get('db-ntok')||{},push:null};
@@ -3414,7 +3422,7 @@ async function loadAccessRequests(){const box=$('accList');if(!box||!FB.admin)re
   catch(e){box.innerHTML='<p class="help">Couldn\'t load the list.</p>'}}
 document.addEventListener('click',async e=>{const t=e.target;if(!t.closest)return;
   const ok=t.closest('[data-accok]'),no=t.closest('[data-accno]');if(!ok&&!no)return;const uid=(ok||no).dataset[ok?'accok':'accno'];
-  try{if(ok)await FB.db.collection('access').doc(uid).set({by:FB.user.uid,at:Date.now()});await FB.db.collection('accessRequests').doc(uid).delete();toast(ok?'Approved. They\'re in.':'Declined.');loadAccessRequests()}catch(err){toast(fbError(err))}});
+  try{if(ok)await FB.db.collection('access').doc(uid).set({by:FB.user.uid,at:Date.now()});await FB.db.collection('accessRequests').doc(uid).delete();toast(ok?'Approved. They\'re in.':'Declined.');loadAccessRequests();adminQueueLoad()}catch(err){toast(fbError(err))}});
 
 /* ================= add the night's results: every match in one go, then rate the night ================= */
 const NR={n:0,rated:store.get('db-rnshown')||{}};
@@ -3655,6 +3663,65 @@ function doConfirm(h){const list=h.session?history.filter(x=>x.session===h.sessi
   list.forEach(x=>{x.cs='yes';if(counts&&!x.ver)x.ver={by:myUid()||'me',at:Date.now()};sendConf(x,true);if(counts)broadcastVer(x,x.recv)});saveH();
   toast(counts?'Confirmed. It counts for everyone now.':'Confirmed. It counts once someone on the other team confirms.');renderHome();try{renderResults()}catch(err){}}
 
+/* ================= planner: each player's label follows what's typed or picked ================= */
+function planStatusRefresh(){if(!PLAN.cur)return;document.querySelectorAll('#plPlayers .plp').forEach((row,i)=>{const inp=row.querySelector('input');if(!inp)return;
+  const ls=planRowStatus(PLAN.cur,inp.value),old=row.querySelector('.plst,.plok');if(!ls){if(old&&old.classList.contains('plst')){old.outerHTML='<button class="plok" data-plok="'+i+'" aria-pressed="false">Tick when in</button>'}return}
+  const html='<span class="plst '+ls.k+'">'+ls.label+'</span>';if(old)old.outerHTML=html;else inp.insertAdjacentHTML('afterend',html)})}
+document.addEventListener('input',e=>{if(e.target.closest&&e.target.closest('#plPlayers'))setTimeout(planStatusRefresh,0)});
+document.addEventListener('change',e=>{if(e.target.closest&&e.target.closest('#plPlayers'))setTimeout(planStatusRefresh,0)});
+/* ================= players are picked: anything that isn't a PadelCred account is flagged straight away ================= */
+const PICKED_IDS=['obName','peName','rnName'];let pickHintAt=0;
+document.addEventListener('focusout',e=>{const el=e.target;if(!el.matches||!el.matches('input[list="playerNames"],input[data-pl]')||PICKED_IDS.includes(el.id))return;
+  setTimeout(async()=>{const v=(el.value||'').trim();if(!v){el.classList.remove('needpick');return}
+    if(!isAccountName(v)){const k=pkey(tidyName(v));if(PROF.name&&isMeTyped(k))el.value=PROF.name;else{const c=friendsLike(k);if(c.length===1)el.value=c[0].name}} // clear-cut only; two friends with one name are asked about once, on save
+    const bad=!isAccountName(el.value);el.classList.toggle('needpick',bad);
+    if(bad&&Date.now()-pickHintAt>4000){pickHintAt=Date.now();toast('Pick players from the list. Everyone needs a PadelCred account.')}},150)});
+document.addEventListener('input',e=>{if(e.target.classList&&e.target.classList.contains('needpick'))e.target.classList.remove('needpick')});
+/* ================= admin: people waiting for access, on Home ================= */
+const ADMQ={list:[],at:0};
+async function adminQueueLoad(){if(!FB.user||!FB.admin)return;try{const s=await FB.db.collection('accessRequests').orderBy('at','desc').limit(20).get();ADMQ.list=s.docs.map(d=>Object.assign({id:d.id},d.data()));ADMQ.at=Date.now();if(typeof homeOn==='function'&&homeOn())renderHome()}catch(e){}}
+setInterval(()=>{if(FB.user&&FB.admin&&Date.now()-ADMQ.at>60000)adminQueueLoad()},5000);
+function adminWaitHtml(){if(!FB.admin||!ADMQ.list.length)return'';
+  return'<section class="cfcard" id="admWait"><b class="cfttl">'+ADMQ.list.length+' waiting for access</b><p class="cfsub">Only you see this. Approve the people you know.</p>'+ADMQ.list.slice(0,6).map(r=>'<div class="cfrow"><span><b>'+esc(r.name||'No name yet')+'</b><em>'+esc(r.email||'')+'</em></span><div class="cfbtns"><button class="mini cfok" data-accok="'+esc(r.id)+'">Approve</button><button class="mini" data-accno="'+esc(r.id)+'">Decline</button></div></div>').join('')+'</section>'}
+document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-accok],[data-accno]');if(!b)return;const id=b.dataset.accok||b.dataset.accno;ADMQ.list=ADMQ.list.filter(r=>r.id!==id);setTimeout(()=>{try{renderHome()}catch(err){}},400)});
+/* ================= log a session: same four players, partners swapping, scores typed in rows ================= */
+const LS={rows:0};
+function lsPairs(){const p=['lsP1','lsP2','lsP3','lsP4'].map(id=>($(id).value||'').trim());return p}
+function lsPairing(i){const p=lsPairs();if(!p.every(Boolean))return null;const r=[[p[0],p[1],p[2],p[3]],[p[0],p[2],p[1],p[3]],[p[0],p[3],p[1],p[2]]][i%3];return{a:[r[0],r[1]],b:[r[2],r[3]]}}
+function lsLabel(i){const pr=lsPairing(i);return pr?esc(pr.a.join(' & '))+' <i>v</i> '+esc(pr.b.join(' & ')):'Pick all four players first'}
+function lsRowsRefresh(){document.querySelectorAll('#lsRows .lsrow').forEach(r=>{r.querySelector('.lsl').innerHTML='Game '+(+r.dataset.i+1)+': '+lsLabel(+r.dataset.i)})}
+function lsAddRow(){const i=LS.rows++;$('lsRows').insertAdjacentHTML('beforeend','<div class="lsrow" data-i="'+i+'"><span class="lsl"></span><div class="lsscore"><input type="number" inputmode="numeric" min="0" max="99" aria-label="Game '+(i+1)+', first pair"><span>–</span><input type="number" inputmode="numeric" min="0" max="99" aria-label="Game '+(i+1)+', second pair"></div></div>');lsRowsRefresh()}
+function openLogSession(){hideSheet();setTimeout(()=>{const d=new Date();$('lsDate').value=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  $('lsVenue').value=store.get('db-lastVenue')||'';['lsP1','lsP2','lsP3','lsP4'].forEach((id,k)=>{$(id).value=k===0?(PROF.name||''):'';$(id).classList.remove('needpick')});$('lsRows').innerHTML='';LS.rows=0;for(let k=0;k<6;k++)lsAddRow();showSheet('logSessionSheet')},250)}
+document.addEventListener('input',e=>{if(e.target.closest&&e.target.closest('#lsPlayers'))lsRowsRefresh()});
+document.addEventListener('change',e=>{if(e.target.closest&&e.target.closest('#lsPlayers'))lsRowsRefresh()});
+document.addEventListener('click',async e=>{const t=e.target;if(!t.closest)return;
+  if(t.closest('#arLog')||t.closest('[data-logsession]')){openLogSession();return}
+  if(!t.closest('#logSessionSheet'))return;
+  if(t.closest('#lsAdd')){lsAddRow();return}
+  if(t.closest('#lsCancel')){hideSheet();return}
+  if(t.closest('#lsSave'))await lsSave()});
+async function lsSave(){const ids=['lsP1','lsP2','lsP3','lsP4'];if(nameFilterFail(ids.concat(['lsVenue'])))return;
+  if(!(await checkNames(ids)))return;lsRowsRefresh();
+  const p=lsPairs();if(new Set(p.map(pkey)).size<4){toast('Pick four different players.');return}
+  if(futureDate($('lsDate').value)){toast('That date is in the future. Results are for matches already played.');return}
+  const games=[];let bad=0;document.querySelectorAll('#lsRows .lsrow').forEach(r=>{const [x,y]=[...r.querySelectorAll('input')].map(i=>i.value.trim());if(x===''&&y==='')return;const a=parseInt(x,10),c=parseInt(y,10);if(isNaN(a)||isNaN(c)||a<0||c<0||a===c){bad=+r.dataset.i+1;return}games.push({i:+r.dataset.i,s:[a,c]})});
+  if(bad){toast('Game '+bad+' needs two different scores, like 5 and 3.');return}
+  if(!games.length){toast('Add the score for at least one game.');return}
+  if(!(await checkOddScores(games.map(g=>({label:'Game '+(g.i+1),sets:[g.s]})))))return;
+  const parts=$('lsDate').value.split('-').map(Number),base=parts.length===3&&!parts.some(isNaN)?new Date(parts[0],parts[1]-1,parts[2],19).getTime():Date.now(),now=Date.now(),sid='s'+now.toString(36)+'l',venue=canonicalVenue($('lsVenue').value);
+  let entries=games.map((g,k)=>{const pr=lsPairing(g.i);return{id:'m'+now.toString(36)+'l'+k,manual:true,date:base+k*60000,sets:[g.s],added:now,notes:'',session:sid,cfg:{pa:pr.a,pb:pr.b,an:'',bn:'',group:'',venue,a:teamNameFrom('',pr.a[0],pr.a[1],'Us'),b:teamNameFrom('',pr.b[0],pr.b[1],'Them'),bestOf:1,games:5,race:true}}});
+  const dups=entries.filter(e=>findDuplicate(e));if(dups.length){const skip=await ask('Already got '+(dups.length===1?'this one':'some of these')+'?',dups.length+' of these games '+(dups.length===1?'is':'are')+' already in your results.','Skip '+(dups.length===1?'it':'those'),false,'Add them anyway');if(skip)entries=entries.filter(e=>!dups.includes(e));if(!entries.length){hideSheet();toast('Nothing new to add.');return}}
+  if(!(await confirmRecipients(entries.map(e=>e.cfg))))return;
+  const before=badgeSnapshot();entries.forEach(e=>history.unshift(e));if(venue)store.set('db-lastVenue',venue);saveH();hideSheet();renderResults();try{renderHome()}catch(err){}announceBadges(newBadgesBetween(before,badgeSnapshot()));
+  toast(entries.length+' game'+(entries.length===1?'':'s')+' logged as one session.');entries.forEach((e,i)=>setTimeout(()=>autoSend(e),300+i*200));
+  setTimeout(()=>{if(!openSheet&&openRateNight(entries)){NR.rated[sid]=Date.now();store.set('db-rnshown',NR.rated)}},700)}
+
+document.addEventListener('click',async e=>{const btn=e.target.closest&&e.target.closest('[data-ovr]');if(!btn)return;const card=btn.closest('.bugcard'),b=card&&BUGS.list.find(x=>x.id===card.dataset.id);if(!b)return;
+  if(btn.dataset.ovr==='copy'){const txt='PadelCred: suspicious Overall report\n'+b.text+'\n'+(b.steps||'')+'\nReported by '+(b.name||'someone')+(b.username?' (@'+b.username+')':'')+' on '+dShort(b.at);try{await navigator.clipboard.writeText(txt);toast('Copied. Paste it to Claude to review together.')}catch(err){toast('Couldn\'t copy on this device.')}return}
+  if(btn.dataset.ovr==='block'){const m=(b.steps||'').match(/Reported account ID: (\S+)/);if(!m){toast('This report has no account to act on.');return}
+    if(!(await ask('Remove from rankings?','They disappear from the public rankings and can\'t add themselves back until you allow it. Their results and friends aren\'t touched.','Remove',true)))return;
+    try{await FB.db.collection('rankBlock').doc(m[1]).set({by:FB.user.uid,at:Date.now(),report:b.id});try{await FB.db.collection('rankings').doc(m[1]).delete()}catch(err){}toast('Removed from the rankings.')}catch(err){toast(fbError(err))}}});
 /* ================= bug reports ================= */
 const appVersion=()=>((document.querySelector('meta[name="app-version"]')||{}).content||'');
 const bugDevice=()=>{const ua=navigator.userAgent;const os=/iPhone|iPad/.test(ua)?'iPhone':/Android/.test(ua)?'Android':/Mac/.test(ua)?'Mac':/Windows/.test(ua)?'Windows':'Other';const br=/SamsungBrowser/.test(ua)?'Samsung Internet':/CriOS|Chrome/.test(ua)?'Chrome':/Safari/.test(ua)?'Safari':/Firefox/.test(ua)?'Firefox':'Browser';return os+', '+br+(window.matchMedia('(display-mode: standalone)').matches?', home screen app':'')+(window.PadelCredNative?', Android app':'')+', '+innerWidth+'×'+innerHeight};
@@ -3693,10 +3760,10 @@ async function loadBugs(quiet){
 function renderBugs(){
   const box=$('bugList');if(!box)return;
   const list=BUGS.list;
-  box.innerHTML=list.length?list.map(b=>'<div class="bugcard'+(b.status==='fixed'?' fixed':'')+'" data-id="'+b.id+'"><div class="bughead"><b>'+esc(b.name||'Someone')+(b.username?' <span>@'+esc(b.username)+'</span>':'')+'</b><em>'+(b.status==='fixed'?'Fixed':'New')+'</em></div><p>'+esc(b.text)+'</p>'+(b.steps?'<p class="bugsteps">'+esc(b.steps)+'</p>':'')+'<p class="bugmeta">'+dShort(b.at)+' · v'+esc(b.version||'')+' · '+esc(b.device||'')+' · '+esc(b.theme||'')+'</p><div class="bugbtns"><button class="mini lime" data-a="award">Award Bug hunter</button>'+(b.status!=='fixed'?'<button class="mini" data-a="fixed">Mark fixed</button>':'')+'<button class="mini" data-a="del">Delete</button></div></div>').join('')
+  box.innerHTML=list.length?list.map(b=>'<div class="bugcard'+(b.status==='fixed'?' fixed':'')+'" data-id="'+b.id+'"><div class="bughead"><b>'+esc(b.name||'Someone')+(b.username?' <span>@'+esc(b.username)+'</span>':'')+'</b><em>'+(b.status==='fixed'?'Fixed':'New')+'</em></div><p>'+esc(b.text)+'</p>'+(b.steps?'<p class="bugsteps">'+esc(b.steps)+'</p>':'')+'<p class="bugmeta">'+dShort(b.at)+' · v'+esc(b.version||'')+' · '+esc(b.device||'')+' · '+esc(b.theme||'')+'</p><div class="bugbtns">'+(/Reason: Their Overall/.test(b.text||'')?'<button class="mini" data-ovr="copy">Copy for review</button><button class="mini" data-ovr="block">Remove from rankings</button>'+(b.status!=='fixed'?'<button class="mini" data-a="fixed">Looks real</button>':''):'<button class="mini lime" data-a="award">Award Bug hunter</button>'+(b.status!=='fixed'?'<button class="mini" data-a="fixed">Mark fixed</button>':''))+'<button class="mini" data-a="del">Delete</button></div></div>').join('')
     :'<p class="help">No bug reports yet.</p>';
   box.querySelectorAll('.bugcard').forEach(c=>{const b=BUGS.list.find(x=>x.id===c.dataset.id);
-    c.querySelector('[data-a="award"]').onclick=async()=>{try{const a=await FB.db.collection('awards').doc(b.from).get(),n=(a.exists?(a.data().bugs||0):0)+1;await FB.db.collection('awards').doc(b.from).set({bugs:n,last:Date.now(),by:FB.user.uid},{merge:true});toast('Bug hunter'+(n>1?' ×'+n:'')+' awarded to '+(b.name||'them')+'.');await FB.db.collection('reports').doc(b.id).update({status:'fixed'});b.status='fixed';renderBugs()}catch(e){toast(fbError(e))}};
+    if(c.querySelector('[data-a="award"]'))c.querySelector('[data-a="award"]').onclick=async()=>{try{const a=await FB.db.collection('awards').doc(b.from).get(),n=(a.exists?(a.data().bugs||0):0)+1;await FB.db.collection('awards').doc(b.from).set({bugs:n,last:Date.now(),by:FB.user.uid},{merge:true});toast('Bug hunter'+(n>1?' ×'+n:'')+' awarded to '+(b.name||'them')+'.');await FB.db.collection('reports').doc(b.id).update({status:'fixed'});b.status='fixed';renderBugs()}catch(e){toast(fbError(e))}};
     const fx=c.querySelector('[data-a="fixed"]');if(fx)fx.onclick=async()=>{try{await FB.db.collection('reports').doc(b.id).update({status:'fixed'});b.status='fixed';renderBugs()}catch(e){toast(fbError(e))}};
     c.querySelector('[data-a="del"]').onclick=async()=>{if(!(await ask('Delete this report?','It will be gone for good.','Delete',true)))return;try{await FB.db.collection('reports').doc(b.id).delete();BUGS.list=BUGS.list.filter(x=>x.id!==b.id);renderBugs()}catch(e){toast(fbError(e))}};
   });
@@ -3720,7 +3787,7 @@ function syncCheckRows(){
     ok(names.every(n=>pkey(n)===me||map[n]),'Last match: '+(rowOf(h)?rowOf(h).a+' v '+rowOf(h).b:'match'),parts.join('. ')+'.');
     const sd=DIAG.send;if(sd&&sd.match===h.id)ok(sd.ok,sd.ok?(sd.to&&sd.to.length?'Sent to '+sd.to.join(', '):'Not sent'):'Sending failed',sd.ok?(sd.note||''):sd.err);
     else ok(false,'This match hasn\'t been sent yet','It sends a few seconds after the match ends, when you\'re signed in and online.');
-    if(h.cfg.gid){const g=DIAG.gsend;ok(g?g.ok:false,'Shared group: '+(h.cfg.group||''),g&&!g.ok?g.err:(g?'Sent to the group':'Not sent to the group yet'))}
+    if(h.cfg.gid){const g=DIAG.gsend;ok(g?g.ok:false,'League: '+(h.cfg.group||''),g&&!g.ok?g.err:(g?'Sent to the league':'Not sent to the league yet'))}
   }
   return rows;
 }
@@ -3804,8 +3871,8 @@ function loadImg(src){return new Promise(r=>{if(!src)return r(null);const i=new 
 function cardHighlights(p){
   const out=[],ex=myExclusive();
   if(ex.founder)out.push(['founder','Founding member #'+ex.founder.n,'gold']);
-  if(ex.fgroup)out.push(['fgroup','Founding group #'+ex.fgroup.n,'gold']);
-  if(ex.gstarter)out.push(['gstarter','Group starter','gold']);
+  if(ex.fgroup)out.push(['fgroup','Founding league #'+ex.fgroup.n,'gold']);
+  if(ex.gstarter)out.push(['gstarter','League starter','gold']);
   if(ex.recruiter)out.push(['recruiter','Recruiter','gold']);
   if(ex.bug&&ex.bug.n)out.push(['bug','Bug hunter'+(ex.bug.n>1?' ×'+ex.bug.n:''),'gold']);
   const sec=ex.secret||{},names={};SEASONAL.forEach(s=>names[s[0]]=s[1]);SECRET_ONE.forEach(s=>names[s[0]]=s[1]);
@@ -4060,7 +4127,7 @@ function duosHtml(L){
 function leagueAvgLine(L){if(!L.length)return'';const avg=Math.round(L.reduce((s,p)=>s+p.rating,0)/L.length);return'<p class="lgavg">League average Overall: <b>'+perfScore(avg)+'</b> across '+L.length+' player'+(L.length===1?'':'s')+'.</p>'}
 /* renderLeague: built into the function itself */
 
-/* shared groups: each group's average rating */
+/* leagues: each group's average rating */
 /* renderGroupsSheet: built into the function itself */
 
 /* rankings: Everyone, or just players near your level */
@@ -4604,7 +4671,7 @@ $('peCancel').onclick=()=>hideSheet();
 
 
 /* ================= home logo and updates ================= */
-const APP_VERSION='2.18.2';
+const APP_VERSION='2.21';
 document.querySelectorAll('.vlogo').forEach(i=>i.src=$('logo').src);
 function goHome(e){
   const el=e&&e.currentTarget;if(el){el.classList.remove('tap');void el.offsetWidth;el.classList.add('tap')}
@@ -5195,7 +5262,7 @@ function renderGroupBar(){
   if(RES.group&&!gs.some(g=>g.toLowerCase()===RES.group.toLowerCase()))RES.group='';
   bar.classList.remove('hide');
   bar.innerHTML=['',...gs].map(g=>'<button data-g="'+esc(g)+'" aria-pressed="'+((RES.group||'')===g)+'">'+(g?esc(g):'Everyone')+'</button>').join('');
-  if(signed)bar.insertAdjacentHTML('beforeend','<button class="grmanage" id="grManage">+ Shared groups</button>');
+  if(signed)bar.insertAdjacentHTML('beforeend','<button class="grmanage" id="grManage">+ Leagues</button>');
   bar.querySelectorAll('button[data-g]').forEach(b=>{const shared=typeof sharedGroup==='function'&&sharedGroup(b.dataset.g);if(shared)b.classList.add('shared');b.onclick=()=>{RES.group=b.dataset.g;renderGroupBar();setTab(tab)}});
   if($('grManage'))$('grManage').onclick=openGroups;
 }
@@ -6035,7 +6102,7 @@ function renderAccount(){
     $('acTitle').textContent='Your account';
     b.innerHTML='<div class="acrow"><b>'+esc(PROF.username?'@'+PROF.username:'No username yet')+'</b><span>'+esc(FB.user.email||'Signed in with Google')+'</span></div>'+
       '<p class="help" id="acSync"></p>'+founderStatusHtml()+
-      '<div class="btns"><button class="primary" id="acSyncBtn">Sync now</button><button class="secondary" id="acUser">'+(PROF.username?'Change username':'Choose a username')+'</button><button class="secondary" id="acCheck">Sync check</button><button class="secondary" id="acGroups">Shared groups</button>'+(FB.admin?'<button class="secondary" id="acAward">Award badges and bug reports'+(BUGS.list.filter(b=>b.status==='new').length?' ('+BUGS.list.filter(b=>b.status==='new').length+' new)':'')+'</button>':'')+'<button class="secondary" id="acOut">Sign out</button><button class="danger" id="acDelete">Delete my account</button></div>'+
+      '<div class="btns"><button class="primary" id="acSyncBtn">Sync now</button><button class="secondary" id="acUser">'+(PROF.username?'Change username':'Choose a username')+'</button><button class="secondary" id="acCheck">Sync check</button><button class="secondary" id="acGroups">Leagues</button>'+(FB.admin?'<button class="secondary" id="acAward">Award badges and bug reports'+(BUGS.list.filter(b=>b.status==='new').length?' ('+BUGS.list.filter(b=>b.status==='new').length+' new)':'')+'</button>':'')+'<button class="secondary" id="acOut">Sign out</button><button class="danger" id="acDelete">Delete my account</button></div>'+
       '<label class="livetoggle" style="margin:12px 2px"><input type="checkbox" id="acAuto"'+(autoSendOn()?' checked':'')+'> Send results to friends automatically</label>'+
       '<p class="help">Your results, profile and friends are saved to your account and kept in sync on every device you sign in on. Friends you\'ve connected with get matches you play together straight away. Videos stay on your phone.</p>';
     setSyncLabel();
@@ -6177,7 +6244,7 @@ $('unSkip').onclick=()=>{if(unameRequired&&needsUsername()){signOutNow();return}
 
 /* --- delete everything --- */
 async function deleteAccount(){
-  if(!(await ask('Delete your PadelCred account?','This deletes your account and everything linked to it, for good: your profile, friend connections, group memberships and synced results. Results on this phone stay unless you remove them.','Delete account',true)))return;
+  if(!(await ask('Delete your PadelCred account?','This deletes your account and everything linked to it, for good: your profile, friend connections, league memberships and synced results. Results on this phone stay unless you remove them.','Delete account',true)))return;
   try{
     const uid=FB.user.uid,db=FB.db,FV=firebase.firestore.FieldValue;
     let uname=(PROF.username||'').toLowerCase();
@@ -6374,7 +6441,7 @@ function bindSocial(){
 }
 
 
-/* ================= stage three: shared groups and live scores ================= */
+/* ================= stage three: leagues and live scores ================= */
 const GRP={list:[],unsub:null,live:{},liveUnsubs:{},lastLive:0};
 const liveOn=()=>store.get('db-live-share')!==false;
 const sharedGroup=name=>{const n=(name||'').trim().toLowerCase();return n?GRP.list.find(g=>g.name.toLowerCase()===n):null};
@@ -6393,9 +6460,9 @@ function stopGroups(){if(GRP.unsub)GRP.unsub();GRP.unsub=null;Object.values(GRP.
 
 /* --- create, invite, join, leave --- */
 async function createGroup(){
-  const name=tidyName($('grName').value);if(!name){toast('Give your group a name first.');return}
-  if(badWords(name)){toast('Try a different group name.');return}
-  if(GRP.list.some(g=>g.name.toLowerCase()===name.toLowerCase())){toast('You\'re already in a group with that name.');return}
+  const name=tidyName($('grName').value);if(!name){toast('Give your league a name first.');return}
+  if(badWords(name)){toast('Try a different league name.');return}
+  if(GRP.list.some(g=>g.name.toLowerCase()===name.toLowerCase())){toast('You\'re already in a league with that name.');return}
   const gid=newGid(),inv=newGid(),me=FB.user.uid;
   try{
     await FB.db.collection('groups').doc(gid).set({name,members:[me],admins:[me],names:{[me]:PROF.name||PROF.username||'Player'},inv,createdBy:me,createdAt:Date.now()});
@@ -6414,13 +6481,13 @@ async function ensureInvite(g){
 }
 async function inviteGroup(g){
   let inv;try{inv=await ensureInvite(g)}catch(e){toast(fbError(e));return}
-  if(!inv){toast('Ask the person who made the group for an invite link.');return}
+  if(!inv){toast('Ask the person who made the league for an invite link.');return}
   const url=appUrl()+'#group='+inv,text='Join "'+g.name+'" on PadelCred, so we all share one league:';
   if(navigator.share){try{await navigator.share({title:'Join '+g.name,text,url});return}catch(e){if(e&&e.name==='AbortError')return}}
   try{await navigator.clipboard.writeText(text+' '+url);toast('Invite link copied. Paste it into your group chat.')}catch(e){toast('Couldn\'t share the link here.')}
 }
 async function resetInvite(g){
-  if(!(await ask('Reset the invite link?','The old link stops working straight away. Anyone already in the group stays in.','Reset link',true)))return;
+  if(!(await ask('Reset the invite link?','The old link stops working straight away. Anyone already in the league stays in.','Reset link',true)))return;
   try{
     if(g.inv)await FB.db.collection('invites').doc(g.inv).delete().catch(()=>{});
     const inv=newGid();await FB.db.collection('invites').doc(inv).set({gid:g.id,name:g.name,by:FB.user.uid,createdAt:Date.now()});
@@ -6429,7 +6496,7 @@ async function resetInvite(g){
 }
 async function removeMember(g,uid){
   const nm2=(g.names||{})[uid]||'this player';
-  if(!(await ask('Remove '+nm2+'?','They\'ll stop seeing the group\'s league and live scores. Matches already on their phone stay.','Remove',true)))return;
+  if(!(await ask('Remove '+nm2+'?','They\'ll stop seeing the league\'s league and live scores. Matches already on their phone stay.','Remove',true)))return;
   const FV=firebase.firestore.FieldValue;
   try{await FB.db.collection('groups').doc(g.id).update({members:FV.arrayRemove(uid),admins:FV.arrayRemove(uid),['names.'+uid]:FV.delete()});toast(nm2+' removed.')}catch(e){toast(fbError(e))}
 }
@@ -6444,7 +6511,7 @@ async function openJoin(token){
     pendingJoin={id:inv.gid,name:inv.name,token};
     $('inTitle').textContent='Join '+inv.name+'?';
     $('inBody').innerHTML='<div class="inmatch"><b>'+esc(inv.name)+'</b><span>A shared PadelCred group</span></div><p class="help">You\'ll share one league with everyone in the group, see their matches, and can watch live scores.</p>';
-    $('inYes').textContent='Join group';$('inYes').classList.remove('hide');$('inSame').classList.add('hide');
+    $('inYes').textContent='Join league';$('inYes').classList.remove('hide');$('inSame').classList.add('hide');
     incoming={type:'group'};showSheet('incomingSheet');
   }catch(e){toast(fbError(e))}
 }
@@ -6462,7 +6529,7 @@ function leaveUpdate(g,uid){
   return{members:FV.arrayRemove(uid),admins:admins.length?admins:[others[0]],['names.'+uid]:FV.delete()};
 }
 async function leaveGroup(g){
-  if(!(await ask('Leave '+g.name+'?','You\'ll stop seeing its shared league and live scores. Matches already on your phone stay.','Leave group',true)))return;
+  if(!(await ask('Leave '+g.name+'?','You\'ll stop seeing its shared league and live scores. Matches already on your phone stay.','Leave league',true)))return;
   const me=FB.user.uid,FV=firebase.firestore.FieldValue;
   try{
     if(g.members.length===1){if(g.inv)await FB.db.collection('invites').doc(g.inv).delete().catch(()=>{});await FB.db.collection('groups').doc(g.id).delete()}
@@ -6470,14 +6537,14 @@ async function leaveGroup(g){
     toast('You\'ve left '+g.name+'.');
   }catch(e){toast(fbError(e))}
 }
-function openGroups(){if(!FB.user){toast('Sign in to create or join shared groups.');openAccount();return}hideSheet();renderGroupsSheet();showSheet('groupsSheet')}
+function openGroups(){if(!FB.user){toast('Sign in to create or join leagues.');openAccount();return}hideSheet();renderGroupsSheet();showSheet('groupsSheet')}
 function renderGroupsSheet(){try{
   const me=FB.user?FB.user.uid:null;
   $('grList').innerHTML=GRP.list.length?GRP.list.map(g=>{
     const admin=(g.admins||[]).includes(me),others=(g.members||[]).filter(u=>u!==me);
-    return'<div class="grbox" data-g="'+g.id+'"><div class="grrow"><div><b>'+esc(g.name)+(admin?' <small class="unf">Admin</small>':'')+(g.fn?' <small class="fndtag inl">Founding group #'+g.fn+'</small>':'')+'</b><span>'+g.members.length+(g.members.length===1?' member':' members')+'</span></div><button class="mini lime" data-a="inv">Invite</button><button class="mini" data-a="leave">Leave</button></div>'+
+    return'<div class="grbox" data-g="'+g.id+'"><div class="grrow"><div><b>'+esc(g.name)+(admin?' <small class="unf">Admin</small>':'')+(g.fn?' <small class="fndtag inl">Founding league #'+g.fn+'</small>':'')+'</b><span>'+g.members.length+(g.members.length===1?' member':' members')+'</span></div><button class="mini lime" data-a="inv">Invite</button><button class="mini" data-a="leave">Leave</button></div>'+
       (admin?'<div class="gradmin">'+(others.length?others.map(u=>'<span class="grm">'+esc((g.names||{})[u]||'Player')+' <button class="linkbtn inl" data-rm="'+u+'">remove</button></span>').join(''):'<span class="help">No one else yet.</span>')+'<button class="linkbtn" data-a="reset">Reset invite link</button></div>':'')+'</div>'}).join('')
-    :'<p class="help" style="margin:0 2px 12px">No shared groups yet. Create one for each set of friends you play with.</p>';
+    :'<p class="help" style="margin:0 2px 12px">No leagues yet. Create one for each set of friends you play with.</p>';
   $('grList').querySelectorAll('.grbox').forEach(r=>{const g=GRP.list.find(x=>x.id===r.dataset.g);
     r.querySelector('[data-a="inv"]').onclick=()=>inviteGroup(g);r.querySelector('[data-a="leave"]').onclick=()=>leaveGroup(g);
     const rs=r.querySelector('[data-a="reset"]');if(rs)rs.onclick=()=>resetInvite(g);
@@ -6631,7 +6698,7 @@ function renderHome(){try{
   $('hmTour').onclick=()=>startTour();
   syncHomeAvatar();
 
-}finally{(()=>{try{const st=$('hmStart');if(st&&!$('cfCard')){const html=confCardsHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}try{const st=$('hmStart');if(st&&!$('invCard')){const html=invCardsHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}try{const st=$('hmStart');if(st&&!$('nightCard')){const html=nightCardsHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}try{const st=$('hmStart');if(st&&!$('rateDue')){const html=rateDueHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}})()}}
+}finally{(()=>{try{const st=$('hmStart');if(st&&!$('cfCard')){const html=confCardsHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}try{const st=$('hmStart');if(st&&!$('invCard')){const html=invCardsHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}try{const st=$('hmStart');if(st&&!$('nightCard')){const html=nightCardsHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}try{const st=$('hmStart');if(st&&!$('rateDue')){const html=rateDueHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}try{const st=$('hmStart');if(st&&!$('admWait')){const html=adminWaitHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}})()}}
 setTimeout(()=>{try{lockSeed()}catch(e){}},1500);
 function syncHomeAvatar(){const b=$('hmAv');if(!b)return;b.innerHTML=$('avBtn').innerHTML;b.className=$('avBtn').className;b.id='hmAv';b.setAttribute('data-n',$('avBtn').getAttribute('data-n')||'')}
 

@@ -10,13 +10,13 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="PadelCred">
-<meta name="app-version" content="2.18.2">
+<meta name="app-version" content="2.21">
 <title>PadelCred</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="padelcred.css?v=2.18.2">
+<link rel="stylesheet" href="padelcred.css?v=2.21">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="64x64" href="favicon-64.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -132,6 +132,7 @@
 <section class="sheet" id="addSheet" aria-label="Add a result">
   <h3 id="addTitle">Add a result</h3>
   <p>For matches you didn't score in the app.</p>
+  <button class="primary nrbtn" id="arLog">Same four, swapping partners? Log the session</button>
   <button class="secondary nrbtn" id="arNight">Played several matches? Add the whole night</button>
   <div class="field"><label for="arDate">Date</label><input type="date" id="arDate"></div>
   <div class="teambox">
@@ -145,7 +146,7 @@
     <input type="text" id="arB" maxlength="24" placeholder="Team name (optional)" aria-label="Opponents team name">
   </div>
   <div class="field"><label for="arVenue">Venue (optional)</label><input type="text" id="arVenue" list="venueNames" maxlength="40" autocomplete="off" placeholder="For example, Padel Social Club"></div>
-  <div class="field"><label for="arGroup">Group (optional)</label><input type="text" id="arGroup" list="groupNames" maxlength="24" autocomplete="off" placeholder="For example, Sunday crew"></div>
+  <div class="field"><label for="arGroup">League (optional)</label><input type="text" id="arGroup" list="groupNames" maxlength="24" autocomplete="off" placeholder="For example, Sunday crew"></div>
   <label class="livetoggle arrottoggle"><input type="checkbox" id="arRot"> We swapped partners during the session</label>
   <div class="field hide" id="arRotBox"><span class="lbl">Rounds</span><p class="help" style="margin:-2px 2px 8px">Add each round in the order you played it: who partnered whom, then the score. A round can be one set, best of three or first to three.</p><div id="arRounds"></div><button class="secondary" id="arAddRound">Add another round</button></div>
   <div class="field" id="arScoreBox"><span class="lbl">Score</span>
@@ -157,12 +158,25 @@
   <div class="btns"><button class="primary" id="arSave">Save result</button><button class="secondary" id="arCancel">Cancel</button></div>
 </section>
 
+<section class="sheet" id="logSessionSheet" aria-label="Log a session">
+  <h3>Log a session</h3>
+  <p>Pick the four players once. Each game fills in the next pairing, so everyone partners everyone. Just type the scores.</p>
+  <div class="field"><label for="lsDate">Date</label><input type="date" id="lsDate"></div>
+  <div class="field"><label for="lsVenue">Venue (optional)</label><input type="text" id="lsVenue" list="venueNames" maxlength="40" autocomplete="off" placeholder="For example, Padel Social Club"></div>
+  <div class="field" id="lsPlayers"><span class="lbl">The four players</span>
+    <div class="lsp"><input type="text" id="lsP1" list="playerNames" maxlength="20" autocomplete="off" placeholder="Player 1"><input type="text" id="lsP2" list="playerNames" maxlength="20" autocomplete="off" placeholder="Player 2"><input type="text" id="lsP3" list="playerNames" maxlength="20" autocomplete="off" placeholder="Player 3"><input type="text" id="lsP4" list="playerNames" maxlength="20" autocomplete="off" placeholder="Player 4"></div></div>
+  <span class="lbl">Games</span>
+  <div id="lsRows"></div>
+  <button class="secondary nrbtn" id="lsAdd">Add game</button>
+  <div class="btns"><button class="primary" id="lsSave">Save the session</button><button class="secondary" id="lsCancel">Cancel</button></div>
+</section>
+
 <section class="sheet" id="nightAddSheet" aria-label="Add the night's results">
   <h3>Add the night's results</h3>
   <p>Every match you played, in order. Each player's record updates, and PadelCred friends get the results to confirm.</p>
   <div class="field"><label for="nrDate">Date</label><input type="date" id="nrDate"></div>
   <div class="field"><label for="nrVenue">Venue (optional)</label><input type="text" id="nrVenue" list="venueNames" maxlength="40" autocomplete="off" placeholder="For example, Padel Social Club"></div>
-  <div class="field"><label for="nrGroup">Group (optional)</label><input type="text" id="nrGroup" list="groupNames" maxlength="24" autocomplete="off" placeholder="For example, Sunday crew"></div>
+  <div class="field"><label for="nrGroup">League (optional)</label><input type="text" id="nrGroup" list="groupNames" maxlength="24" autocomplete="off" placeholder="For example, Sunday crew"></div>
   <div id="nrMatches"></div>
   <div class="nradd"><button class="secondary" id="nrSwap">Next match: same players, swap partners</button><button class="secondary" id="nrNew">Next match: different players</button></div>
   <div class="btns"><button class="primary" id="nrSave">Save results</button><button class="secondary" id="nrCancel">Cancel</button></div>
@@ -243,7 +257,7 @@
   </div>
   <details class="moreopts" id="moreOpts"><summary>More options<span>Group, team names, deciding set, video and display settings</span></summary>
   <div class="field"><label for="inVenue">Venue (optional)</label><input type="text" id="inVenue" list="venueNames" maxlength="40" autocomplete="off" placeholder="For example, Padel Social Club"><datalist id="venueNames"></datalist><p class="help">Remembered for next time, so you can see how you do at each club.</p></div>
-  <div class="field"><label for="inGroup">Group (optional)</label><input type="text" id="inGroup" list="groupNames" maxlength="24" autocomplete="off" placeholder="For example, Sunday crew"><p class="help">Keeps different friend groups apart. Filter by group in Results.</p></div>
+  <div class="field"><label for="inGroup">League (optional)</label><input type="text" id="inGroup" list="groupNames" maxlength="24" autocomplete="off" placeholder="For example, Sunday crew"><p class="help">Keeps different leagues apart. Filter by league in Results.</p></div>
   <datalist id="groupNames"></datalist>
   <div class="field"><span class="lbl">Team names (optional)</span><div class="pair">
     <input type="text" id="inA" maxlength="24" placeholder="Your team" aria-label="Your team name">
@@ -379,9 +393,9 @@
 <h4>Videos and clips</h4>
 <p>The camera and microphone are only used while you're filming. Videos and clips stay on your phone, in the app, until you save, share or delete them. They are never uploaded to PadelCred.</p>
 <h4>If you create an account</h4>
-<p>Your account is stored on Google Firebase, in London, so it syncs between your devices and survives a new phone. It holds your email address (only used to sign you in, never shown to anyone), your profile (name, username, photo, bio, padel details, socials and archetype), your results, friends, shared groups, Americano nights, knockouts, match plans and rivalry challenges, and the ratings you give and receive.</p>
+<p>Your account is stored on Google Firebase, in London, so it syncs between your devices and survives a new phone. It holds your email address (only used to sign you in, never shown to anyone), your profile (name, username, photo, bio, padel details, socials and archetype), your results, friends, leagues, Americano nights, knockouts, match plans and rivalry challenges, and the ratings you give and receive.</p>
 <h4>What other players can see</h4>
-<p>Your profile is visible to other signed-in PadelCred players: your name, username, photo, bio, padel details, socials, archetype, stats, achievements, Overall, Skill radar, ranking and your last 10 results (score, date, venue and who played). Matches you play with friends are shared with them, and matches tagged with a shared group are shared with its members, along with live scores while you play.</p>
+<p>Your profile is visible to other signed-in PadelCred players: your name, username, photo, bio, padel details, socials, archetype, stats, achievements, Overall, Skill radar, ranking and your last 10 results (score, date, venue and who played). Matches you play with friends are shared with them, and matches tagged with a league are shared with its members, along with live scores while you play.</p>
 <p>Ratings are private: friends only ever see an average, never who gave which rating. The skills friends pick for you only appear combined, in your Skill radar.</p>
 <h4>Your choices and rights</h4>
 <p>You can edit your profile at any time, hide yourself from the rankings in Your data, export your results to a spreadsheet, and delete your account and everything in it from Account and sync. You also have the right to ask what we hold about you, and to have it corrected or deleted: email us and we'll respond within a month. If you're unhappy with how we handle your data, you can complain to the Information Commissioner's Office at ico.org.uk.</p>
@@ -534,12 +548,12 @@
   <div class="btns"><button class="primary" id="unSave">Save username</button><button class="secondary" id="unSkip">Sign out instead</button></div>
 </section>
 
-<section class="sheet" id="groupsSheet" aria-label="Shared groups">
-  <h3>Shared groups</h3>
-  <p class="help" style="margin:-4px 2px 12px">Everyone in a group shares one league, sees each other's matches and can watch live scores. Pick the group in setup when you start a match.</p>
+<section class="sheet" id="groupsSheet" aria-label="Leagues">
+  <h3>Leagues</h3>
+  <p class="help" style="margin:-4px 2px 12px">Everyone in a league sees each other's matches and can watch live scores. You can be in as many leagues as you like. Pick the league in setup when you start a match.</p>
   <div id="grList"></div>
-  <div class="field"><label for="grName">New group</label><div class="inrow"><input type="text" id="grName" maxlength="24" placeholder="For example, Sunday crew"><button class="primary" id="grCreate">Create</button></div></div>
-  <label class="livetoggle"><input type="checkbox" id="grLive"> Share live scores with my groups while I'm scoring</label>
+  <div class="field"><label for="grName">New league</label><div class="inrow"><input type="text" id="grName" maxlength="24" placeholder="For example, Sunday crew"><button class="primary" id="grCreate">Create</button></div></div>
+  <label class="livetoggle"><input type="checkbox" id="grLive"> Share live scores with my leagues while I'm scoring</label>
   <div class="btns"><button class="secondary" id="grClose">Done</button></div>
 </section>
 
@@ -643,7 +657,7 @@
     <p>Your Overall is your long-term level. Form is your current run. A Rookie can be on fire, and a Legend can go cold.</p>
     <h4>Predictions and matchmaking</h4>
     <p>Before each match, PadelCred shows each pair's chance of winning, worked out from everyone's current level. It's the same maths that moves ratings afterwards, so beating the prediction is what earns you the most. If one pair is a big favourite, Balance teams swaps partners to make the match as even as possible.</p>
-    <p>The League shows your group's average Overall and a Duos table ranking every pairing. In the rankings, Near my level lists players within 6 of your Overall, so you can find good games beyond your group.</p>
+    <p>The League shows your league's average Overall and a Duos table ranking every pairing. In the rankings, Near my level lists players within 6 of your Overall, so you can find good games beyond your group.</p>
     <h4>Rankings</h4>
     <p>Everyone signed in is ranked by Overall after their first match. Ties share a place. You can hide yourself from the rankings in Your data.</p>
   </div>
@@ -687,7 +701,7 @@
     <button class="secondary" id="termsBtn">Terms</button>
     <button class="secondary" id="dataUpdate">Check for updates</button>
   </div>
-  <p class="help" style="text-align:center;margin:14px 0 0">PadelCred v2.18.2<br><span class="copyr">© 2026 Raza Rebuilt. All rights reserved.</span></p>
+  <p class="help" style="text-align:center;margin:14px 0 0">PadelCred v2.21<br><span class="copyr">© 2026 Raza Rebuilt. All rights reserved.</span></p>
 </section>
 
 <section class="camview" id="camView" aria-label="Camera">
@@ -827,7 +841,7 @@
     <div class="obstep">
       <div class="obtick acc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c.8-4.2 4-6.5 8-6.5s7.2 2.3 8 6.5"/></svg></div>
       <h2>Create your account</h2>
-      <p>Keep your results safe on any phone, add friends by username, and share a league with your group. It's free.</p>
+      <p>Keep your results safe on any phone, add friends by username, and share leagues with your friends. It's free.</p>
       <div class="btns"><button class="primary" id="obCreate">Create an account</button><button class="secondary" id="obHave">I already have an account</button><button class="linkbtn" id="obLocal">Just score for now</button></div>
     </div>
     <div class="obstep">
@@ -904,7 +918,7 @@
 <canvas class="fx" id="fx"></canvas>
 <div class="toast" id="toast" role="status"></div>
 
-<script src="padelcred.js?v=2.18.2"></script>
+<script src="padelcred.js?v=2.21"></script>
 <script>if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol))addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));</script>
 </body>
 </html>

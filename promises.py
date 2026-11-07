@@ -760,8 +760,156 @@ def t_new_phone_me(p):
     b.close()
     return me_row == 'In' and first == 'Raza', {'your row in the planner': me_row, 'name filled in': first}
 
+@promise('Planner: typing another name then your own name back shows In again; non-account names are flagged red as soon as you leave the box', 'Match night planner, player boxes')
+def t_planner_live(p):
+    b, pg, e = fresh(p, history=[])
+    T(pg, "t.setAdmin(true,'me1')"); pg.wait_for_timeout(300)
+    pg.evaluate("document.querySelector('#fnav [data-nav=home]').click()"); pg.wait_for_timeout(400)
+    pg.evaluate("document.getElementById('hmPlan').click()"); pg.wait_for_timeout(800)
+    lab = lambda: pg.evaluate("(document.querySelector('#plPlayers .plp .plst')||{innerText:''}).innerText")
+    first = lab()
+    box = pg.locator('#plPlayers .plp input').first
+    box.fill('Zed'); box.dispatch_event('input'); pg.wait_for_timeout(200); other = lab()
+    box.fill('Raza'); box.dispatch_event('input'); pg.wait_for_timeout(200); back = lab()
+    box.fill('Zed'); pg.locator('#plPlayers .plp input').nth(1).focus(); pg.wait_for_timeout(600)
+    flagged = pg.evaluate("document.querySelector('#plPlayers .plp input').classList.contains('needpick')")
+    b.close()
+    return first == 'In' and other == 'Not on PadelCred' and back == 'In' and flagged, {'at first': first, 'after typing Zed': other, 'after typing Raza back': back, 'Zed flagged red on leaving the box': flagged}
+
+@promise('Admin: people waiting for access appear on Home with Approve and Decline', 'Home, admin')
+def t_admin_home(p):
+    b, pg, e = fresh(p, history=[])
+    T(pg, "t.setAdmin(true,'me1');t.setAdmq([{id:'u_sam',name:'Sam',email:'sam@example.com',at:Date.now()}])"); pg.wait_for_timeout(400)
+    pg.evaluate("document.querySelector('#fnav [data-nav=home]').click()"); pg.wait_for_timeout(500)
+    card = pg.evaluate("(document.getElementById('admWait')||{innerText:''}).innerText.replace(/\\n+/g,' | ')")
+    b.close()
+    return card.startswith('1 waiting for access') and 'Sam' in card and 'Approve' in card and 'Decline' in card, {'card': card}
+
+@promise('Log a session: pick four players once; every game fills in the next pairing; saved as one session', 'Add a result, Log the session')
+def t_log_session(p):
+    b, pg, e = fresh(p, history=[])
+    pg.evaluate("document.querySelector('#fnav [data-nav=matches]').click()"); pg.wait_for_timeout(500)
+    pg.evaluate("document.getElementById('addResult').click()"); pg.wait_for_timeout(400)
+    pg.evaluate("document.getElementById('arLog').click()"); pg.wait_for_timeout(700)
+    first = pg.evaluate("document.getElementById('lsP1').value")
+    for k, v in (('lsP2', 'Ben'), ('lsP3', 'Ellie'), ('lsP4', 'James')): pg.fill('#' + k, v)
+    pg.evaluate("document.getElementById('lsP4').dispatchEvent(new Event('input',{bubbles:true}))"); pg.wait_for_timeout(200)
+    labels = pg.evaluate("[...document.querySelectorAll('#lsRows .lsl')].slice(0,4).map(x=>x.innerText)")
+    ins = pg.locator('#lsRows .lsrow input')
+    for j, v in enumerate(['5', '3', '2', '5', '5', '4', '5', '1']): ins.nth(j).fill(v)
+    pg.evaluate("document.getElementById('lsSave').click()"); pg.wait_for_timeout(700)
+    for _ in range(3):
+        if pg.evaluate("document.getElementById('askWrap').classList.contains('on')"): pg.evaluate("document.getElementById('askYes').click()"); pg.wait_for_timeout(500)
+    pg.wait_for_timeout(500)
+    H = pg.evaluate("JSON.parse(localStorage.getItem('db-history'))")
+    b.close()
+    games = sorted(H, key=lambda h: h['date'])
+    pairs = [' & '.join(h['cfg']['pa']) + ' v ' + ' & '.join(h['cfg']['pb']) for h in games]
+    want = ['Raza & Ben v Ellie & James', 'Raza & Ellie v Ben & James', 'Raza & James v Ben & Ellie', 'Raza & Ben v Ellie & James']
+    ok = first == 'Raza' and len(games) == 4 and pairs == want and len(set(h.get('session') for h in games)) == 1 and labels[0].startswith('Game 1: Raza & Ben v Ellie & James')
+    return ok, {'you filled in': first, 'row labels': labels, 'saved pairings in order': pairs, 'one session': len(set(h.get('session') for h in games)) == 1}
+
+@promise('A simulated season: Overall finds the real order, Form follows recent results, sessions count once, seasons roll by month, friends\' ratings count from 3 raters', 'Overall, Form, League, Seasons, Ratings')
+def t_season_sim(p):
+    import random, datetime
+    random.seed(7)
+    skill = {'Kwame': .80, 'Ellie': .70, 'Raza': .62, 'Ben': .58, 'Leo': .52, 'Marta': .46, 'James': .40, 'Sofia': .30}
+    names = list(skill)
+    now = datetime.datetime.now()
+    start = datetime.datetime(now.year, now.month, 1) - datetime.timedelta(days=182)
+    H, k = [], 0
+    def team_win(a, b, force=None):
+        if force is not None: return force
+        sa, sb = sum(skill[x] for x in a), sum(skill[x] for x in b)
+        pa = sa ** 3 / (sa ** 3 + sb ** 3)
+        return 0 if random.random() < pa else 1
+    weeks = []
+    d = start
+    while d < now - datetime.timedelta(days=1):
+        weeks.append(d); d += datetime.timedelta(days=7)
+    for wi, d in enumerate(weeks):
+        late = wi >= len(weeks) - 2
+        players = random.sample(names, 8)
+        four, other = players[:4], players[4:]
+        if late:  # Sofia on a run, Kwame struggling
+            four = ['Sofia', 'Leo', 'Kwame', 'James']; other = ['Raza', 'Ben', 'Ellie', 'Marta']
+        sid = 'sim_s%d' % wi
+        rot = [((four[0], four[1]), (four[2], four[3])), ((four[0], four[2]), (four[1], four[3])), ((four[0], four[3]), (four[1], four[2]))]
+        for gi, (a, b) in enumerate(rot):
+            force = None
+            if late: force = 0 if 'Sofia' in a else 1
+            w = team_win(a, b, force); lo = random.randint(0, 4)
+            sets = [[5, lo]] if w == 0 else [[lo, 5]]
+            ts = int((d + datetime.timedelta(hours=19, minutes=gi)).timestamp() * 1000)
+            H.append({'id': 'sim%d' % k, 'manual': True, 'date': ts, 'added': ts, 'sets': sets, 'session': sid, 'ver': {'by': 'u_x', 'at': ts}, 'notes': '',
+                      'cfg': {'pa': list(a), 'pb': list(b), 'an': '', 'bn': '', 'a': ' & '.join(a), 'b': ' & '.join(b), 'group': '', 'venue': '', 'bestOf': 1, 'games': 5, 'race': True}}); k += 1
+        a, b = (other[0], other[1]), (other[2], other[3])
+        force = None
+        if late and 'Kwame' in a + b: force = 1 if 'Kwame' in a else 0
+        w = team_win(a, b, force)
+        sets = [[6, random.randint(1, 4)], [6, random.randint(1, 4)]] if w == 0 else [[random.randint(1, 4), 6], [random.randint(1, 4), 6]]
+        ts = int((d + datetime.timedelta(days=3, hours=20)).timestamp() * 1000)
+        H.append({'id': 'sim%d' % k, 'manual': True, 'date': ts, 'added': ts, 'sets': sets, 'ver': {'by': 'u_x', 'at': ts}, 'notes': '',
+                  'cfg': {'pa': list(a), 'pb': list(b), 'an': '', 'bn': '', 'a': ' & '.join(a), 'b': ' & '.join(b), 'group': '', 'venue': ''}}); k += 1
+    b_, pg, e = fresh(p, history=H)
+    T(pg, "t.setAdmin(true,'me1');t.markRatedAll()"); pg.wait_for_timeout(500)
+    L = T(pg, "return t.computeLeague().map(x=>({name:x.name,ovr:t.perfScore(x.rating),p:x.p,form:(()=>{const f=t.formData(x);return f?t.formWord(f.v):null})(),fv:(()=>{const f=t.formData(x);return f?Math.round(f.v):null})()}))")
+    order = [x['name'] for x in sorted(L, key=lambda x: -x['ovr'])]
+    true_order = sorted(skill, key=lambda n: -skill[n])
+    # how closely the app's order matches the hidden skills (1 = identical)
+    rank = {n: i for i, n in enumerate(order)}; trank = {n: i for i, n in enumerate(true_order)}
+    nn = len(skill); rho = 1 - 6 * sum((rank[n] - trank[n]) ** 2 for n in skill) / (nn * (nn * nn - 1))
+    form = {x['name']: (x['form'], x['fv']) for x in L}
+    # sessions count once: each player's played = sessions + matches they were in
+    exp_p = {n: 0 for n in names}
+    for wi in range(len(weeks)):
+        seen = set()
+        for h in H:
+            if h.get('session') == 'sim_s%d' % wi:
+                for n in h['cfg']['pa'] + h['cfg']['pb']: seen.add(n)
+        for n in seen: exp_p[n] += 1
+    for h in H:
+        if not h.get('session'):
+            for n in h['cfg']['pa'] + h['cfg']['pb']: exp_p[n] += 1
+    played_ok = all(x['p'] == exp_p[x['name']] for x in L)
+    # seasons: this month, last month and the quarterly series hold exactly the right matches
+    seasons = {}
+    for mode in ('month', 'last', 'season'):
+        fr, to, nm = T(pg, "return t.seasonRange(a)", mode)
+        want = sum(1 for h in H if fr <= h['date'] < to)
+        got_tbl = T(pg, "return t.seasonTable(a[0],a[1])", [fr, to])
+        got = sum(r['p'] for r in got_tbl) // 4 if got_tbl else 0
+        seasons[mode] = {'name': nm, 'matches': want, 'table counts': got}
+    seasons_ok = all(v['matches'] == v['table counts'] for v in seasons.values())
+    # ratings: friends' ratings join Overall from 3 different raters, and move it the right way
+    me = T(pg, "const r=t.computeLeague().find(x=>x.name==='Raza');const o=t.overallFor(r);return {v:o.v,perf:o.perf}")
+    two = T(pg, "t.peerAggWith([{from:'a',v:5,at:Date.now()},{from:'b',v:5,at:Date.now()}]);const r=t.computeLeague().find(x=>x.name==='Raza');return t.overallFor(r).v")
+    three_hi = T(pg, "t.peerAggWith([{from:'a',v:5,at:Date.now()},{from:'b',v:5,at:Date.now()},{from:'c',v:5,at:Date.now()},{from:'d',v:5,at:Date.now()}]);const r=t.computeLeague().find(x=>x.name==='Raza');return t.overallFor(r).v")
+    three_lo = T(pg, "t.peerAggWith([{from:'a',v:1,at:Date.now()},{from:'b',v:1,at:Date.now()},{from:'c',v:1,at:Date.now()},{from:'d',v:1,at:Date.now()}]);const r=t.computeLeague().find(x=>x.name==='Raza');return t.overallFor(r).v")
+    broken = pg.evaluate("/NaN|undefined|Infinity/.test(document.body.innerText)")
+    b_.close()
+    ovrs = sorted(x['ovr'] for x in L)
+    spread = {'top': ovrs[-1], 'bottom': ovrs[0], 'at the floor of 40': sum(1 for v in ovrs if v == 40)}
+    ok = rho >= .7 and order.index('Sofia') >= 4 and (form['Sofia'][1] or 0) > (form['Kwame'][1] or 0) \
+        and played_ok and seasons_ok and two == me['v'] and three_hi > me['v'] > three_lo and not broken and all(40 <= x['ovr'] <= 99 for x in L) \
+        and spread['top'] >= 60 and spread['top'] <= 92 and spread['at the floor of 40'] <= 1 and spread['bottom'] >= 40
+    return ok, {'weeks simulated': len(weeks), 'results': len(H), 'Overall order': order, 'hidden skill order': true_order, 'match with hidden skill (1 = perfect)': round(rho, 2),
+                'Overall and Form': {x['name']: [x['ovr'], x['form']] for x in sorted(L, key=lambda x: -x['ovr'])}, 'sessions count once': played_ok, 'seasons': seasons,
+                'my Overall: no ratings / 2 raters / 3+ at 5 stars / 3+ at 1 star': [me['v'], two, three_hi, three_lo], 'spread': spread, 'broken values': broken}
+
+@promise('Suspicious Overall reports reach the admin with Copy for review, Remove from rankings and Looks real; bug reports keep Award Bug hunter', 'Admin, reports')
+def t_ovr_report(p):
+    b, pg, e = fresh(p, history=[])
+    T(pg, "t.setAdmin(true,'me1')")
+    T(pg, "t.setBugs(a)", [{'id': 'r1', 'name': 'Ben', 'text': 'PROFILE REPORT: Zed (@zed)\nReason: Their Overall or results look wrong\nEvidence: Overall 91 from 4 matches', 'steps': 'Reported account ID: u_zed', 'at': int(time.time() * 1000), 'status': 'new', 'from': 'u_ben'},
+                            {'id': 'r2', 'name': 'Ellie', 'text': 'The score froze', 'steps': '', 'at': int(time.time() * 1000), 'status': 'new', 'from': 'u_ellie'}])
+    pg.wait_for_timeout(300)
+    cards = pg.evaluate("[...document.querySelectorAll('#bugList .bugcard')].map(c=>[...c.querySelectorAll('.bugbtns button')].map(x=>x.innerText))")
+    b.close()
+    return cards[0][:3] == ['Copy for review', 'Remove from rankings', 'Looks real'] and 'Award Bug hunter' in cards[1] and 'Award Bug hunter' not in cards[0], {'suspicious Overall report': cards[0], 'bug report': cards[1]}
+
 TESTS = [t_start_table, t_tiers, t_weights, t_weight_applied, t_amer_counts, t_league_overall, t_pred, t_dispute, t_evening,
-         t_golden, t_adv, t_tb, t_race, t_bestof, t_stb, t_pairings, t_court, t_form, t_legacy, t_first_serve, t_versions, t_night_roster, t_night_open, t_night_cards, t_night_planner, t_profile, t_admin_secrets, t_gate, t_night_add, t_rate_night, t_names, t_linking, t_night_guards, t_fair_ratings, t_accounts, t_confirm, t_session_rate, t_rate_rules, t_rate_compulsory, t_celebrate_once, t_new_phone_me]
+         t_golden, t_adv, t_tb, t_race, t_bestof, t_stb, t_pairings, t_court, t_form, t_legacy, t_first_serve, t_versions, t_night_roster, t_night_open, t_night_cards, t_night_planner, t_profile, t_admin_secrets, t_gate, t_night_add, t_rate_night, t_names, t_linking, t_night_guards, t_fair_ratings, t_accounts, t_confirm, t_session_rate, t_rate_rules, t_rate_compulsory, t_celebrate_once, t_new_phone_me, t_planner_live, t_admin_home, t_log_session, t_season_sim, t_ovr_report]
 
 if __name__ == '__main__':
     with sync_playwright() as p:
