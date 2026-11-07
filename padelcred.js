@@ -1292,7 +1292,7 @@ function knownNames(){
 function fillNameList(){const fr=FRIENDS.map(f=>f.name),seen=new Set(fr.map(pkey));$('playerNames').innerHTML=fr.concat(knownNames().filter(n=>!seen.has(pkey(n)))).map(n=>'<option value="'+esc(n)+'">').join('')}
 
 /* ================= league (Elo-style ratings) ================= */
-const START_RATING=1000,K=32;
+const START_RATING=500,K=32; // rating 500 is Overall 50 on the current scale: the fallback wherever there are no results yet
 // your Playtomic level (0 to 7) sets where you start; no level means the 0.5 starting point
 // Playtomic 0.5 (or no level) starts at 50, evenly up to 7.0 at about 95
 function levelToOvr(L){L=parseFloat(String(L||'').replace(',','.'));if(!isFinite(L)||L<=0)L=.5;L=Math.max(.5,Math.min(7,L));return 50+(L-.5)/6.5*45}
@@ -2083,7 +2083,7 @@ async function checkAwards(){
 // seasonal: celebrate the first time a season is collected this year
 // the admin screen, only for you
 let awardTarget=null;
-function openAward(){$('awFind').value='';$('awResult').innerHTML='';awardTarget=null;hideSheet();showSheet('awardSheet');renderBugs();loadBugs();loadAccessRequests()}
+function openAward(){$('awFind').value='';$('awResult').innerHTML='';awardTarget=null;hideSheet();showSheet('awardSheet');renderBugs();loadBugs();loadAccessRequests();loadAdminPlayers();try{const box=$('adAchList');if(box&&!box.innerHTML)box.innerHTML=adminAchievementsHtml()}catch(e){}}
 async function findForAward(){
   const v=$('awFind').value.trim().replace(/^@/,'').toLowerCase();if(!v)return;
   try{const u=await FB.db.collection('usernames').doc(v).get();if(!u.exists){$('awResult').innerHTML='<p class="help">Nobody has that username.</p>';return}
@@ -2721,10 +2721,11 @@ function overallFor(p){
   return{v,perf,peer,target,change:wk?v-wk.v:0};
 }
 function ovrPeak(p){
-  const results=typeof perfScore==='function'?perfScore(p.maxRating||START_RATING):40;
-  if(typeof meKey==='function'&&p.key===meKey()){const s=store.get('db-ovr')||{};const hist=(s.hist||[]).map(h=>h.v);return Math.max(results,s.v||0,...hist)}
-  return results;
+  if(!p||!(p.p>=1))return perfScore(typeof seedFor==='function'&&p&&p.key?seedFor(p.key):START_RATING);
+  return perfScore(p.maxRating||START_RATING);
 }
+// the Overall scale changed in 2.21: values saved on this phone before then mean something different, so clear them once
+try{if(store.get('db-ovr-scale')!==2){store.set('db-ovr',{});store.set('db-ovr-scale',2)}}catch(e){}
 // tier thresholds keep the same rating requirements as before the 2.4 recalibration
 const ovrTier=v=>v>=81?['o-legend','Legend']:v>=75?['o-pro','Pro']:v>=65?['o-club','Club']:['o-rookie','Rookie'];
 function ovrCard(o,mine,name){
@@ -3294,7 +3295,7 @@ function hrFill(){const st=$('hrStart'),ti=$('hrTiers');if(!st||!ti)return;
 
 
 /* ================= test window: only when opened with ?selftest=1, for the promise tests. Players never see it ================= */
-if(window.__PC_TEST__===true)setTimeout(()=>{window.__pcTest={perfScore,levelToRating,levelToOvr,ovrTier,matchWeight,winChance,computeLeague,formWord,formBand,legacySeedToRating,pairings,replay,rowOf,allRows,overallFor,cardHighlights,ovrToRating,fourPlayers,currentPairing,K:typeof K!=='undefined'?K:null,nightRoster,nightOpen,nightStatusOf,setNights:(list,me)=>{NIGHTS.list=list;NIGHTS.me=me;nightsRefresh()},setAdmin:(on,uid)=>{FB.admin=!!on;FB.user=on?{uid:uid||'admin1'}:null;renderProfile()},setFriends:l=>{FRIENDS.length=0;l.forEach(f=>FRIENDS.push(f))},runUpkeep:()=>nameUpkeep(),peerAggWith:items=>{PR.items=items;return peerAgg()},alias:()=>ALIAS,verifyAll:()=>{history.forEach(h=>{if(!h.ver)h.ver={by:'test',at:Date.now()}});saveH()},confFrom:(id,uid,name,ok)=>confReceived({type:'conf',id,ok},{from:uid,fromName:name}),rateNight:(ids,c)=>openRateNight(history.filter(h=>ids.includes(h.id)),c?{confirm:history.find(h=>h.id===c)}:{}),markRatedAll:()=>{const s=new Set(history.map(unitOf));markRated([...s])},rated:()=>RATED,sendq:()=>SENDQ,setAdmq:l=>{ADMQ.list=l;FB.admin=true;renderHome()},awInit:()=>FB.user?store.get('db-aw-init-'+FB.user.uid):null,formData:p=>formData(p),setBugs:l=>{BUGS.list=l;renderBugs()},seasonTable:(f,t)=>seasonTable(f,t),seasonRange:(m,r)=>seasonRange(m,r),celebrate:(k)=>celebrateEx(k,'',{id:'bug',name:'Bug hunter',tier:'x',desc:'test'}),mergeProf:(a,b)=>mergeProf(a,b),setProf:o=>{Object.assign(PROF,o)},exSeen:()=>exAnnounced}},0)
+if(window.__PC_TEST__===true)setTimeout(()=>{window.__pcTest={perfScore,levelToRating,levelToOvr,ovrTier,matchWeight,winChance,computeLeague,formWord,formBand,legacySeedToRating,pairings,replay,rowOf,allRows,overallFor,cardHighlights,ovrToRating,fourPlayers,currentPairing,K:typeof K!=='undefined'?K:null,nightRoster,nightOpen,nightStatusOf,setNights:(list,me)=>{NIGHTS.list=list;NIGHTS.me=me;nightsRefresh()},setAdmin:(on,uid)=>{FB.admin=!!on;FB.user=on?{uid:uid||'admin1'}:null;renderProfile()},setFriends:l=>{FRIENDS.length=0;l.forEach(f=>FRIENDS.push(f))},runUpkeep:()=>nameUpkeep(),peerAggWith:items=>{PR.items=items;return peerAgg()},alias:()=>ALIAS,verifyAll:()=>{history.forEach(h=>{if(!h.ver)h.ver={by:'test',at:Date.now()}});saveH()},confFrom:(id,uid,name,ok)=>confReceived({type:'conf',id,ok},{from:uid,fromName:name}),rateNight:(ids,c)=>openRateNight(history.filter(h=>ids.includes(h.id)),c?{confirm:history.find(h=>h.id===c)}:{}),markRatedAll:()=>{const s=new Set(history.map(unitOf));markRated([...s])},rated:()=>RATED,sendq:()=>SENDQ,setAdmq:l=>{ADMQ.list=l;FB.admin=true;renderHome()},awInit:()=>FB.user?store.get('db-aw-init-'+FB.user.uid):null,formData:p=>formData(p),loadAdmin:()=>loadAdminPlayers(),adminInv:()=>adminInvites($('admInvites'),[{uid:'n1',via:'live1'}]),adminBar:()=>adminBarHtml(),setBugs:l=>{BUGS.list=l;renderBugs()},seasonTable:(f,t)=>seasonTable(f,t),seasonRange:(m,r)=>seasonRange(m,r),celebrate:(k)=>celebrateEx(k,'',{id:'bug',name:'Bug hunter',tier:'x',desc:'test'}),mergeProf:(a,b)=>mergeProf(a,b),setProf:o=>{Object.assign(PROF,o)},exSeen:()=>exAnnounced}},0)
 
 /* ================= shared match nights: everyone invited sees the same live list and ticks themselves in ================= */
 const NIGHTS={list:[],unsub:null,me:null,seen:store.get('db-nseen')||{},hidden:store.get('db-nhide')||{},tok:store.get('db-ntok')||{},push:null};
@@ -3573,14 +3574,16 @@ async function needAccounts(names){const list=names.map(n=>(n||'').trim()),bad=[
 // invite links: whoever joins through yours is approved straight away and sends you a friend request
 function newCode(){const a=new Uint8Array(12);crypto.getRandomValues(a);return[...a].map(x=>x.toString(16).padStart(2,'0')).join('')}
 async function openInvite(){if(!FB.user){toast('Sign in to invite players.');return}
-  const code=newCode();try{await FB.db.collection('joinCodes').doc(code).set({by:myUid(),byName:PROF.name||'',byUsername:PROF.username||'',at:Date.now()})}catch(e){toast(fbError(e));return}
-  const link=location.origin+location.pathname+'?join='+code,txt=(PROF.name||'A friend')+' invited you to PadelCred, where we record our padel results. Join here: '+link;
+  const code=newCode(),exp=Date.now()+7*864e5;try{await FB.db.collection('joinCodes').doc(code).set({by:myUid(),byName:PROF.name||'',byUsername:PROF.username||'',at:Date.now(),exp})}catch(e){toast(fbError(e));return}
+  try{const mine=store.get('db-mycodes')||[];mine.unshift({code,at:Date.now(),exp});store.set('db-mycodes',mine.slice(0,30))}catch(e){}
+  const link=location.origin+location.pathname+'?join='+code,txt=(PROF.name||'A friend')+' invited you to PadelCred, where we record our padel results. Join here (the link works for 7 days): '+link;
   try{if(navigator.share){await navigator.share({text:txt});return}}catch(e){return}window.open('https://wa.me/?text='+encodeURIComponent(txt),'_blank')}
 (()=>{try{const m=location.search.match(/[?&]join=([a-f0-9]{24})\b/);if(m){sessionStorage.setItem('pc-join',m[1]);history.replaceState(null,'',location.pathname+location.hash)}}catch(e){}})();
 const joinCode=()=>{try{return sessionStorage.getItem('pc-join')}catch(e){return null}};
 async function joinWithCode(uid){const code=joinCode();if(!code)return false;
   try{const d=await FB.db.collection('joinCodes').doc(code).get();if(!d.exists){sessionStorage.removeItem('pc-join');toast('That invite link has expired. Ask for a new one.');return false}
-    const inv=d.data();await FB.db.collection('access').doc(uid).set({via:code,by:inv.by,at:Date.now()});sessionStorage.removeItem('pc-join');
+    const inv=d.data();if(!inv.exp||inv.exp<Date.now()){sessionStorage.removeItem('pc-join');toast('That invite link has expired. Ask for a new one.');return false}
+    await FB.db.collection('access').doc(uid).set({via:code,by:inv.by,at:Date.now()});sessionStorage.removeItem('pc-join');
     if(inv.by&&inv.by!==uid)setTimeout(()=>{try{sendRequest(inv.by,{name:inv.byName,username:inv.byUsername})}catch(e){}},2500);
     toast('Welcome to PadelCred. '+(inv.byName||'Your friend')+' will get your friend request.');return true}
   catch(e){return false}}
@@ -3722,6 +3725,26 @@ document.addEventListener('click',async e=>{const btn=e.target.closest&&e.target
   if(btn.dataset.ovr==='block'){const m=(b.steps||'').match(/Reported account ID: (\S+)/);if(!m){toast('This report has no account to act on.');return}
     if(!(await ask('Remove from rankings?','They disappear from the public rankings and can\'t add themselves back until you allow it. Their results and friends aren\'t touched.','Remove',true)))return;
     try{await FB.db.collection('rankBlock').doc(m[1]).set({by:FB.user.uid,at:Date.now(),report:b.id});try{await FB.db.collection('rankings').doc(m[1]).delete()}catch(err){}toast('Removed from the rankings.')}catch(err){toast(fbError(err))}}});
+
+/* ================= admin: one place for waiting players, players, invites, achievements and reports ================= */
+async function loadAdminPlayers(){const box=$('admPlayers'),inv=$('admInvites');if(!box||!FB.admin)return;box.innerHTML='<p class="help">Loading…</p>';let rows=[];
+  try{const s=await FB.db.collection('access').get();rows=s.docs.map(d=>Object.assign({uid:d.id},d.data())).sort((a,b)=>(b.at||0)-(a.at||0));
+    const profs=await Promise.all(rows.slice(0,150).map(r=>FB.db.collection('profiles').doc(r.uid).get().then(d=>d.exists?d.data():{}).catch(()=>({}))));
+    box.innerHTML='<p class="help">'+(rows.length+1)+' player'+(rows.length?'s':'')+', including you.</p>'+rows.slice(0,150).map((r,i)=>{const pr=profs[i]||{};
+      return'<div class="cfrow"><span><b>'+esc(pr.name||'No name yet')+(pr.username?' <em class="admu">@'+esc(pr.username)+'</em>':'')+'</b><em>Joined '+(r.at?dShort(r.at):'')+' · '+(r.via?'with an invite link':'approved by you')+'</em></span></div>'}).join('')}
+  catch(e){box.innerHTML='<p class="help">Couldn\'t load players: '+esc(fbError(e))+'</p>'}
+  adminInvites(inv,rows)}
+// your invite links: whether each still works, how many joined with it, and Cancel
+function adminInvites(inv,rows){if(!inv)return;const byInvite=rows.filter(r=>r.via).length,mine=(store.get('db-mycodes')||[]).slice(0,10),now=Date.now(),joined=c=>rows.filter(r=>r.via===c).length;
+  inv.innerHTML='<p class="help">'+byInvite+' joined with an invite link. A link works for anyone you send it to for 7 days, and they\'re approved straight away.</p>'+
+    mine.map(c=>{const live=!c.cancelled&&c.exp>now;return'<div class="cfrow"><span><b>Link made '+dShort(c.at)+'</b><em>'+(c.cancelled?'Cancelled':live?'Works until '+dShort(c.exp):'Expired')+' · '+joined(c.code)+' joined</em></span>'+(live?'<div class="cfbtns"><button class="mini" data-cancelcode="'+esc(c.code)+'">Cancel</button></div>':'')+'</div>'}).join('')+
+    '<button class="secondary nrbtn" data-invite="1">Make an invite link</button>'}
+function adminBarHtml(){if(!FB.admin||!FB.user)return'';const n=ADMQ.list.length;return'<button class="admbar" data-openadmin="1"><b>Admin</b><span>'+(n?n+' waiting for access':'Players, invites, achievements and reports')+'</span></button>'}
+document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('[data-openadmin]'))openAward()});
+
+document.addEventListener('click',async e=>{const b=e.target.closest&&e.target.closest('[data-cancelcode]');if(!b)return;const code=b.dataset.cancelcode;
+  if(!(await ask('Cancel this invite link?','Anyone who hasn\'t used it yet won\'t be able to join with it. People who already joined stay in.','Cancel the link',true,'Keep it')))return;
+  try{await FB.db.collection('joinCodes').doc(code).delete()}catch(err){}const mine=store.get('db-mycodes')||[];const c=mine.find(x=>x.code===code);if(c)c.cancelled=Date.now();store.set('db-mycodes',mine);toast('Link cancelled.');loadAdminPlayers()});
 /* ================= bug reports ================= */
 const appVersion=()=>((document.querySelector('meta[name="app-version"]')||{}).content||'');
 const bugDevice=()=>{const ua=navigator.userAgent;const os=/iPhone|iPad/.test(ua)?'iPhone':/Android/.test(ua)?'Android':/Mac/.test(ua)?'Mac':/Windows/.test(ua)?'Windows':'Other';const br=/SamsungBrowser/.test(ua)?'Samsung Internet':/CriOS|Chrome/.test(ua)?'Chrome':/Safari/.test(ua)?'Safari':/Firefox/.test(ua)?'Firefox':'Browser';return os+', '+br+(window.matchMedia('(display-mode: standalone)').matches?', home screen app':'')+(window.PadelCredNative?', Android app':'')+', '+innerWidth+'×'+innerHeight};
@@ -4671,7 +4694,7 @@ $('peCancel').onclick=()=>hideSheet();
 
 
 /* ================= home logo and updates ================= */
-const APP_VERSION='2.21';
+const APP_VERSION='2.23';
 document.querySelectorAll('.vlogo').forEach(i=>i.src=$('logo').src);
 function goHome(e){
   const el=e&&e.currentTarget;if(el){el.classList.remove('tap');void el.offsetWidth;el.classList.add('tap')}
@@ -6102,7 +6125,7 @@ function renderAccount(){
     $('acTitle').textContent='Your account';
     b.innerHTML='<div class="acrow"><b>'+esc(PROF.username?'@'+PROF.username:'No username yet')+'</b><span>'+esc(FB.user.email||'Signed in with Google')+'</span></div>'+
       '<p class="help" id="acSync"></p>'+founderStatusHtml()+
-      '<div class="btns"><button class="primary" id="acSyncBtn">Sync now</button><button class="secondary" id="acUser">'+(PROF.username?'Change username':'Choose a username')+'</button><button class="secondary" id="acCheck">Sync check</button><button class="secondary" id="acGroups">Leagues</button>'+(FB.admin?'<button class="secondary" id="acAward">Award badges and bug reports'+(BUGS.list.filter(b=>b.status==='new').length?' ('+BUGS.list.filter(b=>b.status==='new').length+' new)':'')+'</button>':'')+'<button class="secondary" id="acOut">Sign out</button><button class="danger" id="acDelete">Delete my account</button></div>'+
+      '<div class="btns"><button class="primary" id="acSyncBtn">Sync now</button><button class="secondary" id="acUser">'+(PROF.username?'Change username':'Choose a username')+'</button><button class="secondary" id="acCheck">Sync check</button><button class="secondary" id="acGroups">Leagues</button>'+(FB.admin?'<button class="secondary" id="acAward">Admin: players, invites, achievements and reports'+(BUGS.list.filter(b=>b.status==='new').length?' ('+BUGS.list.filter(b=>b.status==='new').length+' new)':'')+'</button>':'')+'<button class="secondary" id="acOut">Sign out</button><button class="danger" id="acDelete">Delete my account</button></div>'+
       '<label class="livetoggle" style="margin:12px 2px"><input type="checkbox" id="acAuto"'+(autoSendOn()?' checked':'')+'> Send results to friends automatically</label>'+
       '<p class="help">Your results, profile and friends are saved to your account and kept in sync on every device you sign in on. Friends you\'ve connected with get matches you play together straight away. Videos stay on your phone.</p>';
     setSyncLabel();
@@ -6698,7 +6721,7 @@ function renderHome(){try{
   $('hmTour').onclick=()=>startTour();
   syncHomeAvatar();
 
-}finally{(()=>{try{const st=$('hmStart');if(st&&!$('cfCard')){const html=confCardsHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}try{const st=$('hmStart');if(st&&!$('invCard')){const html=invCardsHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}try{const st=$('hmStart');if(st&&!$('nightCard')){const html=nightCardsHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}try{const st=$('hmStart');if(st&&!$('rateDue')){const html=rateDueHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}try{const st=$('hmStart');if(st&&!$('admWait')){const html=adminWaitHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}})()}}
+}finally{(()=>{try{const st=$('hmStart');if(st&&!$('cfCard')){const html=confCardsHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}try{const st=$('hmStart');if(st&&!$('invCard')){const html=invCardsHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}try{const st=$('hmStart');if(st&&!$('nightCard')){const html=nightCardsHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}try{const st=$('hmStart');if(st&&!$('rateDue')){const html=rateDueHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}try{const st=$('hmStart');if(st&&!$('admWait')){const html=adminWaitHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}try{const hv=$('homeView');if(hv&&!hv.querySelector('.admbar')){const html=adminBarHtml();const anchor=hv.querySelector('#admWait')||$('hmStart');if(html&&anchor)anchor.insertAdjacentHTML('beforebegin',html)}}catch(e){}})()}}
 setTimeout(()=>{try{lockSeed()}catch(e){}},1500);
 function syncHomeAvatar(){const b=$('hmAv');if(!b)return;b.innerHTML=$('avBtn').innerHTML;b.className=$('avBtn').className;b.id='hmAv';b.setAttribute('data-n',$('avBtn').getAttribute('data-n')||'')}
 

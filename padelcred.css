@@ -1920,3 +1920,7 @@ input.needpick{border-color:#FF8C80!important;box-shadow:0 0 0 2px rgba(255,140,
 .lsscore{display:grid;grid-template-columns:1fr 16px 1fr;gap:6px;align-items:center}.lsscore span{text-align:center;color:#9FB0C3}.lsscore input{text-align:center;font-weight:700}
 /* v2.21 */
 .rptrow{display:flex;flex-wrap:wrap;gap:6px 18px;justify-content:center;margin:14px 0 4px}
+/* v2.22: admin */
+.admbar{display:grid;gap:2px;width:100%;text-align:left;margin:0 0 12px;padding:12px 14px;border-radius:16px;border:1.5px solid #E9C46A;background:rgba(233,196,106,.08);color:#F5F7FA;cursor:pointer}
+.admbar b{font:800 15px var(--heading);color:#E9C46A}.admbar span{font-size:13px;color:#BAC9D3}
+.admu{font-style:normal;font-weight:500;color:#9FB0C3;font-size:13px}
