@@ -2738,11 +2738,14 @@ function ovrCard(o,mine,name){
     '</div></div>'+(mine?'<p class="ovrnote">70% your results, 30% how friends rate you. <button class="linkbtn inl" data-howrate>How ratings work</button></p>':'');
 }
 // friend card from their published stats
+// a player's name for sentences: first name, else @username; possessive falls back to Their
+const fFirst=f=>{const n=String((f&&f.name)||'').trim().split(' ')[0];return n||((f&&f.username)?'@'+f.username:'')};
+const fPoss=f=>{const n=fFirst(f);return n?esc(n)+'\'s':'Their'};
 function friendOvrCard(f){const st=f.stats;if(!st||!st.ovr||!(st.played>0)){
     // not played yet (or their app hasn't published one): show where they start
     if(!f.uid&&!f.ptLevel&&!f.seed)return'';
-    const v=perfScore(friendSeed(f)),first=esc((f.name||'').split(' ')[0]),[cls,label]=ovrTier(v);
-    return'<div class="ovrcard '+cls+'"><div class="ovrnum"><b>'+v+'</b><span>OVR</span></div><div class="ovrinfo"><b>'+first+'\'s starting Overall <em>'+label+'</em></b><span>'+(f.seed?'Set when they played their first match.':f.ptLevel?'From Playtomic level '+esc(f.ptLevel)+'.':'No Playtomic level yet, so they start at 40.')+'</span><span>Results move it up or down from here.</span></div></div>';
+    const v=perfScore(friendSeed(f)),[cls,label]=ovrTier(v);
+    return'<div class="ovrcard '+cls+'"><div class="ovrnum"><b>'+v+'</b><span>OVR</span></div><div class="ovrinfo"><b>'+fPoss(f)+' starting Overall <em>'+label+'</em></b><span>'+(f.seed?'Set when they played their first match.':f.ptLevel?'From Playtomic level '+esc(f.ptLevel)+'.':'No Playtomic level yet, so they start at '+perfScore(levelToRating(null))+'.')+'</span><span>Results move it up or down from here.</span></div></div>';
   }return ovrCard({v:st.ovr.v,perf:st.ovr.perf,peer:st.ovr.peer||{ready:false},change:0},false,f.name)}
 async function loadPeer(){
   if(!FB.user)return;
@@ -3295,7 +3298,7 @@ function hrFill(){const st=$('hrStart'),ti=$('hrTiers');if(!st||!ti)return;
 
 
 /* ================= test window: only when opened with ?selftest=1, for the promise tests. Players never see it ================= */
-if(window.__PC_TEST__===true)setTimeout(()=>{window.__pcTest={perfScore,levelToRating,levelToOvr,ovrTier,matchWeight,winChance,computeLeague,formWord,formBand,legacySeedToRating,pairings,replay,rowOf,allRows,overallFor,cardHighlights,ovrToRating,fourPlayers,currentPairing,K:typeof K!=='undefined'?K:null,nightRoster,nightOpen,nightStatusOf,setNights:(list,me)=>{NIGHTS.list=list;NIGHTS.me=me;nightsRefresh()},setAdmin:(on,uid)=>{FB.admin=!!on;FB.user=on?{uid:uid||'admin1'}:null;renderProfile()},setFriends:l=>{FRIENDS.length=0;l.forEach(f=>FRIENDS.push(f))},runUpkeep:()=>nameUpkeep(),peerAggWith:items=>{PR.items=items;return peerAgg()},alias:()=>ALIAS,verifyAll:()=>{history.forEach(h=>{if(!h.ver)h.ver={by:'test',at:Date.now()}});saveH()},confFrom:(id,uid,name,ok)=>confReceived({type:'conf',id,ok},{from:uid,fromName:name}),rateNight:(ids,c)=>openRateNight(history.filter(h=>ids.includes(h.id)),c?{confirm:history.find(h=>h.id===c)}:{}),markRatedAll:()=>{const s=new Set(history.map(unitOf));markRated([...s])},rated:()=>RATED,sendq:()=>SENDQ,setAdmq:l=>{ADMQ.list=l;FB.admin=true;renderHome()},awInit:()=>FB.user?store.get('db-aw-init-'+FB.user.uid):null,formData:p=>formData(p),userOnly:uid=>{FB.user={uid};FB.admin=false;try{renderHome()}catch(e){}},newcomer:()=>{FB.user={uid:'new1',email:'new@example.com'};FB.admin=false;PROF.username='';PROF.name='';GATE.state='no';gateShow('wait');openUsername()},loadAdmin:()=>loadAdminPlayers(),adminInv:()=>adminInvites($('admInvites'),[{uid:'n1',via:'live1'}]),renderAdminPl:l=>renderAdminPlayers(l),adminBar:()=>adminBarHtml(),setBugs:l=>{BUGS.list=l;renderBugs()},seasonTable:(f,t)=>seasonTable(f,t),seasonRange:(m,r)=>seasonRange(m,r),celebrate:(k)=>celebrateEx(k,'',{id:'bug',name:'Bug hunter',tier:'x',desc:'test'}),mergeProf:(a,b)=>mergeProf(a,b),setProf:o=>{Object.assign(PROF,o)},exSeen:()=>exAnnounced}},0)
+if(window.__PC_TEST__===true)setTimeout(()=>{window.__pcTest={perfScore,levelToRating,levelToOvr,ovrTier,matchWeight,winChance,computeLeague,formWord,formBand,legacySeedToRating,pairings,replay,rowOf,allRows,overallFor,cardHighlights,ovrToRating,fourPlayers,currentPairing,K:typeof K!=='undefined'?K:null,nightRoster,nightOpen,nightStatusOf,setNights:(list,me)=>{NIGHTS.list=list;NIGHTS.me=me;nightsRefresh()},setAdmin:(on,uid)=>{FB.admin=!!on;FB.user=on?{uid:uid||'admin1'}:null;renderProfile()},setFriends:l=>{FRIENDS.length=0;l.forEach(f=>FRIENDS.push(f))},runUpkeep:()=>nameUpkeep(),peerAggWith:items=>{PR.items=items;return peerAgg()},alias:()=>ALIAS,verifyAll:()=>{history.forEach(h=>{if(!h.ver)h.ver={by:'test',at:Date.now()}});saveH()},confFrom:(id,uid,name,ok)=>confReceived({type:'conf',id,ok},{from:uid,fromName:name}),rateNight:(ids,c)=>openRateNight(history.filter(h=>ids.includes(h.id)),c?{confirm:history.find(h=>h.id===c)}:{}),markRatedAll:()=>{const s=new Set(history.map(unitOf));markRated([...s])},rated:()=>RATED,sendq:()=>SENDQ,setAdmq:l=>{ADMQ.list=l;FB.admin=true;renderHome()},awInit:()=>FB.user?store.get('db-aw-init-'+FB.user.uid):null,formData:p=>formData(p),friendCard:f=>friendOvrCard(f),accessReady:()=>accessReady(),setProfBits:(n,u)=>{PROF.name=n;PROF.username=u},pendingFr:()=>store.get('db-pending-fr'),userOnly:uid=>{FB.user={uid};FB.admin=false;try{renderHome()}catch(e){}},newcomer:()=>{FB.user={uid:'new1',email:'new@example.com'};FB.admin=false;PROF.username='';PROF.name='';GATE.state='no';gateShow('wait');openUsername()},loadAdmin:()=>loadAdminPlayers(),adminInv:()=>adminInvites($('admInvites'),[{uid:'n1',via:'live1'}]),renderAdminPl:l=>renderAdminPlayers(l),adminBar:()=>adminBarHtml(),setBugs:l=>{BUGS.list=l;renderBugs()},seasonTable:(f,t)=>seasonTable(f,t),seasonRange:(m,r)=>seasonRange(m,r),celebrate:(k)=>celebrateEx(k,'',{id:'bug',name:'Bug hunter',tier:'x',desc:'test'}),mergeProf:(a,b)=>mergeProf(a,b),setProf:o=>{Object.assign(PROF,o)},exSeen:()=>exAnnounced}},0)
 
 /* ================= shared match nights: everyone invited sees the same live list and ticks themselves in ================= */
 const NIGHTS={list:[],unsub:null,me:null,seen:store.get('db-nseen')||{},hidden:store.get('db-nhide')||{},tok:store.get('db-ntok')||{},push:null};
@@ -3585,7 +3588,7 @@ async function joinWithCode(uid){const code=joinCode();if(!code)return false;
   try{const d=await FB.db.collection('joinCodes').doc(code).get();if(!d.exists){sessionStorage.removeItem('pc-join');toast('That invite link has expired. Ask for a new one.');return false}
     const inv=d.data();if(!inv.exp||inv.exp<Date.now()){sessionStorage.removeItem('pc-join');toast('That invite link has expired. Ask for a new one.');return false}
     await FB.db.collection('access').doc(uid).set({via:code,by:inv.by,at:Date.now()});sessionStorage.removeItem('pc-join');
-    if(inv.by&&inv.by!==uid)setTimeout(()=>{try{sendRequest(inv.by,{name:inv.byName,username:inv.byUsername})}catch(e){}},2500);
+    if(inv.by&&inv.by!==uid)store.set('db-pending-fr',{uid:inv.by,name:inv.byName||'',username:inv.byUsername||''});
     toast('Welcome to PadelCred. '+(inv.byName||'Your friend')+' will get your friend request.');return true}
   catch(e){return false}}
 // the waiting list entry the admin sees: name, email and username
@@ -3765,6 +3768,21 @@ document.addEventListener('click',async e=>{const b=e.target.closest&&e.target.c
   if(x.username)jobs.push(db.collection('usernames').doc(String(x.username).toLowerCase()).delete());
   const res=await Promise.allSettled(jobs),failed=res.filter(r=>r.status==='rejected').length;
   ADM_PL=ADM_PL.filter(p=>p.uid!==uid);store.set('db-adm-pl',ADM_PL);renderAdminPlayers(ADM_PL);toast(failed?'Removed, but some details couldn\'t be deleted. Check the rules are up to date.':'Removed.')});
+
+/* ================= new players: nothing syncs until they're approved; the invite's friend request goes once they have a name and username ================= */
+function accessReady(){try{return gateTest()||GATE.state==='yes'||FB.admin||(FB.user&&store.get('db-access')===FB.user.uid)}catch(e){return true}}
+setInterval(async()=>{try{if(!FB.user)return;
+  if(FB.waitStart&&accessReady()){FB.waitStart=false;await syncNow(true);startSocial()}
+  if(!FB.nameAsked&&accessReady()&&!needsUsername()&&!String(PROF.name||'').trim()&&!openSheet){FB.nameAsked=true;openUsername();setTimeout(()=>{$('unTitle').textContent='Add your name';$('unWhy').textContent='So friends know who you are. Your username stays the same.';$('unSkip').textContent='Later'},0)}
+  const pend=store.get('db-pending-fr');if(pend&&pend.uid&&accessReady()&&!needsUsername()&&PROF.name&&PROF.username){store.set('db-pending-fr',null);sendRequest(pend.uid,{name:pend.name,username:pend.username})}}catch(e){}},2500);
+// friends' names come from their profiles, so anyone who joined before setting a name gets it once they have
+let FRN_AT=0;
+async function refreshFriendNames(){if(!FB.user||!accessReady()||Date.now()-FRN_AT<300000)return;FRN_AT=Date.now();let changed=false;
+  for(const f of FRIENDS.filter(x=>x.uid).slice(0,60)){try{const d=await FB.db.collection('profiles').doc(f.uid).get();if(!d.exists)continue;const pd=d.data();
+    if(pd.name&&pd.name!==f.name&&(!f.name||/^@/.test(f.name)||!f.username)){f.name=pd.name;changed=true}if(pd.username&&pd.username!==f.username){f.username=pd.username;changed=true}}catch(e){}}
+  if(changed){try{saveFriends()}catch(e){store.set('db-friends',FRIENDS)}try{renderHome()}catch(e){}}}
+setInterval(()=>{try{refreshFriendNames()}catch(e){}},20000);
+
 /* ================= bug reports ================= */
 const appVersion=()=>((document.querySelector('meta[name="app-version"]')||{}).content||'');
 const bugDevice=()=>{const ua=navigator.userAgent;const os=/iPhone|iPad/.test(ua)?'iPhone':/Android/.test(ua)?'Android':/Mac/.test(ua)?'Mac':/Windows/.test(ua)?'Windows':'Other';const br=/SamsungBrowser/.test(ua)?'Samsung Internet':/CriOS|Chrome/.test(ua)?'Chrome':/Safari/.test(ua)?'Safari':/Firefox/.test(ua)?'Firefox':'Browser';return os+', '+br+(window.matchMedia('(display-mode: standalone)').matches?', home screen app':'')+(window.PadelCredNative?', Android app':'')+', '+innerWidth+'×'+innerHeight};
@@ -4714,7 +4732,7 @@ $('peCancel').onclick=()=>hideSheet();
 
 
 /* ================= home logo and updates ================= */
-const APP_VERSION='2.26';
+const APP_VERSION='2.27';
 document.querySelectorAll('.vlogo').forEach(i=>i.src=$('logo').src);
 function goHome(e){
   const el=e&&e.currentTarget;if(el){el.classList.remove('tap');void el.offsetWidth;el.classList.add('tap')}
@@ -4996,7 +5014,7 @@ async function openPublicProfile(uid,pd){try{
   const state=!link?'none':link.status==='accepted'?'friends':link.from===myUid()?'sent':'incoming';
   $('playerTitle').textContent=f.name;$('playerBody').dataset.key='';
   $('playerBody').innerHTML=friendHero(f)+friendDetails(f)+'<div style="height:6px"></div>'+friendExtras(f,key)+recentHtml(f.stats,f.name)+friendBadges(f)+
-    '<div class="btns" style="margin-top:14px">'+({none:'<button class="primary" id="pubAdd">Add '+esc(f.name.split(' ')[0])+' as a friend</button>',sent:'<p class="help">Friend request sent.</p>',incoming:'<button class="primary" id="pubAcc">Accept friend request</button>',friends:''})[state]+'</div>';
+    '<div class="btns" style="margin-top:14px">'+({none:'<button class="primary" id="pubAdd">Add '+esc(fFirst(f)||'them')+' as a friend</button>',sent:'<p class="help">Friend request sent.</p>',incoming:'<button class="primary" id="pubAcc">Accept friend request</button>',friends:''})[state]+'</div>';
   if($('pubAdd'))$('pubAdd').onclick=async()=>{const bt=$('pubAdd');bt.disabled=true;await sendRequest(uid,pd);bt.outerHTML='<p class="help">Friend request sent.</p>'};
   if($('pubAcc'))$('pubAcc').onclick=async()=>{await acceptRequest(link);hideSheet()};
   hideSheet();setTimeout(()=>showSheet('playerSheet'),200);
@@ -6202,7 +6220,7 @@ async function onAuthChange(){
   syncAccountBits();
   if(openSheet&&openSheet.id==='accountSheet')renderAccount();
   if(!FB.user){stopSocial();return}
-  await syncNow(true);startSocial();
+  if(accessReady()){await syncNow(true);startSocial()}else FB.waitStart=true; // a new player waits for approval before syncing
   if(openSheet&&openSheet.id==='accountSheet'){renderAccount();toast('Signed in. Your results are synced.')}
   if(PROF.username){await ensureUsername();await ensureFounder()}else refreshFounderCount();
   checkAwards();checkSecrets();
@@ -6827,18 +6845,18 @@ function friendExtras(f,key){
   if(st&&st.played){
     const card=(v,l,i)=>'<div class="card" style="--i:'+i+'"><b>'+v+'</b><span>'+l+'</span></div>';
     const mon=ts=>new Date(ts).toLocaleDateString('en-GB',{month:'long',year:'numeric'});
-    h+='<p class="sh">'+esc(f.name.split(' ')[0])+'\'s padel</p><div class="cards c4">'+card((st.ovr&&st.ovr.v)||(st.rating?perfScore(st.rating):'–'),'Overall',0)+card(st.played,'Played',1)+card(st.w+'–'+st.l,'Won–lost',2)+card(Math.round(st.w/Math.max(1,st.played)*100)+'%','Win rate',3)+'</div>'+
+    h+='<p class="sh">'+fPoss(f)+' padel</p><div class="cards c4">'+card((st.ovr&&st.ovr.v)||(st.rating?perfScore(st.rating):'–'),'Overall',0)+card(st.played,'Played',1)+card(st.w+'–'+st.l,'Won–lost',2)+card(Math.round(st.w/Math.max(1,st.played)*100)+'%','Win rate',3)+'</div>'+
       '<table class="stats plain"><tbody>'+(st.form&&st.form.length?'<tr><td>Form</td><td>'+formDots(st.form)+'</td></tr>':'')+
       (st.best>1?'<tr><td>Best winning run</td><td>'+st.best+' in a row</td></tr>':'')+
       (st.first?'<tr><td>Playing since</td><td>'+mon(st.first)+'</td></tr>':'')+
       (st.last?'<tr><td>Last played</td><td>'+timeAgo(st.last)+'</td></tr>':'')+'</tbody></table>'+
       (st.bmap?'':'<div class="fbadges"><b>'+st.badges+' of '+BADGES.length+' achievements</b>'+(st.top&&st.top.length?'<div>'+st.top.map(id=>BADGE[id]?'<span class="fbadge '+TIERS[BADGE[id][2]].c+'"><i class="medal">'+badgeSvg(id)+'</i>'+esc(BADGE[id][1])+'</span>':'').join('')+'</div>':'')+'</div>')+
-      '<p class="help" style="margin:4px 2px 14px">From '+esc(f.name.split(' ')[0])+'\'s own app, updated '+timeAgo(st.u)+'.</p>';
-  }else if(f.uid){h+='<p class="help" style="margin:4px 2px 14px">'+esc(f.name.split(' ')[0])+'\'s stats will show here once they\'ve played a match in PadelCred.</p>'}
-  else{const first=esc(f.name.split(' ')[0]);h+='<div class="connectbox"><b>Not connected yet</b><span>You added '+first+' with a friend code, so only their basic details are saved on your phone. Connect on PadelCred to see their full profile, stats and achievements, and to send results automatically.</span>'+(FB.user?(f.username?'<button class="primary" id="frConnect">Connect with @'+esc(f.username)+'</button>':'<button class="primary" id="frInvite">Invite '+first+' to PadelCred</button>'):'<button class="primary" id="frSignIn">Sign in to connect</button>')+'</div>'}
+      '<p class="help" style="margin:4px 2px 14px">From '+fPoss(f)+' own app, updated '+timeAgo(st.u)+'.</p>';
+  }else if(f.uid){h+='<p class="help" style="margin:4px 2px 14px">'+fPoss(f)+' stats will show here once they\'ve played a match in PadelCred.</p>'}
+  else{const first=esc(fFirst(f)||'them');h+='<div class="connectbox"><b>Not connected yet</b><span>You added '+first+' with a friend code, so only their basic details are saved on your phone. Connect on PadelCred to see their full profile, stats and achievements, and to send results automatically.</span>'+(FB.user?(f.username?'<button class="primary" id="frConnect">Connect with @'+esc(f.username)+'</button>':'<button class="primary" id="frInvite">Invite '+first+' to PadelCred</button>'):'<button class="primary" id="frSignIn">Sign in to connect</button>')+'</div>'}
   const t=togetherWith(key);
   if(t&&(t.pw+t.pl+t.ow+t.ol)){
-    h+='<p class="sh">You and '+esc(f.name.split(' ')[0])+'</p><div class="together"><div><b>'+t.pw+'–'+t.pl+'</b><span>As partners</span></div><div><b>'+t.ow+'–'+t.ol+'</b><span>Against each other</span></div></div>'+
+    h+='<p class="sh">You and '+esc(fFirst(f)||'them')+'</p><div class="together"><div><b>'+t.pw+'–'+t.pl+'</b><span>As partners</span></div><div><b>'+t.ow+'–'+t.ol+'</b><span>Against each other</span></div></div>'+
       (t.last?'<p class="help" style="margin:0 2px 14px">Last time: '+(t.last.partners?'together, ':'against each other, ')+(t.last.won?'you won ':'you lost ')+esc(t.last.score)+', '+timeAgo(t.last.date)+'.</p>':'');
   }
   if(f.uid&&typeof GRP!=='undefined'){const gs=GRP.list.filter(g=>(g.members||[]).includes(f.uid)).map(g=>g.name);if(gs.length)h+='<p class="help" style="margin:0 2px 14px">In your groups: '+gs.map(esc).join(', ')+'.</p>'}
