@@ -1010,7 +1010,7 @@ function rowOf(h){
   const cfg=Object.assign({},DEF,h.cfg);
   let sets,winner=null,st=null,pf=null,pa=null,dur=null,date;
   if(h.manual){
-    sets=h.sets.map(s=>({g:s.slice(),tb:null,super:false}));date=h.date;
+    dur=h.dur||null;sets=h.sets.map(s=>({g:s.slice(),tb:null,super:false}));date=h.date;
   }else{
     st=replay(cfg,h.pts);sets=st.sets.filter(s=>s.g[0]+s.g[1]>0);
     pf=st.stats.points[0];pa=st.stats.points[1];
@@ -1132,10 +1132,19 @@ function drawSetRows(vals){
   $('arMore').style.display=arCount>=5?'none':'';
 }
 function syncAddLabels(){$('arLa').textContent=teamNameFrom($('arA').value,$('arA1').value,$('arA2').value,'Us');$('arLb').textContent=teamNameFrom($('arB').value,$('arB1').value,$('arB2').value,'Them')}
+// logging afterwards: the date plus the start time, so time-based achievements count results added later
+const LOGT={set:false};
+function logStamp(dateId,timeId,fallbackHour){const parts=($(dateId).value||'').split('-').map(Number),t=($(timeId)&&$(timeId).value||'').split(':').map(Number);
+  const ok=parts.length===3&&!parts.some(isNaN),hasT=t.length===2&&!t.some(isNaN);LOGT.set=ok&&hasT;if(hasT)store.set('db-lastTime',$(timeId).value);
+  return ok?new Date(parts[0],parts[1]-1,parts[2],hasT?t[0]:fallbackHour,hasT?t[1]:0).getTime():Date.now()}
+// your usual start time, unless that hasn't come round yet today: then about an hour and a half ago
+function logTimeDefault(){const last=store.get('db-lastTime')||'19:00',[hh,mm]=last.split(':').map(Number),now=new Date(),t=new Date();t.setHours(hh||0,mm||0,0,0);
+  if(t.getTime()<=now.getTime())return last;const b=new Date(now.getTime()-90*60000);const q=Math.floor(b.getMinutes()/15)*15;return String(b.getHours()).padStart(2,'0')+':'+String(q).padStart(2,'0')}
+function logTimeFuture(dateId,timeId){const ts=logStamp(dateId,timeId,0);return LOGT.set&&ts>Date.now()+15*60000}
 function openAdd(h){
   editId=h?h.id:null;
   $('addTitle').textContent=h?'Edit result':'Add a result';
-  $('arDate').value=todayStr(h?new Date(h.date):new Date());
+  $('arDate').value=todayStr(h?new Date(h.date):new Date());{const d=h?new Date(h.date):null;$('arTime').value=h&&h.timeSet?String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'):logTimeDefault();$('arDur').value=h&&h.dur?String(Math.round(h.dur/60000)):''}
   const src=h?h.cfg:{pa:M.cfg.pa||[],an:M.cfg.an||''};
   const pa=src.pa||[],pb=src.pb||[];
   $('arA1').value=pa[0]||'';$('arA2').value=pa[1]||'';$('arB1').value=pb[0]||'';$('arB2').value=pb[1]||'';
@@ -1193,11 +1202,10 @@ async function saveArSession(){
     rounds.push({pr:P[r.p],sets});
   }
   if(!rounds.length){toast('Add at least one round.');return}
-  const parts=$('arDate').value.split('-').map(Number);
-  const base=parts.length===3&&!parts.some(isNaN)?new Date(parts[0],parts[1]-1,parts[2],12).getTime():Date.now();
+  const base=logStamp('arDate','arTime',12);
   const sid='s'+Date.now().toString(36),group=$('arGroup').value.trim(),venue=canonicalVenue($('arVenue').value),notes=$('arNotes').value.trim(),now=Date.now();
   const entries=rounds.map((r,i)=>{const pa=r.pr[0].slice(),pb=r.pr[1].slice();
-    return{id:'m'+now.toString(36)+i,manual:true,date:base+i*60000,sets:r.sets,session:sid,added:now,notes:i===0?notes:'',
+    return{id:'m'+now.toString(36)+i,manual:true,timeSet:LOGT.set,date:base+i*60000,sets:r.sets,session:sid,added:now,notes:i===0?notes:'',
       cfg:{pa,pb,an:'',bn:'',group,venue,a:teamNameFrom('',pa[0],pa[1],'Us'),b:teamNameFrom('',pb[0],pb[1],'Them')}}});
   if(!(await confirmRecipients(entries.map(e=>e.cfg))))return;
   entries.forEach(e=>history.unshift(e));
@@ -1209,6 +1217,7 @@ async function saveArSession(){
 }
 $('arSave').onclick=async()=>{
   if(futureDate($('arDate').value)){toast('That date is in the future. Results are for matches already played.');return}
+  if(logTimeFuture('arDate','arTime')){toast('That time hasn\'t happened yet. Results are for matches already played.');return}
   if($('arRot').checked){if(nameFilterFail(['arA1','arA2','arB1','arB2','arGroup','arVenue']))return;if(!(await checkNames(['arA1','arA2','arB1','arB2'])))return;return saveArSession()}
   if(nameFilterFail(['arA1','arA2','arB1','arB2','arA','arB','arGroup','arVenue']))return;
   if(!(await checkNames(['arA1','arA2','arB1','arB2'])))return;
@@ -1223,9 +1232,8 @@ $('arSave').onclick=async()=>{
   if(bad){toast('Each set needs two different scores, like 6 and 4.');return}
   if(!sets.length){toast('Add the score for at least one set.');return}
   if(!editId&&!(await checkOddScores([{label:'This match',sets}])))return;
-  const parts=$('arDate').value.split('-').map(Number);
-  const date=parts.length===3&&!parts.some(isNaN)?new Date(parts[0],parts[1]-1,parts[2],12).getTime():Date.now();
-  const entry={id:editId||('m'+Date.now().toString(36)),manual:true,date,sets,
+  const date=logStamp('arDate','arTime',12),durMin=parseInt($('arDur').value,10);
+  const entry={id:editId||('m'+Date.now().toString(36)),manual:true,timeSet:LOGT.set,dur:durMin>0?durMin*60000:undefined,date,sets,
     cfg:(()=>{const pa=[$('arA1').value.trim(),$('arA2').value.trim()],pb=[$('arB1').value.trim(),$('arB2').value.trim()],an=$('arA').value.trim(),bn=$('arB').value.trim();
       return{pa,pb,an,bn,group:$('arGroup').value.trim(),venue:canonicalVenue($('arVenue').value),a:teamNameFrom(an,pa[0],pa[1],'Us'),b:teamNameFrom(bn,pb[0],pb[1],'Them')}})(),notes:$('arNotes').value.trim()};
   if(!editId&&!(await confirmRecipients([entry.cfg])))return;
@@ -2114,8 +2122,8 @@ Object.assign(BADGE_ICON,{
 const SECRET_ONE=[
   ['x_midnight','Midnight padel','Started a match between 11pm and 4am'],
   ['x_dawn','Dawn patrol','Started a match before 7am'],
-  ['x_deuce','Deuce drama','Played a game that went to deuce five times'],
-  ['x_phoenix','Phoenix','Won a set after trailing 0–5'],
+  ['x_deuce','Deuce drama','Played a game that went to deuce five times, scored live in the app'],
+  ['x_phoenix','Phoenix','Won a set after trailing 0–5, scored live in the app'],
   ['x_white','Tiebreak whitewash','Won a tiebreak 7–0'],
   ['x_three','Three-peat','Played three days in a row'],
   ['x_ride','Ride or die','Played 25 matches with the same partner']
@@ -2128,7 +2136,7 @@ function secretFor(key){
   const hit=(id,d)=>{if(!out[id])out[id]={date:d}};
   const days=new Set(),partners={};
   rows.forEach(r=>{
-    const side=members(r.cfg,0).some(n=>pkey(n)===key)?0:1,o=1-side,d=new Date(r.date),hr=d.getHours(),live=!r.h.manual;
+    const side=members(r.cfg,0).some(n=>pkey(n)===key)?0:1,o=1-side,d=new Date(r.date),hr=d.getHours(),live=!r.h.manual||!!r.h.timeSet;
     if(live&&(hr>=23||hr<4))hit('x_midnight',r.date);
     if(live&&hr>=4&&hr<7)hit('x_dawn',r.date);
     const st=r.st;
@@ -3298,7 +3306,7 @@ function hrFill(){const st=$('hrStart'),ti=$('hrTiers');if(!st||!ti)return;
 
 
 /* ================= test window: only when opened with ?selftest=1, for the promise tests. Players never see it ================= */
-if(window.__PC_TEST__===true)setTimeout(()=>{window.__pcTest={perfScore,levelToRating,levelToOvr,ovrTier,matchWeight,winChance,computeLeague,formWord,formBand,legacySeedToRating,pairings,replay,rowOf,allRows,overallFor,cardHighlights,ovrToRating,fourPlayers,currentPairing,K:typeof K!=='undefined'?K:null,nightRoster,nightOpen,nightStatusOf,setNights:(list,me)=>{NIGHTS.list=list;NIGHTS.me=me;nightsRefresh()},setAdmin:(on,uid)=>{FB.admin=!!on;FB.user=on?{uid:uid||'admin1'}:null;renderProfile()},setFriends:l=>{FRIENDS.length=0;l.forEach(f=>FRIENDS.push(f))},runUpkeep:()=>nameUpkeep(),peerAggWith:items=>{PR.items=items;return peerAgg()},alias:()=>ALIAS,verifyAll:()=>{history.forEach(h=>{if(!h.ver)h.ver={by:'test',at:Date.now()}});saveH()},confFrom:(id,uid,name,ok)=>confReceived({type:'conf',id,ok},{from:uid,fromName:name}),rateNight:(ids,c)=>openRateNight(history.filter(h=>ids.includes(h.id)),c?{confirm:history.find(h=>h.id===c)}:{}),markRatedAll:()=>{const s=new Set(history.map(unitOf));markRated([...s])},rated:()=>RATED,sendq:()=>SENDQ,setAdmq:l=>{ADMQ.list=l;FB.admin=true;renderHome()},awInit:()=>FB.user?store.get('db-aw-init-'+FB.user.uid):null,formData:p=>formData(p),friendCard:f=>friendOvrCard(f),accessReady:()=>accessReady(),setProfBits:(n,u)=>{PROF.name=n;PROF.username=u},pendingFr:()=>store.get('db-pending-fr'),userOnly:uid=>{FB.user={uid};FB.admin=false;try{renderHome()}catch(e){}},newcomer:()=>{FB.user={uid:'new1',email:'new@example.com'};FB.admin=false;PROF.username='';PROF.name='';GATE.state='no';gateShow('wait');openUsername()},loadAdmin:()=>loadAdminPlayers(),adminInv:()=>adminInvites($('admInvites'),[{uid:'n1',via:'live1'}]),renderAdminPl:l=>renderAdminPlayers(l),adminBar:()=>adminBarHtml(),setBugs:l=>{BUGS.list=l;renderBugs()},seasonTable:(f,t)=>seasonTable(f,t),seasonRange:(m,r)=>seasonRange(m,r),celebrate:(k)=>celebrateEx(k,'',{id:'bug',name:'Bug hunter',tier:'x',desc:'test'}),mergeProf:(a,b)=>mergeProf(a,b),setProf:o=>{Object.assign(PROF,o)},exSeen:()=>exAnnounced}},0)
+if(window.__PC_TEST__===true)setTimeout(()=>{window.__pcTest={perfScore,levelToRating,levelToOvr,ovrTier,matchWeight,winChance,computeLeague,formWord,formBand,legacySeedToRating,pairings,replay,rowOf,allRows,overallFor,cardHighlights,ovrToRating,fourPlayers,currentPairing,K:typeof K!=='undefined'?K:null,nightRoster,nightOpen,nightStatusOf,setNights:(list,me)=>{NIGHTS.list=list;NIGHTS.me=me;nightsRefresh()},setAdmin:(on,uid)=>{FB.admin=!!on;FB.user=on?{uid:uid||'admin1'}:null;renderProfile()},setFriends:l=>{FRIENDS.length=0;l.forEach(f=>FRIENDS.push(f))},runUpkeep:()=>nameUpkeep(),peerAggWith:items=>{PR.items=items;return peerAgg()},alias:()=>ALIAS,verifyAll:()=>{history.forEach(h=>{if(!h.ver)h.ver={by:'test',at:Date.now()}});saveH()},confFrom:(id,uid,name,ok)=>confReceived({type:'conf',id,ok},{from:uid,fromName:name}),rateNight:(ids,c)=>openRateNight(history.filter(h=>ids.includes(h.id)),c?{confirm:history.find(h=>h.id===c)}:{}),markRatedAll:()=>{const s=new Set(history.map(unitOf));markRated([...s])},rated:()=>RATED,sendq:()=>SENDQ,setAdmq:l=>{ADMQ.list=l;FB.admin=true;renderHome()},awInit:()=>FB.user?store.get('db-aw-init-'+FB.user.uid):null,formData:p=>formData(p),friendCard:f=>friendOvrCard(f),accessReady:()=>accessReady(),setProfBits:(n,u)=>{PROF.name=n;PROF.username=u},heroOf:f=>friendHero(f),badgeCheck:(id,c)=>{const b=BADGES.find(x=>x[0]===id);return b?{has:!!b[4](c),prog:b[5]?b[5](c.p):null,desc:b[3]}:null},isBo3:r=>isBo3(r),ginvIn:(e,it)=>ginvReceived(e,it),setGroups:l=>{GRP.list=l},ginviteBtn:f=>ginviteBtnHtml(f),friendsList:()=>{const d=document.createElement('div');d.innerHTML=friendsHtml();return d.innerHTML},syncAdminNav:()=>syncAdminNav(),rowFor:h=>{const r=rowOf(h);return{dur:r.dur,date:r.date}},secretsFor:k=>secretFor(k),avatarOf:n=>avatar('pav',n,''),pendingFr:()=>store.get('db-pending-fr'),userOnly:uid=>{FB.user={uid};FB.admin=false;try{renderHome()}catch(e){}},newcomer:()=>{FB.user={uid:'new1',email:'new@example.com'};FB.admin=false;PROF.username='';PROF.name='';GATE.state='no';gateShow('wait');openUsername()},loadAdmin:()=>loadAdminPlayers(),adminInv:()=>adminInvites($('admInvites'),[{uid:'n1',via:'live1'}]),renderAdminPl:l=>renderAdminPlayers(l),adminBar:()=>adminBarHtml(),setBugs:l=>{BUGS.list=l;renderBugs()},seasonTable:(f,t)=>seasonTable(f,t),seasonRange:(m,r)=>seasonRange(m,r),celebrate:(k)=>celebrateEx(k,'',{id:'bug',name:'Bug hunter',tier:'x',desc:'test'}),mergeProf:(a,b)=>mergeProf(a,b),setProf:o=>{Object.assign(PROF,o)},exSeen:()=>exAnnounced}},0)
 
 /* ================= shared match nights: everyone invited sees the same live list and ticks themselves in ================= */
 const NIGHTS={list:[],unsub:null,me:null,seen:store.get('db-nseen')||{},hidden:store.get('db-nhide')||{},tok:store.get('db-ntok')||{},push:null};
@@ -3441,7 +3449,7 @@ function nrPlayers(el){return[0,1,2,3].map(k=>($('nr'+el.dataset.i+'_'+k)||{valu
 function nrNumber(){document.querySelectorAll('#nrMatches .nrm').forEach((m,k,all)=>{m.querySelector('.nrnum').textContent=k+1;m.querySelector('.nrdel').classList.toggle('hide',all.length<2)})}
 function nrAdd(players){NR.n++;$('nrMatches').insertAdjacentHTML('beforeend',nrBlock(players,NR.n));nrNumber()}
 function openNightAdd(){hideSheet();setTimeout(()=>{const d=new Date();$('nrDate').value=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-  $('nrVenue').value=store.get('db-lastVenue')||'';$('nrGroup').value=store.get('db-lastGroup')||'';$('nrMatches').innerHTML='';NR.n=0;
+  $('nrTime').value=logTimeDefault();$('nrVenue').value=store.get('db-lastVenue')||'';$('nrGroup').value=store.get('db-lastGroup')||'';$('nrMatches').innerHTML='';NR.n=0;
   nrAdd([PROF.name||'','','','']);showSheet('nightAddSheet')},250)}
 document.addEventListener('click',async e=>{const t=e.target;if(!t.closest)return;
   if(t.closest('#arNight')){openNightAdd();return}
@@ -3461,14 +3469,15 @@ async function nrSave(){const blocks=[...document.querySelectorAll('#nrMatches .
     if(!sets.length){toast('Match '+n+' needs a score.');return}
     games.push({p,sets})}
   if(futureDate($('nrDate').value)){toast('That date is in the future. Results are for matches already played.');return}
+  if(logTimeFuture('nrDate','nrTime')){toast('That time hasn\'t happened yet. Results are for matches already played.');return}
   if(!(await checkOddScores(games.map((g,i)=>({label:'Match '+(i+1),sets:g.sets})))))return;
   if(!(await checkNames(ids)))return;
-  const parts=$('nrDate').value.split('-').map(Number),base=parts.length===3&&!parts.some(isNaN)?new Date(parts[0],parts[1]-1,parts[2],19).getTime():Date.now();
+  const base=logStamp('nrDate','nrTime',19);
   const venue=canonicalVenue($('nrVenue').value),group=$('nrGroup').value.trim(),now=Date.now();
   // the same four players swapping partners make one evening, like any rotation
   const four=g=>g.p.map(pkey).sort().join('|'),count={};games.forEach(g=>count[four(g)]=(count[four(g)]||0)+1);const sid={};
   let entries=games.map((g,i)=>{const f=four(g);if(count[f]>1&&!sid[f])sid[f]='s'+now.toString(36)+Object.keys(sid).length;
-    const pa=[g.p[0],g.p[1]],pb=[g.p[2],g.p[3]],e={id:'m'+now.toString(36)+'n'+i,manual:true,date:base+i*60000,sets:g.sets,added:now,notes:'',
+    const pa=[g.p[0],g.p[1]],pb=[g.p[2],g.p[3]],e={id:'m'+now.toString(36)+'n'+i,manual:true,timeSet:LOGT.set,date:base+i*60000,sets:g.sets,added:now,notes:'',
       cfg:{pa,pb,an:'',bn:'',group,venue,a:teamNameFrom('',pa[0],pa[1],'Us'),b:teamNameFrom('',pb[0],pb[1],'Them')}};if(sid[f])e.session=sid[f];return e});
   {const dups=entries.filter(e=>findDuplicate(e));if(dups.length){const keep=await ask('Already got '+(dups.length===1?'this one':'some of these')+'?',dups.length+' of these matches '+(dups.length===1?'is':'are')+' already in your results, with the same players, date and score.','Skip '+(dups.length===1?'it':'those'),false,'Add them anyway');if(keep)entries=entries.filter(e=>!dups.includes(e));if(!entries.length){hideSheet();toast('Nothing new to add.');return}}}
   if(!(await confirmRecipients(entries.map(e=>e.cfg))))return;
@@ -3701,7 +3710,7 @@ function lsLabel(i){const pr=lsPairing(i);return pr?esc(pr.a.join(' & '))+' <i>v
 function lsRowsRefresh(){document.querySelectorAll('#lsRows .lsrow').forEach(r=>{r.querySelector('.lsl').innerHTML='Game '+(+r.dataset.i+1)+': '+lsLabel(+r.dataset.i)})}
 function lsAddRow(){const i=LS.rows++;$('lsRows').insertAdjacentHTML('beforeend','<div class="lsrow" data-i="'+i+'"><span class="lsl"></span><div class="lsscore"><input type="number" inputmode="numeric" min="0" max="99" aria-label="Game '+(i+1)+', first pair"><span>–</span><input type="number" inputmode="numeric" min="0" max="99" aria-label="Game '+(i+1)+', second pair"></div></div>');lsRowsRefresh()}
 function openLogSession(){hideSheet();setTimeout(()=>{const d=new Date();$('lsDate').value=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-  $('lsVenue').value=store.get('db-lastVenue')||'';['lsP1','lsP2','lsP3','lsP4'].forEach((id,k)=>{$(id).value=k===0?(PROF.name||''):'';$(id).classList.remove('needpick')});$('lsRows').innerHTML='';LS.rows=0;for(let k=0;k<6;k++)lsAddRow();showSheet('logSessionSheet')},250)}
+  $('lsTime').value=logTimeDefault();$('lsVenue').value=store.get('db-lastVenue')||'';['lsP1','lsP2','lsP3','lsP4'].forEach((id,k)=>{$(id).value=k===0?(PROF.name||''):'';$(id).classList.remove('needpick')});$('lsRows').innerHTML='';LS.rows=0;for(let k=0;k<6;k++)lsAddRow();showSheet('logSessionSheet')},250)}
 document.addEventListener('input',e=>{if(e.target.closest&&e.target.closest('#lsPlayers'))lsRowsRefresh()});
 document.addEventListener('change',e=>{if(e.target.closest&&e.target.closest('#lsPlayers'))lsRowsRefresh()});
 document.addEventListener('click',async e=>{const t=e.target;if(!t.closest)return;
@@ -3714,12 +3723,13 @@ async function lsSave(){const ids=['lsP1','lsP2','lsP3','lsP4'];if(nameFilterFai
   if(!(await checkNames(ids)))return;lsRowsRefresh();
   const p=lsPairs();if(new Set(p.map(pkey)).size<4){toast('Pick four different players.');return}
   if(futureDate($('lsDate').value)){toast('That date is in the future. Results are for matches already played.');return}
+  if(logTimeFuture('lsDate','lsTime')){toast('That time hasn\'t happened yet. Results are for matches already played.');return}
   const games=[];let bad=0;document.querySelectorAll('#lsRows .lsrow').forEach(r=>{const [x,y]=[...r.querySelectorAll('input')].map(i=>i.value.trim());if(x===''&&y==='')return;const a=parseInt(x,10),c=parseInt(y,10);if(isNaN(a)||isNaN(c)||a<0||c<0||a===c){bad=+r.dataset.i+1;return}games.push({i:+r.dataset.i,s:[a,c]})});
   if(bad){toast('Game '+bad+' needs two different scores, like 5 and 3.');return}
   if(!games.length){toast('Add the score for at least one game.');return}
   if(!(await checkOddScores(games.map(g=>({label:'Game '+(g.i+1),sets:[g.s]})))))return;
-  const parts=$('lsDate').value.split('-').map(Number),base=parts.length===3&&!parts.some(isNaN)?new Date(parts[0],parts[1]-1,parts[2],19).getTime():Date.now(),now=Date.now(),sid='s'+now.toString(36)+'l',venue=canonicalVenue($('lsVenue').value);
-  let entries=games.map((g,k)=>{const pr=lsPairing(g.i);return{id:'m'+now.toString(36)+'l'+k,manual:true,date:base+k*60000,sets:[g.s],added:now,notes:'',session:sid,cfg:{pa:pr.a,pb:pr.b,an:'',bn:'',group:'',venue,a:teamNameFrom('',pr.a[0],pr.a[1],'Us'),b:teamNameFrom('',pr.b[0],pr.b[1],'Them'),bestOf:1,games:5,race:true}}});
+  const base=logStamp('lsDate','lsTime',19),now=Date.now(),sid='s'+now.toString(36)+'l',venue=canonicalVenue($('lsVenue').value);
+  let entries=games.map((g,k)=>{const pr=lsPairing(g.i);return{id:'m'+now.toString(36)+'l'+k,manual:true,timeSet:LOGT.set,date:base+k*12*60000,sets:[g.s],added:now,notes:'',session:sid,cfg:{pa:pr.a,pb:pr.b,an:'',bn:'',group:'',venue,a:teamNameFrom('',pr.a[0],pr.a[1],'Us'),b:teamNameFrom('',pr.b[0],pr.b[1],'Them'),bestOf:1,games:5,race:true}}});
   const dups=entries.filter(e=>findDuplicate(e));if(dups.length){const skip=await ask('Already got '+(dups.length===1?'this one':'some of these')+'?',dups.length+' of these games '+(dups.length===1?'is':'are')+' already in your results.','Skip '+(dups.length===1?'it':'those'),false,'Add them anyway');if(skip)entries=entries.filter(e=>!dups.includes(e));if(!entries.length){hideSheet();toast('Nothing new to add.');return}}
   if(!(await confirmRecipients(entries.map(e=>e.cfg))))return;
   const before=badgeSnapshot();entries.forEach(e=>history.unshift(e));if(venue)store.set('db-lastVenue',venue);saveH();hideSheet();renderResults();try{renderHome()}catch(err){}announceBadges(newBadgesBetween(before,badgeSnapshot()));
@@ -3782,6 +3792,45 @@ async function refreshFriendNames(){if(!FB.user||!accessReady()||Date.now()-FRN_
     if(pd.name&&pd.name!==f.name&&(!f.name||/^@/.test(f.name)||!f.username)){f.name=pd.name;changed=true}if(pd.username&&pd.username!==f.username){f.username=pd.username;changed=true}}catch(e){}}
   if(changed){try{saveFriends()}catch(e){store.set('db-friends',FRIENDS)}try{renderHome()}catch(e){}}}
 setInterval(()=>{try{refreshFriendNames()}catch(e){}},20000);
+
+
+/* ================= the admin's button in the floating menu ================= */
+function syncAdminNav(){const b=document.querySelector('#fnav .fnadm');if(!b)return;const on=!!(FB.user&&FB.admin);b.classList.toggle('hide',!on);
+  const n=on?(ADMQ.list.length+(BUGS.list||[]).filter(x=>x.status==='new').length):0;b.classList.toggle('due',n>0);b.setAttribute('aria-label',n?'Admin, '+n+' need you':'Admin')}
+setInterval(()=>{try{syncAdminNav()}catch(e){}},2000);
+/* ================= friends: regulars first, the first 8 shown, search once there are more ================= */
+const FRL={all:false,q:''};
+function friendsSorted(){const cnt={};try{allRows().forEach(r=>[0,1].forEach(s=>members(r.cfg,s).forEach(n=>{const k=pkey(n);cnt[k]=(cnt[k]||0)+1})))}catch(e){}
+  return FRIENDS.slice().sort((a,b)=>(cnt[b.key]||0)-(cnt[a.key]||0)||String(a.name||a.username||'').localeCompare(String(b.name||b.username||'')))}
+function friendRowsHtml(){const all=friendsSorted(),q=FRL.q.trim().toLowerCase().replace(/^@/,'');
+  const hits=q?all.filter(f=>String(f.name||'').toLowerCase().includes(q)||String(f.username||'').toLowerCase().includes(q)):all;
+  const shown=q||FRL.all?hits:hits.slice(0,8);
+  return(shown.length?shown.map(f=>'<button class="fr" data-k="'+esc(f.key)+'">'+avatar('pav',f.name||f.username,f.photo)+'<span><b>'+esc(f.name||(f.username?'@'+f.username:'New player'))+(f.uid?' <i class="ondb" title="On PadelCred"></i>':'')+'</b>'+(f.username?'<em>@'+esc(f.username)+'</em>':'')+'</span></button>').join(''):'<p class="help" style="margin:4px 2px">No friends match that.</p>')+
+    (!q&&!FRL.all&&hits.length>8?'<button class="linkbtn frmore" data-frall="1">Show all '+hits.length+' friends</button>':'')+(!q&&FRL.all&&hits.length>8?'<button class="linkbtn frmore" data-frall="0">Show fewer</button>':'')}
+document.addEventListener('input',e=>{if(e.target.id!=='frSearch')return;FRL.q=e.target.value;const box=$('frListBox');if(box)box.innerHTML=friendRowsHtml()});
+document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-frall]');if(!b)return;FRL.all=b.dataset.frall==='1';const box=$('frListBox');if(box)box.innerHTML=friendRowsHtml()});
+
+
+/* ================= invite a friend to a league: sent to their inbox, answered from a card on their Home ================= */
+let GINV=store.get('db-ginv')||[];
+function ginvReceived(e,it){if(!e||!e.gid||!e.inv)return;if((GRP.list||[]).some(g=>g.id===e.gid))return; // already in it
+  GINV=GINV.filter(x=>x.gid!==e.gid);GINV.unshift({gid:e.gid,inv:e.inv,name:e.name||'a league',from:it.from,fromName:it.fromName||'A friend',at:Date.now()});store.set('db-ginv',GINV.slice(0,20));
+  toast((it.fromName||'A friend')+' invited you to '+(e.name||'a league')+'. See it on Home.');try{if(homeOn())renderHome()}catch(err){}}
+function ginvHtml(){GINV=GINV.filter(x=>!(GRP.list||[]).some(g=>g.id===x.gid));if(!GINV.length)return'';
+  return'<section class="cfcard" id="ginvCard"><b class="cfttl">League invite'+(GINV.length>1?'s':'')+'</b>'+GINV.slice(0,3).map(x=>'<div class="cfrow"><span><b>'+esc(x.fromName)+' invited you to '+esc(x.name)+'</b><em>Join to share its league table and live scores</em></span><div class="cfbtns"><button class="mini cfok" data-ginvyes="'+esc(x.gid)+'">Join</button><button class="mini" data-ginvno="'+esc(x.gid)+'">No thanks</button></div></div>').join('')+'</section>'}
+document.addEventListener('click',e=>{const y=e.target.closest&&e.target.closest('[data-ginvyes]'),n=e.target.closest&&e.target.closest('[data-ginvno]');if(!y&&!n)return;
+  const gid=(y||n).dataset[y?'ginvyes':'ginvno'],x=GINV.find(i=>i.gid===gid);GINV=GINV.filter(i=>i.gid!==gid);store.set('db-ginv',GINV);try{renderHome()}catch(err){}
+  if(y&&x)openJoin(x.inv)});
+// sending, from a friend's profile
+function ginviteBtnHtml(f){if(!FB.user||!f||!f.uid)return'';const open=(GRP.list||[]).filter(g=>!(g.members||[]).includes(f.uid));if(!(GRP.list||[]).length)return'';
+  return'<div class="ginvbox"><button class="secondary nrbtn" data-ginvite="'+esc(f.uid)+'"'+(open.length?'':' disabled')+'>'+(open.length?'Invite to a league':'Already in all your leagues')+'</button><div class="ginvpick" id="ginvPick"></div></div>'}
+document.addEventListener('click',async e=>{const b=e.target.closest&&e.target.closest('[data-ginvite]');if(b&&!b.disabled){const uid=b.dataset.ginvite,open=(GRP.list||[]).filter(g=>!(g.members||[]).includes(uid)),box=$('ginvPick');if(!box)return;
+    box.innerHTML='<p class="help" style="margin:8px 2px 6px">Pick a league:</p>'+open.map(g=>'<button class="mini ginvopt" data-ginvsend="'+esc(g.id)+'" data-uid="'+esc(uid)+'">'+esc(g.name)+'</button>').join('');return}
+  const s=e.target.closest&&e.target.closest('[data-ginvsend]');if(!s)return;const g=(GRP.list||[]).find(x=>x.id===s.dataset.ginvsend),uid=s.dataset.uid,f=friendByUid(uid);if(!g)return;
+  let inv;try{inv=await ensureInvite(g)}catch(err){toast(fbError(err));return}if(!inv){toast('Ask the person who made '+g.name+' to create its invite link first.');return}
+  try{await FB.db.collection('inbox').doc(uid).collection('items').doc('g_'+g.id+'_'+myUid()).set({from:myUid(),fromName:PROF.name||'',j:JSON.stringify({type:'ginv',gid:g.id,inv,name:g.name}),createdAt:Date.now()});
+    const box=$('ginvPick');if(box)box.innerHTML='<p class="help" style="margin:8px 2px">Invite to '+esc(g.name)+' sent. It\'s on '+esc((f&&f.name||'their').split(' ')[0])+'\'s Home screen to accept.</p>'}
+  catch(err){toast(fbError(err))}});
 
 /* ================= bug reports ================= */
 const appVersion=()=>((document.querySelector('meta[name="app-version"]')||{}).content||'');
@@ -4317,6 +4366,8 @@ function renderKo(){
 const TIERS=[null,{n:'Rookie',c:'t1'},{n:'Club',c:'t2'},{n:'Pro',c:'t3'},{n:'Legend',c:'t4'}];
 const DAY=86400000;
 // [id, name, tier, description, check(ctx), progress(p) -> [now, target]]
+// a best-of-three match: the recorded format, or two or more full sets for a result added afterwards
+const isBo3=r=>!!(r&&r.cfg&&(r.cfg.bestOf>=3||(!r.cfg.bestOf&&!r.cfg.race&&(r.sets||[]).filter(s=>!s.super).length>=2)));
 const BADGES=[
   ['first_serve','First serve',1,'Play your first match',c=>c.p.p>=1,p=>[p.p,1]],
   ['off_mark','Off the mark',1,'Win your first match',c=>c.p.w>=1,p=>[p.w,1]],
@@ -4324,38 +4375,38 @@ const BADGES=[
   ['hot_streak','Hot streak',1,'Win 3 matches in a row',c=>c.p.bestStreak>=3,p=>[p.bestStreak,3]],
   ['team_player','Team player',1,'Win with 3 different partners',c=>c.p.partnersWon.size>=3,p=>[p.partnersWon.size,3]],
   ['tb_first','Tiebreak winner',1,'Win a tiebreak',c=>c.p.tbw>=1,p=>[p.tbw,1]],
-  ['nerves','Nerves of steel',1,'Win more golden or star points than the other pair in a match',c=>c.has('Ice cold',c.side)],
-  ['rising','Rising star',1,'Reach a rating of 1,050',c=>c.p.maxRating>=1050,p=>p.p?[Math.max(0,Math.round(p.maxRating)-1000),50,'Rating '+Math.round(p.maxRating).toLocaleString('en-GB')+' of 1,050']:null],
+  ['nerves','Nerves of steel',1,'Win more golden or star points than the other pair in a match. Scored live in the app',c=>c.has('Ice cold',c.side)],
+  ['rising','Rising star',1,'Reach an Overall of 55',c=>c.p.p>=1&&ovrPeak(c.p)>=55,p=>p.p?[Math.max(0,ovrPeak(p)-50),5,'Overall '+ovrPeak(p)+' of 55']:null],
   ['rivalry','Rivalry',1,'Play against the same person 5 times',c=>c.p.maxOpp>=5,p=>[p.maxOpp,5]],
   ['first_set','First set',1,'Win a set',c=>c.p.setsWon>=1,p=>[p.setsWon,1]],
-  ['golden_touch','Golden touch',1,'Win a golden or star point',c=>!!(c.r.st&&c.r.st.stats.deciders[c.side]>=1)],
-  ['early_bird','Early bird',1,'Play a match that starts before 9am',c=>!c.r.h.manual&&new Date(c.r.date).getHours()<9],
+  ['golden_touch','Golden touch',1,'Win a golden or star point. Scored live in the app',c=>!!(c.r.st&&c.r.st.stats.deciders[c.side]>=1)],
+  ['early_bird','Early bird',1,'Play a match that starts before 9am',c=>(!c.r.h.manual||c.r.h.timeSet)&&new Date(c.r.date).getHours()<9],
 
   ['habit','Winning habit',2,'Win 10 matches',c=>c.p.w>=10,p=>[p.w,10]],
   ['court_rat','Court rat',2,'Play 50 matches',c=>c.p.p>=50,p=>[p.p,50]],
   ['on_fire','On fire',2,'Win 5 matches in a row',c=>c.p.bestStreak>=5,p=>[p.bestStreak,5]],
   ['baker','Baker',2,'Win a set without dropping a game',c=>c.p.bagels>=1,p=>[p.bagels,1]],
-  ['comeback','Comeback kid',2,'Win a match from behind',c=>c.won&&c.has('Comeback kings',c.side)],
-  ['brick_wall','Brick wall',2,'Hold every service game in a match',c=>c.has('Brick wall',c.side)],
+  ['comeback','Comeback kid',2,'Win a match from behind. Scored live in the app',c=>c.won&&c.has('Comeback kings',c.side)],
+  ['brick_wall','Brick wall',2,'Hold every service game in a match. Scored live in the app',c=>c.has('Brick wall',c.side)],
   ['giant','Giant killer',2,'Beat a pair rated 100 or more above yours',c=>c.won&&c.gap>=100],
   ['butterfly','Social butterfly',2,'Win with 5 different partners',c=>c.p.partnersWon.size>=5,p=>[p.partnersWon.size,5]],
   ['tb_titan','Tiebreak titan',2,'Win 5 tiebreaks',c=>c.p.tbw>=5,p=>[p.tbw,5]],
-  ['contender','Contender',2,'Reach a rating of 1,150',c=>c.p.maxRating>=1150,p=>p.p?[Math.max(0,Math.round(p.maxRating)-1000),150,'Rating '+Math.round(p.maxRating).toLocaleString('en-GB')+' of 1,150']:null],
+  ['contender','Contender',2,'Reach an Overall of 65, where Club starts',c=>c.p.p>=1&&ovrPeak(c.p)>=65,p=>p.p?[Math.max(0,ovrPeak(p)-50),15,'Overall '+ovrPeak(p)+' of 65']:null],
   ['marathon','Marathon',2,'Play a match lasting 100 minutes or more',c=>c.r.dur>=100*60000],
-  ['breaker','Break specialist',2,'Break serve 5 times in one match',c=>!!(c.r.st&&c.r.st.stats.breaks[c.side]>=5)],
-  ['night_owl','Night owl',2,'Play a match that starts after 9pm',c=>!c.r.h.manual&&new Date(c.r.date).getHours()>=21],
+  ['breaker','Break specialist',2,'Break serve 5 times in one match. Scored live in the app',c=>!!(c.r.st&&c.r.st.stats.breaks[c.side]>=5)],
+  ['night_owl','Night owl',2,'Play a match that starts after 9pm',c=>(!c.r.h.manual||c.r.h.timeSet)&&new Date(c.r.date).getHours()>=21],
   ['set_collector','Set collector',2,'Win 25 sets',c=>c.p.setsWon>=25,p=>[p.setsWon,25]],
   ['weekend','Weekend warrior',2,'Play 3 matches in one weekend',c=>c.p.maxWeekend>=3,p=>[p.maxWeekend,3]],
 
   ['serial','Serial winner',3,'Win 50 matches',c=>c.p.w>=50,p=>[p.w,50]],
   ['unstoppable','Unstoppable',3,'Win 10 matches in a row',c=>c.p.bestStreak>=10,p=>[p.bestStreak,10]],
-  ['escape','Escape artist',3,'Win after facing match point',c=>c.won&&c.has('Bottle job',c.o)],
+  ['escape','Escape artist',3,'Win after facing match point. Scored live in the app',c=>c.won&&c.has('Bottle job',c.o)],
   ['head_baker','Head baker',3,'Win 5 sets without dropping a game',c=>c.p.bagels>=5,p=>[p.bagels,5]],
-  ['fortress','Fortress',3,'Hold every service game in a best-of-three match',c=>c.won&&c.r.cfg.bestOf>=3&&c.has('Brick wall',c.side)],
-  ['statement','Statement win',3,'Win a best-of-three match dropping 2 games or fewer',c=>c.won&&c.r.cfg.bestOf>=3&&c.r.sw[c.side]>=2&&c.r.gw[c.o]<=2],
+  ['fortress','Fortress',3,'Hold every service game in a best-of-three match. Scored live in the app',c=>c.won&&isBo3(c.r)&&c.has('Brick wall',c.side)],
+  ['statement','Statement win',3,'Win a best-of-three match dropping 2 games or fewer',c=>c.won&&isBo3(c.r)&&c.r.sw[c.side]>=2&&c.r.gw[c.o]<=2],
   ['grudge','Grudge match',3,'Beat someone you\'d lost to 3 times before',c=>c.won&&c.grudge],
   ['goliath','David and Goliath',3,'Beat a pair rated 200 or more above yours',c=>c.won&&c.gap>=200],
-  ['elite','Elite',3,'Reach a rating of 1,300',c=>c.p.maxRating>=1300,p=>p.p?[Math.max(0,Math.round(p.maxRating)-1000),300,'Rating '+Math.round(p.maxRating).toLocaleString('en-GB')+' of 1,300']:null],
+  ['elite','Elite',3,'Reach an Overall of 75, where Pro starts',c=>c.p.p>=1&&ovrPeak(c.p)>=75,p=>p.p?[Math.max(0,ovrPeak(p)-50),25,'Overall '+ovrPeak(p)+' of 75']:null],
   ['perfect_week','Perfect week',3,'Win 5 matches in 7 days',c=>c.p.winDates.length>=5&&c.r.date-c.p.winDates[c.p.winDates.length-5]<=7*DAY],
   ['lives_here','Lives at the club',3,'Play 150 matches',c=>c.p.p>=150,p=>[p.p,150]],
   ['everyone','Everyone\'s partner',3,'Win with 15 different partners',c=>c.p.partnersWon.size>=15,p=>[p.partnersWon.size,15]],
@@ -4365,11 +4416,11 @@ const BADGES=[
 
   ['hall','Hall of famer',4,'Win 150 matches',c=>c.p.w>=150,p=>[p.w,150]],
   ['invincible','Invincible',4,'Win 20 matches in a row',c=>c.p.bestStreak>=20,p=>[p.bestStreak,20]],
-  ['houdini','Houdini',4,'Save 3 or more match points and still win',c=>c.won&&c.hasN('Bottle job',c.o)>=3],
-  ['golden_bagel','Golden bagel',4,'Win a best-of-three match without dropping a game',c=>c.won&&c.r.cfg.bestOf>=3&&c.r.sw[c.side]>=2&&c.r.gw[c.o]===0],
+  ['houdini','Houdini',4,'Save 3 or more match points and still win. Scored live in the app',c=>c.won&&c.hasN('Bottle job',c.o)>=3],
+  ['golden_bagel','Golden bagel',4,'Win a best-of-three match without dropping a game',c=>c.won&&isBo3(c.r)&&c.r.sw[c.side]>=2&&c.r.gw[c.o]===0],
   ['untouchable','Untouchable',4,'Reach an Overall of 90',c=>c.p.p>=1&&ovrPeak(c.p)>=90,p=>[Math.max(0,ovrPeak(p)-40),50,(p.p<1?'Play a match to count. ':'')+'Overall '+ovrPeak(p)+' of 90']],
   ['top_dog','Top dog',4,'Top the league after playing at least 20 matches',c=>c.p.p>=20&&c.top],
-  ['unbreakable','Unbreakable',4,'Hold every service game in 10 different matches',c=>c.p.wallMatches>=10,p=>[p.wallMatches,10]],
+  ['unbreakable','Unbreakable',4,'Hold every service game in 10 different matches. Scored live in the app',c=>c.p.wallMatches>=10,p=>[p.wallMatches,10]],
   ['complete','Completionist',4,'Unlock every other achievement',c=>Object.keys(c.p.badges).filter(k=>k!=='complete'&&BADGE[k]).length>=BADGES.length-1]
 ];
 const BADGE=Object.fromEntries(BADGES.map(b=>[b[0],b]));
@@ -4580,7 +4631,7 @@ const SOC_ICON={
 const cleanLevel=s=>{const n=parseFloat(String(s||'').replace(',','.'));return isNaN(n)?'':String(Math.max(0,Math.min(7,Math.round(n*100)/100)))};
 const cleanPlaytomic=s=>{s=(s||'').trim();if(!s)return'';const m=s.match(/https?:\/\/[^\s]*playtomic[^\s]*/i);return m?m[0]:''};
 const cleanHandle=s=>(s||'').trim().replace(/^https?:\/\/(www\.)?[^/]+\//i,'').replace(/^@/,'').replace(/[/?#].*$/,'');
-function avatar(cls,name,photo){return photo?'<img class="'+cls+'" src="'+photo+'" alt="">':'<span class="'+cls+' ini">'+esc(initials(name||'You')||'?')+'</span>'}
+function avatar(cls,name,photo){return photo?'<img class="'+cls+'" src="'+photo+'" alt="">':'<span class="'+cls+' ini">'+esc(initials(String(name||'').replace(/^@/,''))||'?')+'</span>'}
 /* ================= profile: player spotlight and the year in numbers ================= */
 function spotTile(label,value,extra,cls){return'<div class="stile'+(cls?' '+cls:'')+'"><span>'+label+'</span><b>'+value+(extra||'')+'</b></div>'}
 function profSpotlightHtml(p,i,L,key){
@@ -4732,7 +4783,7 @@ $('peCancel').onclick=()=>hideSheet();
 
 
 /* ================= home logo and updates ================= */
-const APP_VERSION='2.27';
+const APP_VERSION='2.33';
 document.querySelectorAll('.vlogo').forEach(i=>i.src=$('logo').src);
 function goHome(e){
   const el=e&&e.currentTarget;if(el){el.classList.remove('tap');void el.offsetWidth;el.classList.add('tap')}
@@ -4971,9 +5022,9 @@ async function sendResult(h){
 
 /* --- friends on the profile page --- */
 function friendsHtml(){
-  const list=FRIENDS.slice().sort((a,b)=>a.name.localeCompare(b.name));
+  const list=FRIENDS;
   return'<p class="sh">Friends <span class="muted">'+list.length+'</span></p>'+
-    (list.length?'<div class="frlist">'+list.map(f=>'<button class="fr" data-k="'+esc(f.key)+'">'+avatar('pav',f.name,f.photo)+'<span><b>'+esc(f.name)+(f.uid?' <i class="ondb" title="On PadelCred"></i>':'')+'</b>'+(f.username?'<em>@'+esc(f.username)+'</em>':'')+'</span></button>').join('')+'</div>'
+    (list.length?(list.length>8?'<div class="frsrch"><input type="search" id="frSearch" placeholder="Search your friends" autocomplete="off" autocapitalize="none" value="'+esc(FRL.q)+'"></div>':'')+'<div class="frlist" id="frListBox">'+friendRowsHtml()+'</div>'
       :'<p class="help" style="margin:0 2px 10px">'+(FB.user?'Find friends by their username below. Matches you play together are sent to them automatically.':'Create an account to add friends by their username.')+'</p>')+
     (FB.user?socialHtml()+'<button class="secondary wide" id="frInviteAll">Invite a friend to PadelCred</button>':'<button class="primary wide" id="frSignIn2">Create an account or sign in</button>');
 }
@@ -4984,7 +5035,7 @@ async function inviteFriend(){
   try{await navigator.clipboard.writeText(text+' '+url);toast('Invite copied. Paste it into a chat.')}catch(e){toast('Couldn\'t share the invite here.')}
 }
 function bindFriends(){
-  if($('frInviteAll'))$('frInviteAll').onclick=inviteFriend;if($('frSignIn2'))$('frSignIn2').onclick=()=>{hideSheet();openAccount()};bindSocial();
+  if($('frInviteAll'))$('frInviteAll').onclick=()=>openInvite();if($('frSignIn2'))$('frSignIn2').onclick=()=>{hideSheet();openAccount()};bindSocial();
   document.querySelectorAll('.fr').forEach(b=>b.onclick=()=>openFriend(b.dataset.k));
 }
 function friendHeader(f){
@@ -5792,10 +5843,10 @@ function bumpHV(){HV++;for(const k in memo)delete memo[k]}
 /* ================= quick pick players ================= */
 function quickPickNames(){
   const recent={};allRows().slice().sort((a,b)=>b.date-a.date).forEach((r,i)=>[0,1].forEach(s=>members(r.cfg,s).forEach(n=>{const k=pkey(n);if(!(k in recent))recent[k]={name:n,i}})));
-  FRIENDS.forEach(f=>{if(!(f.key in recent))recent[f.key]={name:f.name,i:999}});
+  FRIENDS.forEach(f=>{if(f.name&&String(f.name).trim()&&!/^@/.test(f.name)&&!(f.key in recent))recent[f.key]={name:f.name,i:999}});
   if(PROF.name&&!(pkey(PROF.name) in recent))recent[pkey(PROF.name)]={name:PROF.name,i:-1};
   if(PROF.name)recent[pkey(PROF.name)].i=-1;
-  return Object.values(recent).sort((a,b)=>a.i-b.i).slice(0,16).map(x=>x.name);
+  return Object.values(recent).filter(x=>x.name&&String(x.name).trim()).sort((a,b)=>a.i-b.i).slice(0,16).map(x=>x.name);
 }
 const SLOTS=['pA1','pA2','pB1','pB2'];
 const activeSlots=()=>draft&&draft.singles?['pA1','pB1']:SLOTS;
@@ -5806,7 +5857,7 @@ function renderQuickPick(){
   const slotOf=n=>SLOTS.find(id=>pkey($(id).value||'')===pkey(n));
   const lab={pA1:'You',pA2:'Partner',pB1:'Opp',pB2:'Opp'};
   box.innerHTML='<p class="lbl" style="margin:0 0 8px">Quick pick<span class="lblhelp" style="display:inline;margin-left:6px">'+(draft&&draft.singles?'Tap two players: you, then your opponent.':'Tap four players in order: your team, then the opponents.')+'</span></p><div class="qpchips">'+
-    names.map(n=>{const s=slotOf(n);return'<button class="qp'+(s?' on':'')+'" data-n="'+esc(n)+'">'+avatar('pav',n,photoFor(n))+'<span>'+esc(n)+'</span>'+(s?'<em>'+(s[1]==='A'?(draft&&draft.singles?'You':'Your team'):(draft&&draft.singles?'Opponent':'Opponents'))+'</em>':'')+'</button>'}).join('')+
+    names.map(n=>{const s=slotOf(n);return'<button class="qp'+(s?' on':'')+'" data-n="'+esc(n)+'">'+avatar('pav',n,photoFor(n))+'<span class="qptx"><b>'+esc(n)+'</b>'+(s?'<em>'+(activeSlots().indexOf(s)+1)+' · '+(s[1]==='A'?(draft&&draft.singles?'You':'Your team'):(draft&&draft.singles?'Opponent':'Opponents'))+'</em>':'')+'</span></button>'}).join('')+
     '</div><button class="linkbtn" id="qpClear">Clear players</button>';
   box.querySelectorAll('.qp').forEach(b=>b.onclick=()=>{
     const n=b.dataset.n,s=slotOf(n);
@@ -6463,7 +6514,7 @@ function receiveResults(items){
   const me=myUid();let added=0,updated=0;const from=new Set();
   items.forEach(it=>{
     let e;try{e=JSON.parse(it.j)}catch(err){return}
-    if(e&&(e.type==='conf'||e.type==='ver'||e.type==='plan'||e.type==='planr')){try{if(e.type==='conf')confReceived(e,it);else if(e.type==='ver')verReceived(e,it);else if(e.type==='plan')planInviteReceived(e,it);else planReplyReceived(e,it)}catch(err){}FB.db.collection('inbox').doc(me).collection('items').doc(it._id).delete().catch(()=>{});return}
+    if(e&&(e.type==='conf'||e.type==='ver'||e.type==='plan'||e.type==='planr'||e.type==='ginv')){try{if(e.type==='ginv')ginvReceived(e,it);else if(e.type==='conf')confReceived(e,it);else if(e.type==='ver')verReceived(e,it);else if(e.type==='plan')planInviteReceived(e,it);else planReplyReceived(e,it)}catch(err){}FB.db.collection('inbox').doc(me).collection('items').doc(it._id).delete().catch(()=>{});return}
     if(e.uids){const map={};Object.entries(e.uids).forEach(([n,u])=>{if(u===me&&PROF.name)map[pkey(n)]=PROF.name;else{const f=friendByUid(u);if(f)map[pkey(n)]=f.name}});
       const c=Object.assign({},e.cfg),fix=l=>(l||[]).map(n=>map[pkey(n||'')]||n);c.pa=fix(c.pa);c.pb=fix(c.pb);
       if(!c.an&&c.pa.filter(Boolean).length)c.a=joinNames(c.pa);if(!c.bn&&c.pb.filter(Boolean).length)c.b=joinNames(c.pb);e=Object.assign({},e,{cfg:c})}
@@ -6759,7 +6810,7 @@ function renderHome(){try{
   $('hmTour').onclick=()=>startTour();
   syncHomeAvatar();
 
-}finally{(()=>{try{const st=$('hmStart');if(st&&!$('cfCard')){const html=confCardsHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}try{const st=$('hmStart');if(st&&!$('invCard')){const html=invCardsHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}try{const st=$('hmStart');if(st&&!$('nightCard')){const html=nightCardsHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}try{const st=$('hmStart');if(st&&!$('rateDue')){const html=rateDueHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}try{const st=$('hmStart');if(st&&!$('admWait')){const html=adminWaitHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}try{const hv=$('homeView');if(hv&&!hv.querySelector('.admbar')){const html=adminBarHtml();const anchor=hv.querySelector('#admWait')||$('hmStart');if(html&&anchor)anchor.insertAdjacentHTML('beforebegin',html)}}catch(e){}})()}}
+}finally{(()=>{try{const st=$('hmStart');if(st&&!$('cfCard')){const html=confCardsHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}try{const st=$('hmStart');if(st&&!$('invCard')){const html=invCardsHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}try{const st=$('hmStart');if(st&&!$('nightCard')){const html=nightCardsHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}try{const st=$('hmStart');if(st&&!$('rateDue')){const html=rateDueHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}try{const st=$('hmStart');if(st&&!$('ginvCard')){const html=ginvHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}try{const st=$('hmStart');if(st&&!$('admWait')){const html=adminWaitHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}try{const hv=$('homeView');if(hv&&!hv.querySelector('.admbar')){const html=adminBarHtml();const anchor=hv.querySelector('#admWait')||$('hmStart');if(html&&anchor)anchor.insertAdjacentHTML('beforebegin',html)}}catch(e){}})()}}
 setTimeout(()=>{try{lockSeed()}catch(e){}},1500);
 function syncHomeAvatar(){const b=$('hmAv');if(!b)return;b.innerHTML=$('avBtn').innerHTML;b.className=$('avBtn').className;b.id='hmAv';b.setAttribute('data-n',$('avBtn').getAttribute('data-n')||'')}
 
@@ -6778,8 +6829,9 @@ function bindConnect(f){
   if($('frInvite'))$('frInvite').onclick=inviteFriend;
 }
 
-function friendHero(f){
-  return'<div class="profhero">'+(f.founder?'<span class="avwrap fnd" data-n="'+f.founder+'" title="Founding member #'+f.founder+'">'+avatar('pav big',f.name,f.photo)+'</span>':avatar('pav big',f.name,f.photo))+'<div class="phinfo"><h3>'+esc(f.name)+(f.country?' <span class="flag-e">'+flagOf(f.country)+'</span>':'')+'</h3>'+(f.username?'<span class="handle">@'+esc(f.username)+'</span>':'')+styleTag(f.style)+'<span class="frtag2">'+(friendOf(f.key)?(f.uid?'Friend on PadelCred':'Friend'):'On PadelCred')+'</span>'+(f.founder?'<span class="fndline">Founding member #'+f.founder+'</span>':'')+'</div></div>';
+function friendHero(f){return friendHeroBase(f)+ginviteBtnHtml(f)}
+function friendHeroBase(f){const nm=f.name||f.username||'';
+  return'<div class="profhero">'+(f.founder?'<span class="avwrap fnd" data-n="'+f.founder+'" title="Founding member #'+f.founder+'">'+avatar('pav big',nm,f.photo)+'</span>':avatar('pav big',nm,f.photo))+'<div class="phinfo"><h3>'+esc(f.name||(f.username?'@'+f.username:'New player'))+(f.name?'':'<small class="noname"> hasn\'t added their name yet</small>')+(f.country?' <span class="flag-e">'+flagOf(f.country)+'</span>':'')+'</h3>'+(f.username?'<span class="handle">@'+esc(f.username)+'</span>':'')+styleTag(f.style)+'<span class="frtag2">'+(friendOf(f.key)?(f.uid?'Friend on PadelCred':'Friend'):'On PadelCred')+'</span>'+(f.founder?'<span class="fndline">Founding member #'+f.founder+'</span>':'')+'</div></div>';
 }
 function friendDetails(f){
   const chips=[];if(f.ptLevel)chips.push('Playtomic level '+f.ptLevel);

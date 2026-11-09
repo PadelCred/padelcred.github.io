@@ -10,13 +10,13 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="PadelCred">
-<meta name="app-version" content="2.27">
+<meta name="app-version" content="2.33">
 <title>PadelCred</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="padelcred.css?v=2.27">
+<link rel="stylesheet" href="padelcred.css?v=2.33">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="64x64" href="favicon-64.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -134,7 +134,8 @@
   <p>For matches you didn't score in the app.</p>
   <button class="primary nrbtn" id="arLog">Same four, swapping partners? Log the session</button>
   <button class="secondary nrbtn" id="arNight">Played several matches? Add the whole night</button>
-  <div class="field"><label for="arDate">Date</label><input type="date" id="arDate"></div>
+  <div class="dtrow"><div class="field"><label for="arDate">Date</label><input type="date" id="arDate"></div><div class="field"><label for="arTime">Start time</label><input type="time" id="arTime"></div></div>
+  <div class="field"><label for="arDur">How long did it take? (optional)</label><select id="arDur"><option value="">Not sure</option><option value="45">45 minutes</option><option value="60">1 hour</option><option value="75">1 hour 15</option><option value="90">1 hour 30</option><option value="105">1 hour 45</option><option value="120">2 hours</option><option value="150">2 hours 30</option><option value="180">3 hours</option></select></div>
   <div class="teambox">
     <span class="lbl">Your team</span>
     <div class="pair"><input type="text" id="arA1" list="playerNames" maxlength="20" placeholder="You" autocomplete="off" aria-label="Your team, player 1"><input type="text" id="arA2" list="playerNames" maxlength="20" placeholder="Partner" autocomplete="off" aria-label="Your team, player 2"></div>
@@ -161,7 +162,7 @@
 <section class="sheet" id="logSessionSheet" aria-label="Log a session">
   <h3>Log a session</h3>
   <p>Pick the four players once. Each game fills in the next pairing, so everyone partners everyone. Just type the scores.</p>
-  <div class="field"><label for="lsDate">Date</label><input type="date" id="lsDate"></div>
+  <div class="dtrow"><div class="field"><label for="lsDate">Date</label><input type="date" id="lsDate"></div><div class="field"><label for="lsTime">Start time</label><input type="time" id="lsTime"></div></div>
   <div class="field"><label for="lsVenue">Venue (optional)</label><input type="text" id="lsVenue" list="venueNames" maxlength="40" autocomplete="off" placeholder="For example, Padel Social Club"></div>
   <div class="field" id="lsPlayers"><span class="lbl">The four players</span>
     <div class="lsp"><input type="text" id="lsP1" list="playerNames" maxlength="20" autocomplete="off" placeholder="Player 1"><input type="text" id="lsP2" list="playerNames" maxlength="20" autocomplete="off" placeholder="Player 2"><input type="text" id="lsP3" list="playerNames" maxlength="20" autocomplete="off" placeholder="Player 3"><input type="text" id="lsP4" list="playerNames" maxlength="20" autocomplete="off" placeholder="Player 4"></div></div>
@@ -174,7 +175,7 @@
 <section class="sheet" id="nightAddSheet" aria-label="Add the night's results">
   <h3>Add the night's results</h3>
   <p>Every match you played, in order. Each player's record updates, and PadelCred friends get the results to confirm.</p>
-  <div class="field"><label for="nrDate">Date</label><input type="date" id="nrDate"></div>
+  <div class="dtrow"><div class="field"><label for="nrDate">Date</label><input type="date" id="nrDate"></div><div class="field"><label for="nrTime">Start time</label><input type="time" id="nrTime"></div></div>
   <div class="field"><label for="nrVenue">Venue (optional)</label><input type="text" id="nrVenue" list="venueNames" maxlength="40" autocomplete="off" placeholder="For example, Padel Social Club"></div>
   <div class="field"><label for="nrGroup">League (optional)</label><input type="text" id="nrGroup" list="groupNames" maxlength="24" autocomplete="off" placeholder="For example, Sunday crew"></div>
   <div id="nrMatches"></div>
@@ -707,7 +708,7 @@
     <button class="secondary" id="termsBtn">Terms</button>
     <button class="secondary" id="dataUpdate">Check for updates</button>
   </div>
-  <p class="help" style="text-align:center;margin:14px 0 0">PadelCred v2.27<br><span class="copyr">© 2026 Raza Rebuilt. All rights reserved.</span></p>
+  <p class="help" style="text-align:center;margin:14px 0 0">PadelCred v2.33<br><span class="copyr">© 2026 Raza Rebuilt. All rights reserved.</span></p>
 </section>
 
 <section class="camview" id="camView" aria-label="Camera">
@@ -920,11 +921,11 @@
   <div class="vhead"><h2 id="amTitle">Americano night</h2><button class="themebtn sm" data-theme-toggle aria-label="Switch between light and dark"><svg class="ic-moon" viewBox="0 0 24 24"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg><svg class="ic-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg></button><button class="ghost" id="amHome">Home</button></div>
   <div id="amBody"></div>
 </section>
-<nav class="fnav hide" id="fnav" aria-label="Main"><button data-nav="home" aria-label="Home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 11 12 4l8.5 7"/><path d="M5.5 9.5V20h13V9.5"/><path d="M10 20v-5.5h4V20"/></svg><span>Home</span></button><button data-nav="matches" aria-label="Matches"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 9h8M8 12.5h8M8 16h5"/></svg><span>Matches</span></button><button data-nav="rivals" aria-label="Rivals"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8.5" r="2.8"/><circle cx="16" cy="8.5" r="2.8"/><path d="M3.5 19c.6-3.2 2.4-5 4.5-5s3.9 1.8 4.5 5M11.5 19c.6-3.2 2.4-5 4.5-5s3.9 1.8 4.5 5"/></svg><span>Rivals</span></button><button data-nav="league" aria-label="League"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 20V12M12 20V5M18 20v-9"/><path d="M3.5 20h17"/></svg><span>League</span></button><button data-nav="profile" aria-label="Profile"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.5" r="3.6"/><path d="M4.5 20c1-4 4-6 7.5-6s6.5 2 7.5 6"/></svg><span>Profile</span></button></nav>
+<nav class="fnav hide" id="fnav" aria-label="Main"><button data-nav="home" aria-label="Home"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 11 12 4l8.5 7"/><path d="M5.5 9.5V20h13V9.5"/><path d="M10 20v-5.5h4V20"/></svg><span>Home</span></button><button data-nav="matches" aria-label="Matches"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><path d="M8 9h8M8 12.5h8M8 16h5"/></svg><span>Matches</span></button><button data-nav="rivals" aria-label="Rivals"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="8" cy="8.5" r="2.8"/><circle cx="16" cy="8.5" r="2.8"/><path d="M3.5 19c.6-3.2 2.4-5 4.5-5s3.9 1.8 4.5 5M11.5 19c.6-3.2 2.4-5 4.5-5s3.9 1.8 4.5 5"/></svg><span>Rivals</span></button><button data-nav="league" aria-label="League"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 20V12M12 20V5M18 20v-9"/><path d="M3.5 20h17"/></svg><span>League</span></button><button data-nav="profile" aria-label="Profile"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.5" r="3.6"/><path d="M4.5 20c1-4 4-6 7.5-6s6.5 2 7.5 6"/></svg><span>Profile</span></button><button class="fnadm hide" data-openadmin="1" aria-label="Admin"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l7 3v5.5c0 4.4-3 8-7 9.5-4-1.5-7-5.1-7-9.5V6z"/><path d="M9 12l2 2 4-4"/></svg><span>Admin</span></button></nav>
 <canvas class="fx" id="fx"></canvas>
 <div class="toast" id="toast" role="status"></div>
 
-<script src="padelcred.js?v=2.27"></script>
+<script src="padelcred.js?v=2.33"></script>
 <script>if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol))addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));</script>
 </body>
 </html>

@@ -1934,3 +1934,26 @@ body.gated #usernameSheet{z-index:21!important}
 /* v2.26 */
 .admrow{display:flex;align-items:center;gap:8px;border-bottom:1px solid #22314A}.admrow .admpl{border-bottom:0;flex:1}
 .admbar.due{background:rgba(233,196,106,.16)}.admbar.due span{color:#F5F7FA;font-weight:600}
+/* v2.28 */
+.noname{display:block;font:500 13px var(--body);color:#9FB0C3;margin-top:2px}
+/* v2.30: date and start time side by side */
+.dtrow{display:grid;grid-template-columns:1.4fr 1fr;gap:10px}.dtrow .field{min-width:0}.dtrow input{min-width:0;width:100%;box-sizing:border-box}
+/* v2.30: the start time box and length menu match the date box */
+.sheet input[type="time"],.sheet select#arDur{box-sizing:border-box;width:100%;padding:12px 14px;border:2px solid rgba(245,247,250,.13);border-radius:12px;background:#0D1826;color:#F5F7FA;font:500 17px Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color-scheme:dark;min-height:50px}
+.sheet select#arDur{appearance:none;-webkit-appearance:none;background-image:linear-gradient(45deg,transparent 50%,#9FB0C3 50%),linear-gradient(135deg,#9FB0C3 50%,transparent 50%);background-position:calc(100% - 20px) 50%,calc(100% - 14px) 50%;background-size:6px 6px;background-repeat:no-repeat;padding-right:36px}
+.sheet input[type="time"]:focus,.sheet select#arDur:focus{outline:none;border-color:#6EE7B7}
+.dtrow{grid-template-columns:1fr 1fr}.dtrow input[type="date"],.dtrow input[type="time"]{padding:12px 10px;font-size:16px}
+/* v2.31: Quick pick as a tidy two-column grid, labels inside each chip */
+.qpchips{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:10px}
+.qp{display:flex;align-items:center;gap:10px;min-height:56px;width:100%;box-sizing:border-box;padding:6px 12px 6px 6px;border-radius:16px;text-align:left}
+.qp .pav{flex:none;width:38px;height:38px;font-size:14px}
+.qptx{display:grid;gap:1px;min-width:0}.qptx b{font-size:15px;font-weight:700;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qp em{position:static;background:none;padding:0;font-size:12px;font-weight:700;letter-spacing:.01em;color:inherit;opacity:.85;white-space:nowrap}
+/* v2.32: admin in the menu; friends search */
+.fnav .fnadm.hide{display:none}
+.fnav .fnadm{color:#E9C46A}.fnav .fnadm svg{stroke:#E9C46A}
+.fnav .fnadm.due{position:relative}.fnav .fnadm.due::after{content:"";position:absolute;top:7px;right:calc(50% - 15px);width:8px;height:8px;border-radius:50%;background:#FF8C80;box-shadow:0 0 0 2px #0B1420}
+.frsrch input{box-sizing:border-box;width:100%;margin:0 0 8px;padding:11px 14px;border-radius:12px;border:2px solid rgba(245,247,250,.13);background:#0D1826;color:#F5F7FA;font:500 16px var(--body)}
+.frmore{display:block;margin:8px auto 2px}
+/* v2.33: invite to a league */
+.ginvbox{margin:10px 0 4px}.ginvpick{display:flex;flex-wrap:wrap;gap:8px}.ginvpick .help{flex-basis:100%}
