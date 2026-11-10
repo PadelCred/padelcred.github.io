@@ -1957,3 +1957,25 @@ body.gated #usernameSheet{z-index:21!important}
 .frmore{display:block;margin:8px auto 2px}
 /* v2.33: invite to a league */
 .ginvbox{margin:10px 0 4px}.ginvpick{display:flex;flex-wrap:wrap;gap:8px}.ginvpick .help{flex-basis:100%}
+/* v2.34: Home cards pop in once per opening, not on every redraw */
+#homeView.settled .hmcard,#homeView.settled .cfcard,#homeView.settled .admbar{animation:none}
+/* v2.35: a clearer Admin page */
+.admsum{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:0 0 14px}
+.admsum button{display:grid;gap:2px;justify-items:center;padding:12px 6px;border-radius:16px;border:1.5px solid #22314A;background:#142132;color:#BAC9D3;cursor:pointer}
+.admsum b{font:800 24px var(--heading);color:#F5F7FA;line-height:1}.admsum span{font-size:12.5px;font-weight:600}
+.admsum button.hot{border-color:#E9C46A;background:rgba(233,196,106,.12)}.admsum button.hot b{color:#E9C46A}
+.admsec{background:#142132;border:1.5px solid #22314A;border-radius:18px;padding:14px 14px 12px;margin:0 0 14px;scroll-margin-top:12px}
+.admhd{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 4px}.admhd b{font:800 17px var(--heading);color:#F5F7FA}
+.admwhy{margin:0 0 10px;font-size:13.5px;color:#9FB0C3;line-height:1.4}
+.admsec .help{margin:4px 0 8px}
+.admsec .adach summary{font:800 16px var(--heading);color:#F5F7FA;cursor:pointer;padding:2px 0}
+.admrow{align-items:center}.admrm{flex:none;background:none;border:0;color:#FF8C80;font:700 13.5px var(--body);padding:10px 4px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.admpl .admtx em{white-space:normal}
+/* friends on your profile: one tidy card */
+.frsec{background:#142132;border:1.5px solid #22314A;border-radius:18px;padding:14px;margin:6px 0 18px}
+.frhd{display:flex;align-items:center;gap:8px;margin:0 0 10px}.frhd b{font:800 18px var(--heading);color:#F5F7FA}
+.admct{display:inline-grid;place-items:center;min-width:26px;height:22px;padding:0 7px;border-radius:999px;background:#22314A;color:#BAC9D3;font:700 12.5px var(--body)}
+.frsec .frlist{margin-bottom:4px}
+.fradd{margin-top:14px;padding-top:14px;border-top:1px solid #22314A}.frsub{display:block;font:800 15px var(--heading);color:#F5F7FA;margin:0 0 8px}
+.fradd .wide{margin-top:10px}
+.frsec .frsearch,.admsec .frsearch{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}.frsec .frsearch .unwrap,.admsec .frsearch .unwrap{min-width:0}.frsec .frsearch input,.admsec .frsearch input{min-width:0;width:100%}

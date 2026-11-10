@@ -10,13 +10,13 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="PadelCred">
-<meta name="app-version" content="2.33">
+<meta name="app-version" content="2.35">
 <title>PadelCred</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="padelcred.css?v=2.33">
+<link rel="stylesheet" href="padelcred.css?v=2.35">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="64x64" href="favicon-64.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -567,19 +567,19 @@
 <section class="sheet" id="awardSheet" aria-label="Admin">
   <h3>Admin</h3>
   <p class="help" style="margin:-4px 2px 12px">Only you can see this.</p>
-  <p class="sh">Waiting for access</p>
-  <div id="accList"><p class="help">Loading…</p></div>
-  <p class="sh">Players</p>
-  <div id="admPlayers"><p class="help">Loading…</p></div>
-  <p class="sh">Invites</p>
-  <div id="admInvites"></div>
-  <p class="sh">Give an achievement</p>
-  <p class="help">Find a player by username, then pick what to award. Bug hunter can be given more than once.</p>
-  <div class="frsearch"><div class="unwrap"><span>@</span><input type="text" id="awFind" maxlength="21" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Their username"></div><button class="mini" id="awGo">Find</button></div>
-  <div id="awResult"></div>
-  <details class="adach" open><summary>Every achievement, hidden ones included</summary><div id="adAchList"></div></details>
-  <p class="sh">Reports</p>
-  <div id="bugList"><p class="help">Loading…</p></div>
+  <div class="admsum">
+    <button data-admjump="admSecWait"><b id="ctWait">0</b><span>Waiting</span></button>
+    <button data-admjump="admSecPl"><b id="ctPl">0</b><span>Players</span></button>
+    <button data-admjump="admSecRep"><b id="ctRep">0</b><span>New reports</span></button>
+  </div>
+  <div class="admsec" id="admSecWait"><div class="admhd"><b>Waiting for access</b></div><p class="admwhy">People who signed up without an invite link.</p><div id="accList"><p class="help">Loading…</p></div></div>
+  <div class="admsec" id="admSecPl"><div class="admhd"><b>Players</b></div><div id="admPlayers"><p class="help">Loading…</p></div></div>
+  <div class="admsec" id="admSecInv"><div class="admhd"><b>Invites</b></div><div id="admInvites"></div></div>
+  <div class="admsec" id="admSecAw"><div class="admhd"><b>Give an achievement</b></div><p class="admwhy">Find a player by username, then pick what to award. Bug hunter can be given more than once.</p>
+    <div class="frsearch"><div class="unwrap"><span>@</span><input type="text" id="awFind" maxlength="21" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Their username"></div><button class="mini" id="awGo">Find</button></div>
+    <div id="awResult"></div></div>
+  <div class="admsec" id="admSecAch"><details class="adach"><summary>Every achievement, hidden ones included</summary><div id="adAchList"></div></details></div>
+  <div class="admsec" id="admSecRep"><div class="admhd"><b>Reports</b></div><p class="admwhy">Bug reports, profile reports and suspicious-Overall reports.</p><div id="bugList"><p class="help">Loading…</p></div></div>
   <div class="btns"><button class="secondary" id="awClose">Done</button></div>
 </section>
 
@@ -708,7 +708,7 @@
     <button class="secondary" id="termsBtn">Terms</button>
     <button class="secondary" id="dataUpdate">Check for updates</button>
   </div>
-  <p class="help" style="text-align:center;margin:14px 0 0">PadelCred v2.33<br><span class="copyr">© 2026 Raza Rebuilt. All rights reserved.</span></p>
+  <p class="help" style="text-align:center;margin:14px 0 0">PadelCred v2.35<br><span class="copyr">© 2026 Raza Rebuilt. All rights reserved.</span></p>
 </section>
 
 <section class="camview" id="camView" aria-label="Camera">
@@ -925,7 +925,7 @@
 <canvas class="fx" id="fx"></canvas>
 <div class="toast" id="toast" role="status"></div>
 
-<script src="padelcred.js?v=2.33"></script>
+<script src="padelcred.js?v=2.35"></script>
 <script>if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol))addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));</script>
 </body>
 </html>

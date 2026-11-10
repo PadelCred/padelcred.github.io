@@ -1,5 +1,5 @@
 // PadelCred offline support. Change the version when you update the app.
-const VERSION = 'padelcred-v2.33';
+const VERSION = 'padelcred-v2.35';
 const SHELL = ['./', 'manifest.json', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'pc-icon-maskable-512.png', 'favicon-64.png'];
 
 self.addEventListener('install', e => {
