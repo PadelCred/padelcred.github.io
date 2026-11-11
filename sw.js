@@ -1,6 +1,8 @@
 // PadelCred offline support. Change the version when you update the app.
-const VERSION = 'padelcred-v2.35';
-const SHELL = ['./', 'manifest.json', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'pc-icon-maskable-512.png', 'favicon-64.png'];
+const VERSION = 'padelcred-v2.39';
+// The app's own code and styling are saved up front too, so it works offline straight after installing
+const APPV = VERSION.replace('padelcred-v', '');
+const SHELL = ['./', 'padelcred.css?v=' + APPV, 'padelcred.js?v=' + APPV, 'manifest.json', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'pc-icon-maskable-512.png', 'favicon-64.png'];
 
 self.addEventListener('install', e => {
   // Save each file on its own, so one failure (a redirect, a slow connection) can never stop the app installing.

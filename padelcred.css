@@ -1979,3 +1979,23 @@ body.gated #usernameSheet{z-index:21!important}
 .fradd{margin-top:14px;padding-top:14px;border-top:1px solid #22314A}.frsub{display:block;font:800 15px var(--heading);color:#F5F7FA;margin:0 0 8px}
 .fradd .wide{margin-top:10px}
 .frsec .frsearch,.admsec .frsearch{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}.frsec .frsearch .unwrap,.admsec .frsearch .unwrap{min-width:0}.frsec .frsearch input,.admsec .frsearch input{min-width:0;width:100%}
+/* v2.37: your Overall on Home, your week, compare */
+.hmhero{display:flex;align-items:center;gap:14px;width:100%;text-align:left;padding:14px 16px;margin:0 0 12px;border-radius:20px;border:2px solid var(--edge,#22314A);background:var(--card,#142132);color:#F5F7FA;cursor:pointer}
+.hhv{flex:none;display:grid;place-items:center;width:64px;height:64px;border-radius:18px;background:#0B1420;font:800 30px var(--heading);color:#6EE7B7}
+.hhv.o-rookie{color:#C9D3DD}.hhv.o-club{color:#6EE7B7}.hhv.o-pro{color:#7DD3FC}.hhv.o-legend{color:#E9C46A}
+.hht{display:grid;gap:3px;min-width:0}.hht b{font:800 16px var(--heading)}.hht em{font-style:normal;font-size:13.5px;color:#BAC9D3}
+.up{color:#6EE7B7}.down{color:#FF8C80}
+.hmweek{padding:14px 16px;margin:0 0 12px;border-radius:20px;border:2px solid var(--edge,#22314A);background:var(--card,#142132)}
+.hwt{display:block;font:800 15px var(--heading);color:#F5F7FA;margin-bottom:8px}
+.hwg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.hwg span{display:grid;justify-items:center;gap:1px;padding:8px 4px;border-radius:14px;background:#0B1420;font-size:12.5px;color:#9FB0C3}.hwg b{font:800 22px var(--heading);color:#F5F7FA}
+.hwg b.up{color:#6EE7B7}.hwg b.down{color:#FF8C80}
+.hwp{margin:10px 2px 0;font-size:13.5px;color:#BAC9D3}.hwp b{color:#F5F7FA}
+.cmpbtn{margin-top:6px}.cmpbox{display:none}.cmpbox.on{display:block;margin:10px 0 4px;padding:12px;border-radius:16px;background:#142132;border:1.5px solid #22314A}
+.cmpt{width:100%;border-collapse:collapse;text-align:center}.cmpt th,.cmpt td{padding:8px 4px;border-bottom:1px solid #22314A}.cmpt thead th{font:800 14px var(--heading);color:#F5F7FA}
+.cmpt tbody th{font-size:12.5px;font-weight:600;color:#9FB0C3}.cmpt td{font:700 16px var(--heading);color:#F5F7FA}.cmpt td.lead{color:#6EE7B7}
+.cmph{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.cmph div{display:grid;justify-items:center;padding:10px 4px;border-radius:14px;background:#0B1420}.cmph b{font:800 22px var(--heading);color:#F5F7FA}.cmph span{font-size:12.5px;color:#9FB0C3}
+/* v2.37: hero, recap, card styles, TV, King */
+.cstyles{margin:6px 0 10px}
+/* v2.39: nothing pokes past the edge on the narrowest phones */
+.pchart{box-sizing:border-box;max-width:100%}
+.badges{grid-template-columns:repeat(2,minmax(0,1fr))}.badge{min-width:0;box-sizing:border-box;grid-template-columns:auto minmax(0,1fr)}.badge>*{min-width:0}
