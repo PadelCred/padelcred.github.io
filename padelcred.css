@@ -2015,3 +2015,10 @@ body.gated #usernameSheet{z-index:21!important}
 .awhist{margin:14px 0;padding:12px 14px;border-radius:16px;background:var(--card);border:2px solid var(--line)}.awhist summary{font:800 16px var(--heading);color:#F5F7FA;cursor:pointer}
 .awper{margin:10px 0 2px;font:700 12.5px var(--body);color:#E9C46A;text-transform:uppercase;letter-spacing:.04em}
 .awcab{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0 0 16px}.awtro{padding:10px;border-radius:14px;background:var(--card);border:2px solid var(--line);min-width:0}
+/* v2.44: pocket lock */
+.pocketlock{display:none;position:fixed;inset:0;z-index:60;background:rgba(6,12,20,.86);backdrop-filter:blur(3px);touch-action:none;user-select:none;-webkit-user-select:none}
+.pocketlock.on{display:grid;place-items:center}
+.plbox{display:grid;gap:10px;justify-items:center;text-align:center;padding:24px;max-width:300px}.plbox b{font:800 24px var(--heading);color:#F5F7FA}.plbox span{font-size:15px;color:#BAC9D3;line-height:1.4}
+.plhold{position:relative;overflow:hidden;margin-top:10px;padding:16px 28px;border-radius:999px;border:2px solid #6EE7B7;background:transparent;color:#6EE7B7;font:800 16px var(--heading);touch-action:none}
+.plhold::before{content:"";position:absolute;inset:0;background:rgba(110,231,183,.25);transform:scaleX(0);transform-origin:left}.plhold.holding::before{transform:scaleX(1);transition:transform 1s linear}
+#lockBtn[aria-pressed="true"]{color:#6EE7B7}

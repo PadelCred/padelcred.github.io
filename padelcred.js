@@ -3311,7 +3311,7 @@ function hrFill(){const st=$('hrStart'),ti=$('hrTiers');if(!st||!ti)return;
 
 
 /* ================= test window: only when opened with ?selftest=1, for the promise tests. Players never see it ================= */
-if(window.__PC_TEST__===true)setTimeout(()=>{window.__pcTest={perfScore,levelToRating,levelToOvr,ovrTier,matchWeight,winChance,computeLeague,formWord,formBand,legacySeedToRating,pairings,replay,rowOf,allRows,overallFor,cardHighlights,ovrToRating,fourPlayers,currentPairing,K:typeof K!=='undefined'?K:null,nightRoster,nightOpen,nightStatusOf,setNights:(list,me)=>{NIGHTS.list=list;NIGHTS.me=me;nightsRefresh()},setAdmin:(on,uid)=>{FB.admin=!!on;FB.user=on?{uid:uid||'admin1'}:null;renderProfile()},setFriends:l=>{FRIENDS.length=0;l.forEach(f=>FRIENDS.push(f))},runUpkeep:()=>nameUpkeep(),peerAggWith:items=>{PR.items=items;return peerAgg()},alias:()=>ALIAS,verifyAll:()=>{history.forEach(h=>{if(!h.ver)h.ver={by:'test',at:Date.now()}});saveH()},confFrom:(id,uid,name,ok)=>confReceived({type:'conf',id,ok},{from:uid,fromName:name}),rateNight:(ids,c)=>openRateNight(history.filter(h=>ids.includes(h.id)),c?{confirm:history.find(h=>h.id===c)}:{}),markRatedAll:()=>{const s=new Set(history.map(unitOf));markRated([...s])},rated:()=>RATED,sendq:()=>SENDQ,setAdmq:l=>{ADMQ.list=l;FB.admin=true;renderHome()},awInit:()=>FB.user?store.get('db-aw-init-'+FB.user.uid):null,formData:p=>formData(p),friendCard:f=>friendOvrCard(f),accessReady:()=>accessReady(),setProfBits:(n,u)=>{PROF.name=n;PROF.username=u},heroOf:f=>friendHero(f),badgeCheck:(id,c)=>{const b=BADGES.find(x=>x[0]===id);return b?{has:!!b[4](c),prog:b[5]?b[5](c.p):null,desc:b[3]}:null},isBo3:r=>isBo3(r),awardsFor:(g,per)=>awardsFor(g,per),awPeriods:n=>awPeriods(n),awHome:()=>awHomeHtml(),awLeague:g=>awLeagueHtml(g),awMine:()=>awMineHtml(),pastedNames:t=>pastedNames(t),matchPasted:s=>matchPasted(s),rankMoves:()=>rankMoves(computeLeague()),bests:()=>{const L=computeLeague(),p=L.find(x=>x.key===meKey());return profBestsHtml(p,meKey())},kingRound:ev=>kingRound(ev),kingCrowns:ev=>kingCrowns(ev),heroHtml:()=>heroHtml(),weekHtml:()=>weekHtml(),compareHtml:f=>compareHtml(f),authKnown:v=>{FB.authKnown=v},admCounts:()=>admCounts(),ginvIn:(e,it)=>ginvReceived(e,it),setGroups:l=>{GRP.list=l},ginviteBtn:f=>ginviteBtnHtml(f),friendsList:()=>{const d=document.createElement('div');d.innerHTML=friendsHtml();return d.innerHTML},syncAdminNav:()=>syncAdminNav(),rowFor:h=>{const r=rowOf(h);return{dur:r.dur,date:r.date}},secretsFor:k=>secretFor(k),avatarOf:n=>avatar('pav',n,''),pendingFr:()=>store.get('db-pending-fr'),userOnly:uid=>{FB.user={uid};FB.admin=false;try{renderHome()}catch(e){}},newcomer:()=>{FB.user={uid:'new1',email:'new@example.com'};FB.admin=false;PROF.username='';PROF.name='';GATE.state='no';gateShow('wait');openUsername()},loadAdmin:()=>loadAdminPlayers(),adminInv:()=>adminInvites($('admInvites'),[{uid:'n1',via:'live1'}]),renderAdminPl:l=>renderAdminPlayers(l),adminBar:()=>adminBarHtml(),setBugs:l=>{BUGS.list=l;renderBugs()},seasonTable:(f,t)=>seasonTable(f,t),seasonRange:(m,r)=>seasonRange(m,r),celebrate:(k)=>celebrateEx(k,'',{id:'bug',name:'Bug hunter',tier:'x',desc:'test'}),mergeProf:(a,b)=>mergeProf(a,b),setProf:o=>{Object.assign(PROF,o)},exSeen:()=>exAnnounced}},0)
+if(window.__PC_TEST__===true)setTimeout(()=>{window.__pcTest={perfScore,levelToRating,levelToOvr,ovrTier,matchWeight,winChance,computeLeague,formWord,formBand,legacySeedToRating,pairings,replay,rowOf,allRows,overallFor,cardHighlights,ovrToRating,fourPlayers,currentPairing,K:typeof K!=='undefined'?K:null,nightRoster,nightOpen,nightStatusOf,setNights:(list,me)=>{NIGHTS.list=list;NIGHTS.me=me;nightsRefresh()},setAdmin:(on,uid)=>{FB.admin=!!on;FB.user=on?{uid:uid||'admin1'}:null;renderProfile()},setFriends:l=>{FRIENDS.length=0;l.forEach(f=>FRIENDS.push(f))},runUpkeep:()=>nameUpkeep(),peerAggWith:items=>{PR.items=items;return peerAgg()},alias:()=>ALIAS,verifyAll:()=>{history.forEach(h=>{if(!h.ver)h.ver={by:'test',at:Date.now()}});saveH()},confFrom:(id,uid,name,ok)=>confReceived({type:'conf',id,ok},{from:uid,fromName:name}),rateNight:(ids,c)=>openRateNight(history.filter(h=>ids.includes(h.id)),c?{confirm:history.find(h=>h.id===c)}:{}),markRatedAll:()=>{const s=new Set(history.map(unitOf));markRated([...s])},rated:()=>RATED,sendq:()=>SENDQ,setAdmq:l=>{ADMQ.list=l;FB.admin=true;renderHome()},awInit:()=>FB.user?store.get('db-aw-init-'+FB.user.uid):null,formData:p=>formData(p),friendCard:f=>friendOvrCard(f),accessReady:()=>accessReady(),setProfBits:(n,u)=>{PROF.name=n;PROF.username=u},heroOf:f=>friendHero(f),badgeCheck:(id,c)=>{const b=BADGES.find(x=>x[0]===id);return b?{has:!!b[4](c),prog:b[5]?b[5](c.p):null,desc:b[3]}:null},isBo3:r=>isBo3(r),pocket:on=>pocketLock(on),pocketOn:()=>POCKET.on,awardsFor:(g,per)=>awardsFor(g,per),awPeriods:n=>awPeriods(n),awHome:()=>awHomeHtml(),awLeague:g=>awLeagueHtml(g),awMine:()=>awMineHtml(),pastedNames:t=>pastedNames(t),matchPasted:s=>matchPasted(s),rankMoves:()=>rankMoves(computeLeague()),bests:()=>{const L=computeLeague(),p=L.find(x=>x.key===meKey());return profBestsHtml(p,meKey())},kingRound:ev=>kingRound(ev),kingCrowns:ev=>kingCrowns(ev),heroHtml:()=>heroHtml(),weekHtml:()=>weekHtml(),compareHtml:f=>compareHtml(f),authKnown:v=>{FB.authKnown=v},admCounts:()=>admCounts(),ginvIn:(e,it)=>ginvReceived(e,it),setGroups:l=>{GRP.list=l},ginviteBtn:f=>ginviteBtnHtml(f),friendsList:()=>{const d=document.createElement('div');d.innerHTML=friendsHtml();return d.innerHTML},syncAdminNav:()=>syncAdminNav(),rowFor:h=>{const r=rowOf(h);return{dur:r.dur,date:r.date}},secretsFor:k=>secretFor(k),avatarOf:n=>avatar('pav',n,''),pendingFr:()=>store.get('db-pending-fr'),userOnly:uid=>{FB.user={uid};FB.admin=false;try{renderHome()}catch(e){}},newcomer:()=>{FB.user={uid:'new1',email:'new@example.com'};FB.admin=false;PROF.username='';PROF.name='';GATE.state='no';gateShow('wait');openUsername()},loadAdmin:()=>loadAdminPlayers(),adminInv:()=>adminInvites($('admInvites'),[{uid:'n1',via:'live1'}]),renderAdminPl:l=>renderAdminPlayers(l),adminBar:()=>adminBarHtml(),setBugs:l=>{BUGS.list=l;renderBugs()},seasonTable:(f,t)=>seasonTable(f,t),seasonRange:(m,r)=>seasonRange(m,r),celebrate:(k)=>celebrateEx(k,'',{id:'bug',name:'Bug hunter',tier:'x',desc:'test'}),mergeProf:(a,b)=>mergeProf(a,b),setProf:o=>{Object.assign(PROF,o)},exSeen:()=>exAnnounced}},0)
 
 /* ================= shared match nights: everyone invited sees the same live list and ticks themselves in ================= */
 const NIGHTS={list:[],unsub:null,me:null,seen:store.get('db-nseen')||{},hidden:store.get('db-nhide')||{},tok:store.get('db-ntok')||{},push:null};
@@ -3977,6 +3977,18 @@ function awMineHtml(){const me=meKey();if(!me)return'';const mine=[];awAll().for
 function tellWatchRec(){try{nativeEvent=rec?'recording':'stopped';if(typeof pushNative==='function')pushNative()}catch(e){}}
 {const _startRec=startRec;startRec=async function(){const r=await _startRec.apply(this,arguments);tellWatchRec();setTimeout(tellWatchRec,800);return r};
  const _stopRec=stopRec;stopRec=function(){const r=_stopRec.apply(this,arguments);setTimeout(tellWatchRec,300);setTimeout(tellWatchRec,1500);return r}}
+
+
+/* ================= pocket lock: the phone's scoring screen ignores touches; the watch keeps scoring ================= */
+function pocketLock(on){POCKET.on=!!on;const o=$('pocketLock');if(o)o.classList.toggle('on',POCKET.on);const b=$('lockBtn');if(b)b.setAttribute('aria-pressed',POCKET.on?'true':'false');
+  try{nativeEvent=POCKET.on?'locked':'unlocked';if(typeof pushNative==='function')pushNative()}catch(e){}}
+document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('#lockBtn'))pocketLock(true)});
+// hold to unlock: about a second, so a pocket can't do it
+(function(){let t=null;const go=e=>{const b=e.target.closest&&e.target.closest('#unlockHold');if(!b)return;e.preventDefault();b.classList.add('holding');t=setTimeout(()=>{b.classList.remove('holding');pocketLock(false);try{navigator.vibrate&&navigator.vibrate(20)}catch(err){}},1000)};
+  const stop=()=>{clearTimeout(t);const b=$('unlockHold');if(b)b.classList.remove('holding')};
+  document.addEventListener('pointerdown',go);['pointerup','pointercancel','pointerleave'].forEach(ev=>document.addEventListener(ev,stop,true))})();
+// leaving the court screen always unlocks, so nobody gets stuck
+const _showHomeP=showHome;showHome=function(){if(POCKET.on)pocketLock(false);return _showHomeP.apply(this,arguments)};
 
 /* ================= bug reports ================= */
 const appVersion=()=>((document.querySelector('meta[name="app-version"]')||{}).content||'');
@@ -4929,7 +4941,7 @@ $('peCancel').onclick=()=>hideSheet();
 
 
 /* ================= home logo and updates ================= */
-const APP_VERSION='2.43';
+const APP_VERSION='2.44';
 document.querySelectorAll('.vlogo').forEach(i=>i.src=$('logo').src);
 function goHome(e){
   const el=e&&e.currentTarget;if(el){el.classList.remove('tap');void el.offsetWidth;el.classList.add('tap')}
@@ -5708,7 +5720,7 @@ async function persistHistory(){
 })();
 
 /* ================= scoring lock: press and hold to score ================= */
-const lockOn=()=>false;
+const POCKET={on:false};const lockOn=()=>false;
 ['halfUs','halfThem'].forEach((id,i)=>{
   const el=$(id);let t=null,fired=false;
   el.addEventListener('pointerdown',()=>{if(!lockOn()||S.done!==null)return;fired=false;el.classList.add('holding');t=setTimeout(()=>{fired=true;el.classList.remove('holding');point(i)},420)});
@@ -5747,7 +5759,7 @@ const NATIVE=window.PadelCredNative||null;
 let nativeEvent='point';
 function watchState(){
   const L=labels(S,M.cfg),g=S.sets[S.sets.length-1].g,side=t=>({name:nm(t),points:L[t],games:g[t],sets:S.setsWon[t],serving:S.server===t,server:S.server===t?serverName(S,M.cfg):''});
-  return{v:1,us:side(0),them:side(1),status:pressNow||ruleNow||'',changeEnds:!!changeEndsNow,done:S.done!==null,winner:S.done!==null?nm(S.done):'',score:setLine(S),event:nativeEvent,recording:!!rec,locked:lockOn(),court:M.cfg.court?{minsLeft:courtLeft()===null?null:Math.max(0,Math.ceil(courtLeft()/6e4)),canSwap:!!fourPlayers(M.cfg)}:null,ts:Date.now()};
+  return{v:1,us:side(0),them:side(1),status:pressNow||ruleNow||'',changeEnds:!!changeEndsNow,done:S.done!==null,winner:S.done!==null?nm(S.done):'',score:setLine(S),event:nativeEvent,recording:!!rec,locked:lockOn()||POCKET.on,court:M.cfg.court?{minsLeft:courtLeft()===null?null:Math.max(0,Math.ceil(courtLeft()/6e4)),canSwap:!!fourPlayers(M.cfg)}:null,ts:Date.now()};
 }
 function pushNative(){if(!NATIVE||!NATIVE.onState)return;try{NATIVE.onState(JSON.stringify(watchState()))}catch(e){}nativeEvent='update'}
 // the commands the native side can call, for example from a watch tap
