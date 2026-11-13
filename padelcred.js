@@ -736,13 +736,13 @@ $('camUs').onclick=()=>point(0);
 $('camThem').onclick=()=>point(1);
 $('camUndo').onclick=undo;
 
-/* --- Clip that: two staggered rolling recorders, so the last 15 to 30 seconds are always ready to keep --- */
+/* --- Clip that: two staggered rolling recorders, so the last 20 to 40 seconds are always ready to keep --- */
 let rolling=[],clipsMade=0,clipWrites=Promise.resolve();
 const memClips=[];
 function startRolling(stream,mime,bps){
   stopRolling(true);
   if(camPrefs.clips===false)return;
-  [0,15000].forEach(off=>{const slot={rec:null,start:0,chunks:[],keep:false,dead:false,timer:null,label:''};rolling.push(slot);slot.timer=setTimeout(()=>cycle(slot,stream,mime,bps),off)});
+  [0,20000].forEach(off=>{const slot={rec:null,start:0,chunks:[],keep:false,dead:false,timer:null,label:''};rolling.push(slot);slot.timer=setTimeout(()=>cycle(slot,stream,mime,bps),off)});
 }
 function cycle(slot,stream,mime,bps){
   if(slot.dead||!rec)return;
@@ -760,21 +760,23 @@ function cycle(slot,stream,mime,bps){
     if(!slot.dead&&rec)cycle(slot,stream,mime,bps);
   };
   try{r.start(1000)}catch(e){return}
-  slot.timer=setTimeout(()=>{if(r.state!=='inactive')r.stop()},30000);
+  slot.timer=setTimeout(()=>{if(r.state!=='inactive')r.stop()},40000);
 }
 function stopRolling(discard){rolling.forEach(s=>{s.dead=true;clearTimeout(s.timer);if(discard)s.keep=false;try{if(s.rec&&s.rec.state!=='inactive')s.rec.stop()}catch(e){}});rolling=[]}
 function clipThat(){
-  if(!rec){toast('Start recording, then tap Clip that after a great point.');return}
+  const tell=ev=>{nativeEvent=ev;try{if(typeof pushNative==='function')pushNative()}catch(e){}};
+  if(!rec){toast('Start recording, then tap Clip that after a great point.');tell('noclip');return false}
   const live=rolling.filter(s=>s.rec&&s.rec.state==='recording'&&!s.keep);
-  if(!live.length){toast('Clips are ready a few seconds in. Try again in a moment.');return}
+  if(!live.length){toast('Clips are ready a few seconds in. Try again in a moment.');tell('noclip');return false}
   const pick=live.sort((a,b)=>a.start-b.start)[0];
   clearTimeout(pick.timer);pick.keep=true;
   const L=labels(S,M.cfg),g=S.sets.map(s=>s.g[0]+'–'+s.g[1]).join(' ');
-  pick.label='at '+g+', '+L[0]+'–'+L[1];
+  const moment=String(typeof pressNow!=='undefined'&&pressNow||'').trim();pick.label=(moment?moment+' · ':'')+'at '+g+', '+L[0]+'–'+L[1];
   pick.rec.stop();clipsMade++;
   $('camClip').textContent='Clipped ('+clipsMade+')';$('camClip').classList.add('clipped');
   clearTimeout(clipThat.t);clipThat.t=setTimeout(()=>{$('camClip').textContent='Clip that';$('camClip').classList.remove('clipped')},1600);
   try{navigator.vibrate&&navigator.vibrate([30,40,30])}catch(e){}
+  tell('clipped');return true
 }
 $('camClip').onclick=clipThat;
 if($('camMark'))$('camMark').onclick=()=>addMark('mark');
@@ -3970,6 +3972,12 @@ function awLeagueHtml(group){const sets=awAll().filter(x=>(x.group||'')===(group
 function awMineHtml(){const me=meKey();if(!me)return'';const mine=[];awAll().forEach(x=>x.awards.forEach(a=>{if(a.key===me||(a.keys||[]).includes(me))mine.push({a,x})}));if(!mine.length)return'';
   return'<p class="sh">Trophy cabinet <span class="muted">'+mine.length+'</span></p><div class="awcab">'+mine.slice(0,12).map(m=>'<div class="awtro"><span class="awic">'+awIcon(m.a.award)+'</span><span><b>'+esc(m.a.award)+'</b><em>'+esc(m.x.per.label)+(m.x.group?' · '+esc(m.x.group):'')+'</em></span></div>').join('')+'</div>'}
 
+
+/* ================= the watch hears straight away when filming starts or stops, so its Clip button appears and goes ================= */
+function tellWatchRec(){try{nativeEvent=rec?'recording':'stopped';if(typeof pushNative==='function')pushNative()}catch(e){}}
+{const _startRec=startRec;startRec=async function(){const r=await _startRec.apply(this,arguments);tellWatchRec();setTimeout(tellWatchRec,800);return r};
+ const _stopRec=stopRec;stopRec=function(){const r=_stopRec.apply(this,arguments);setTimeout(tellWatchRec,300);setTimeout(tellWatchRec,1500);return r}}
+
 /* ================= bug reports ================= */
 const appVersion=()=>((document.querySelector('meta[name="app-version"]')||{}).content||'');
 const bugDevice=()=>{const ua=navigator.userAgent;const os=/iPhone|iPad/.test(ua)?'iPhone':/Android/.test(ua)?'Android':/Mac/.test(ua)?'Mac':/Windows/.test(ua)?'Windows':'Other';const br=/SamsungBrowser/.test(ua)?'Samsung Internet':/CriOS|Chrome/.test(ua)?'Chrome':/Safari/.test(ua)?'Safari':/Firefox/.test(ua)?'Firefox':'Browser';return os+', '+br+(window.matchMedia('(display-mode: standalone)').matches?', home screen app':'')+(window.PadelCredNative?', Android app':'')+', '+innerWidth+'×'+innerHeight};
@@ -4921,7 +4929,7 @@ $('peCancel').onclick=()=>hideSheet();
 
 
 /* ================= home logo and updates ================= */
-const APP_VERSION='2.41';
+const APP_VERSION='2.43';
 document.querySelectorAll('.vlogo').forEach(i=>i.src=$('logo').src);
 function goHome(e){
   const el=e&&e.currentTarget;if(el){el.classList.remove('tap');void el.offsetWidth;el.classList.add('tap')}
@@ -5748,7 +5756,7 @@ window.padelcred={
   point(team){if(S.done!==null)return false;nativeEvent='point';point(team===1||team==='them'?1:0);return true},
   undo(){nativeEvent='undo';undo();return true},
   swap(){return courtSwap(false)},
-  clip(){if(!rec)return false;clipThat();return true},
+  clip(){return clipThat()},
   state(){return JSON.stringify(watchState())}
 };
 if(NATIVE){
