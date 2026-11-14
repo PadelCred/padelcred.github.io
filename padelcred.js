@@ -2132,6 +2132,7 @@ const SECRET_ONE=[
   ['x_three','Three-peat','Played three days in a row'],
   ['x_ride','Ride or die','Played 25 matches with the same partner']
 ];
+SEASONAL.length=0;
 const SECRET_TOTAL=SEASONAL.length+SECRET_ONE.length;
 function secretFor(key){
   const out={};if(!key)return out;
@@ -3209,7 +3210,6 @@ function adminAchievementsHtml(){
   const tierName={1:'Bronze',2:'Silver',3:'Gold',4:'Elite'};
   return sec('Exclusive',[['Founding member','One of the first 50 accounts. Numbered.'],['Founding league','Started one of the first '+FGROUP_LIMIT+' leagues. Numbered.'],['League starter','Create a league that reaches 8 members.'],['Recruiter','Connect with 5 friends on PadelCred.'],['Bug hunter','Awarded by you for a real bug report. Can be given more than once.']])+
     sec('Secret',SECRET_ONE.map(s=>[s[1],s[2]+'.']))+
-    sec('Seasonal (every year)',SEASONAL.map(s=>[s[1],s[4]+'.']))+
     sec('Match achievements',BADGES.map(b=>[b[1]+(tierName[b[2]]?' · '+tierName[b[2]]:''),b[3]+'.']));
 }
 document.addEventListener('toggle',e=>{const d=e.target;if(d&&d.classList&&d.classList.contains('adach')&&d.open){const box=$('adAchList');if(box&&!box.innerHTML)box.innerHTML=adminAchievementsHtml()}},true);
@@ -3311,7 +3311,7 @@ function hrFill(){const st=$('hrStart'),ti=$('hrTiers');if(!st||!ti)return;
 
 
 /* ================= test window: only when opened with ?selftest=1, for the promise tests. Players never see it ================= */
-if(window.__PC_TEST__===true)setTimeout(()=>{window.__pcTest={perfScore,levelToRating,levelToOvr,ovrTier,matchWeight,winChance,computeLeague,formWord,formBand,legacySeedToRating,pairings,replay,rowOf,allRows,overallFor,cardHighlights,ovrToRating,fourPlayers,currentPairing,K:typeof K!=='undefined'?K:null,nightRoster,nightOpen,nightStatusOf,setNights:(list,me)=>{NIGHTS.list=list;NIGHTS.me=me;nightsRefresh()},setAdmin:(on,uid)=>{FB.admin=!!on;FB.user=on?{uid:uid||'admin1'}:null;renderProfile()},setFriends:l=>{FRIENDS.length=0;l.forEach(f=>FRIENDS.push(f))},runUpkeep:()=>nameUpkeep(),peerAggWith:items=>{PR.items=items;return peerAgg()},alias:()=>ALIAS,verifyAll:()=>{history.forEach(h=>{if(!h.ver)h.ver={by:'test',at:Date.now()}});saveH()},confFrom:(id,uid,name,ok)=>confReceived({type:'conf',id,ok},{from:uid,fromName:name}),rateNight:(ids,c)=>openRateNight(history.filter(h=>ids.includes(h.id)),c?{confirm:history.find(h=>h.id===c)}:{}),markRatedAll:()=>{const s=new Set(history.map(unitOf));markRated([...s])},rated:()=>RATED,sendq:()=>SENDQ,setAdmq:l=>{ADMQ.list=l;FB.admin=true;renderHome()},awInit:()=>FB.user?store.get('db-aw-init-'+FB.user.uid):null,formData:p=>formData(p),friendCard:f=>friendOvrCard(f),accessReady:()=>accessReady(),setProfBits:(n,u)=>{PROF.name=n;PROF.username=u},heroOf:f=>friendHero(f),badgeCheck:(id,c)=>{const b=BADGES.find(x=>x[0]===id);return b?{has:!!b[4](c),prog:b[5]?b[5](c.p):null,desc:b[3]}:null},isBo3:r=>isBo3(r),pocket:on=>pocketLock(on),pocketOn:()=>POCKET.on,awardsFor:(g,per)=>awardsFor(g,per),awPeriods:n=>awPeriods(n),awHome:()=>awHomeHtml(),awLeague:g=>awLeagueHtml(g),awMine:()=>awMineHtml(),pastedNames:t=>pastedNames(t),matchPasted:s=>matchPasted(s),rankMoves:()=>rankMoves(computeLeague()),bests:()=>{const L=computeLeague(),p=L.find(x=>x.key===meKey());return profBestsHtml(p,meKey())},kingRound:ev=>kingRound(ev),kingCrowns:ev=>kingCrowns(ev),heroHtml:()=>heroHtml(),weekHtml:()=>weekHtml(),compareHtml:f=>compareHtml(f),authKnown:v=>{FB.authKnown=v},admCounts:()=>admCounts(),ginvIn:(e,it)=>ginvReceived(e,it),setGroups:l=>{GRP.list=l},ginviteBtn:f=>ginviteBtnHtml(f),friendsList:()=>{const d=document.createElement('div');d.innerHTML=friendsHtml();return d.innerHTML},syncAdminNav:()=>syncAdminNav(),rowFor:h=>{const r=rowOf(h);return{dur:r.dur,date:r.date}},secretsFor:k=>secretFor(k),avatarOf:n=>avatar('pav',n,''),pendingFr:()=>store.get('db-pending-fr'),userOnly:uid=>{FB.user={uid};FB.admin=false;try{renderHome()}catch(e){}},newcomer:()=>{FB.user={uid:'new1',email:'new@example.com'};FB.admin=false;PROF.username='';PROF.name='';GATE.state='no';gateShow('wait');openUsername()},loadAdmin:()=>loadAdminPlayers(),adminInv:()=>adminInvites($('admInvites'),[{uid:'n1',via:'live1'}]),renderAdminPl:l=>renderAdminPlayers(l),adminBar:()=>adminBarHtml(),setBugs:l=>{BUGS.list=l;renderBugs()},seasonTable:(f,t)=>seasonTable(f,t),seasonRange:(m,r)=>seasonRange(m,r),celebrate:(k)=>celebrateEx(k,'',{id:'bug',name:'Bug hunter',tier:'x',desc:'test'}),mergeProf:(a,b)=>mergeProf(a,b),setProf:o=>{Object.assign(PROF,o)},exSeen:()=>exAnnounced}},0)
+if(window.__PC_TEST__===true)setTimeout(()=>{window.__pcTest={perfScore,levelToRating,levelToOvr,ovrTier,matchWeight,winChance,computeLeague,formWord,formBand,legacySeedToRating,pairings,replay,rowOf,allRows,overallFor,cardHighlights,ovrToRating,fourPlayers,currentPairing,K:typeof K!=='undefined'?K:null,nightRoster,nightOpen,nightStatusOf,setNights:(list,me)=>{NIGHTS.list=list;NIGHTS.me=me;nightsRefresh()},setAdmin:(on,uid)=>{FB.admin=!!on;FB.user=on?{uid:uid||'admin1'}:null;renderProfile()},setFriends:l=>{FRIENDS.length=0;l.forEach(f=>FRIENDS.push(f))},runUpkeep:()=>nameUpkeep(),peerAggWith:items=>{PR.items=items;return peerAgg()},alias:()=>ALIAS,verifyAll:()=>{history.forEach(h=>{if(!h.ver)h.ver={by:'test',at:Date.now()}});saveH()},confFrom:(id,uid,name,ok)=>confReceived({type:'conf',id,ok},{from:uid,fromName:name}),rateNight:(ids,c)=>openRateNight(history.filter(h=>ids.includes(h.id)),c?{confirm:history.find(h=>h.id===c)}:{}),markRatedAll:()=>{const s=new Set(history.map(unitOf));markRated([...s])},rated:()=>RATED,sendq:()=>SENDQ,setAdmq:l=>{ADMQ.list=l;FB.admin=true;renderHome()},awInit:()=>FB.user?store.get('db-aw-init-'+FB.user.uid):null,formData:p=>formData(p),friendCard:f=>friendOvrCard(f),accessReady:()=>accessReady(),setProfBits:(n,u)=>{PROF.name=n;PROF.username=u},heroOf:f=>friendHero(f),badgeCheck:(id,c)=>{const b=BADGES.find(x=>x[0]===id);return b?{has:!!b[4](c),prog:b[5]?b[5](c.p):null,desc:b[3]}:null},isBo3:r=>isBo3(r),streak:k=>playStreak(k),shareText:id=>shareText(history.find(x=>x.id===id)),awRace:g=>awRaceHtml(g),pocket:on=>pocketLock(on),pocketOn:()=>POCKET.on,awardsFor:(g,per)=>awardsFor(g,per),awPeriods:n=>awPeriods(n),awHome:()=>awHomeHtml(),awLeague:g=>awLeagueHtml(g),awMine:()=>awMineHtml(),pastedNames:t=>pastedNames(t),matchPasted:s=>matchPasted(s),rankMoves:()=>rankMoves(computeLeague()),bests:()=>{const L=computeLeague(),p=L.find(x=>x.key===meKey());return profBestsHtml(p,meKey())},kingRound:ev=>kingRound(ev),kingCrowns:ev=>kingCrowns(ev),heroHtml:()=>heroHtml(),weekHtml:()=>weekHtml(),compareHtml:f=>compareHtml(f),authKnown:v=>{FB.authKnown=v},admCounts:()=>admCounts(),ginvIn:(e,it)=>ginvReceived(e,it),setGroups:l=>{GRP.list=l},ginviteBtn:f=>ginviteBtnHtml(f),friendsList:()=>{const d=document.createElement('div');d.innerHTML=friendsHtml();return d.innerHTML},syncAdminNav:()=>syncAdminNav(),rowFor:h=>{const r=rowOf(h);return{dur:r.dur,date:r.date}},secretsFor:k=>secretFor(k),avatarOf:n=>avatar('pav',n,''),pendingFr:()=>store.get('db-pending-fr'),userOnly:uid=>{FB.user={uid};FB.admin=false;try{renderHome()}catch(e){}},newcomer:()=>{FB.user={uid:'new1',email:'new@example.com'};FB.admin=false;PROF.username='';PROF.name='';GATE.state='no';gateShow('wait');openUsername()},loadAdmin:()=>loadAdminPlayers(),adminInv:()=>adminInvites($('admInvites'),[{uid:'n1',via:'live1'}]),renderAdminPl:l=>renderAdminPlayers(l),adminBar:()=>adminBarHtml(),setBugs:l=>{BUGS.list=l;renderBugs()},seasonTable:(f,t)=>seasonTable(f,t),seasonRange:(m,r)=>seasonRange(m,r),celebrate:(k)=>celebrateEx(k,'',{id:'bug',name:'Bug hunter',tier:'x',desc:'test'}),mergeProf:(a,b)=>mergeProf(a,b),setProf:o=>{Object.assign(PROF,o)},exSeen:()=>exAnnounced}},0)
 
 /* ================= shared match nights: everyone invited sees the same live list and ticks themselves in ================= */
 const NIGHTS={list:[],unsub:null,me:null,seen:store.get('db-nseen')||{},hidden:store.get('db-nhide')||{},tok:store.get('db-ntok')||{},push:null};
@@ -3881,13 +3881,6 @@ function compareHtml(f){const me=meKey(),L=computeLeague(),p=L.find(x=>x.key===m
 document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-compare]');if(!b)return;const f=FRIENDS.find(x=>x.key===b.dataset.compare)||(typeof PSHEET!=='undefined'&&PSHEET.f);if(!f)return;
   const box=$('cmpBox');if(!box)return;const open=box.classList.toggle('on');box.innerHTML=open?compareHtml(f):'';b.textContent=open?'Hide comparison':'Compare with you'});
 
-/* ================= 4. Share card styles ================= */
-const CARD_STYLES=[['Mint',0],['Gold',-105],['Ice',45],['Coral',-150]];let cardBase=null,cardBaseFor='';
-document.addEventListener('click',async e=>{const b=e.target.closest&&e.target.closest('[data-cstyle]');if(!b)return;if(!cardBase||cardBaseFor!==cardName){cardBase=cardBlob;cardBaseFor=cardName}
-  const deg=+b.dataset.cstyle;document.querySelectorAll('[data-cstyle]').forEach(x=>x.setAttribute('aria-pressed',x===b?'true':'false'));
-  if(!deg){cardBlob=cardBase}else{const img=new Image();img.src=URL.createObjectURL(cardBase);await img.decode();const c=document.createElement('canvas');c.width=img.width;c.height=img.height;const x=c.getContext('2d');x.filter='hue-rotate('+deg+'deg)';x.drawImage(img,0,0);cardBlob=await new Promise(r=>c.toBlob(r,'image/png'))}
-  const im=$('cardImg');im.dataset.styled='1';if(im.src)URL.revokeObjectURL(im.src);im.src=URL.createObjectURL(cardBlob)});
-document.addEventListener('load',e=>{if(e.target&&e.target.id==='cardImg'){if(e.target.dataset.styled==='1'){e.target.dataset.styled='';return}cardBase=null;document.querySelectorAll('[data-cstyle]').forEach((x,i)=>x.setAttribute('aria-pressed',i===0?'true':'false'))}},true);
 /* ================= 6. King of the Court: winners move up a court, losers move down ================= */
 const amTypeName=t=>t==='americano'?'Americano':t==='king'?'King of the Court':'Mexicano';
 function kingRound(ev){const C=ev.courts;
@@ -3932,7 +3925,8 @@ function profBestsHtml(p,key){if(!p||!(p.p>=1))return'';const L=computeLeague(),
     if(r.winner===side){const g=(r.gw||[0,0]),m=g[side]-g[1-side];if(!big||m>big.m)big={m,score:r.score||'',d:r.date}}
     if(r.dur&&r.dur>longest)longest=r.dur;const dk=new Date(r.date).toDateString();days[dk]=(days[dk]||0)+1});
   const most=Math.max(0,...Object.values(days)),tile=(l,v,x)=>'<div class="pbtile"><span>'+l+'</span><b>'+v+'</b>'+(x?'<em>'+x+'</em>':'')+'</div>';
-  return'<p class="sh">Personal bests</p><div class="pbgrid">'+tile('Best Overall',ovrPeak(p))+tile('Longest win streak',p.bestStreak||0)+(big?tile('Biggest win',esc(big.score)||('+'+big.m+' games'),dShort(big.d)):'')+tile('Most in a day',most+' match'+(most===1?'':'es'))+(longest?tile('Longest match',Math.round(longest/60000)+' min'):'')+'</div>'+
+  const ps=playStreak(key);
+  return'<div class="pbgrid">'+tile('Playing streak',ps.now+' week'+(ps.now===1?'':'s'),ps.best>ps.now?'Best: '+ps.best+' weeks':'')+tile('Longest win streak',p.bestStreak||0)+(big?tile('Biggest win',esc(big.score)||('+'+big.m+' games'),dShort(big.d)):'')+tile('Most in a day',most+' match'+(most===1?'':'es'))+(longest?tile('Longest match',Math.round(longest/60000)+' min'):'')+'</div>'+
     '<div class="strong"><b>Against stronger pairs</b><span>'+(sn?sw+' won of '+sn+' <i>('+Math.round(sw/sn*100)+'%)</i>':'None yet')+'</span><em>Matches where your opponents\' Overall was clearly above yours. The truest test of your level.</em></div>'}
 
 /* ================= Awards: monthly, quarterly and yearly, per league, worked out from results ================= */
@@ -3958,19 +3952,34 @@ function awardsFor(group,per){const min=AW_MIN[per.kind],T=seasonTable(per.from,
 function awLeagues(){const gs=(GRP.list||[]).map(g=>g.name).filter(Boolean);return gs.length?gs:['']}
 const awMemo={};
 function awAll(){const sig=HV+'|'+new Date().toDateString()+'|'+awLeagues().join('|');if(awMemo.sig===sig)return awMemo.v;const res=[];awPeriods().forEach(per=>awLeagues().forEach(g=>{const a=awardsFor(g,per);if(a.length)res.push({per,group:g,awards:a})}));awMemo.sig=sig;awMemo.v=res;return res}
+
+// a trophy for each award: 24x24 line drawings, coloured by class
+const AW_TROPHY={
+ 'Player of the Month':'<svg viewBox="0 0 24 24"><path d="M7 4h10v5a5 5 0 0 1-10 0z"/><path d="M7 6H4.5a2.5 2.5 0 0 0 2.6 3.5M17 6h2.5a2.5 2.5 0 0 1-2.6 3.5"/><path d="M12 14v3M8.5 20h7M9.5 17h5v3h-5z"/><path d="M12 5.6l.8 1.5 1.6.3-1.2 1.1.3 1.6-1.5-.8-1.5.8.3-1.6-1.2-1.1 1.6-.3z"/></svg>',
+ 'Series Champion':'<svg viewBox="0 0 24 24"><path d="M12 3l7 2.5v5.5c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V5.5z"/><path d="M8.5 11.5c1.2.4 2 1.5 2.2 2.8M15.5 11.5c-1.2.4-2 1.5-2.2 2.8"/><path d="M12 7.2l.9 1.8 2 .3-1.4 1.4.3 2-1.8-.9-1.8.9.3-2-1.4-1.4 2-.3z"/></svg>',
+ 'Player of the Year':'<svg viewBox="0 0 24 24"><path d="M6.5 3.5l2.5 2 3-2.5 3 2.5 2.5-2v3H6.5z"/><path d="M7 7.5h10V10a5 5 0 0 1-10 0z"/><path d="M7 8.5H4.8a2.3 2.3 0 0 0 2.4 3.2M17 8.5h2.2a2.3 2.3 0 0 1-2.4 3.2"/><path d="M12 15v2.5M9 21h6M10 18h4v3h-4z"/></svg>',
+ 'Most Improved':'<svg viewBox="0 0 24 24"><circle cx="12" cy="14.5" r="6"/><path d="M9 3l3 5 3-5"/><path d="M9.5 16.5l2-2.2 1.6 1.4 2.2-2.6M13.6 13.1h1.7v1.7"/></svg>',
+ 'Ever-present':'<svg viewBox="0 0 24 24"><circle cx="12" cy="14.5" r="6"/><path d="M9 3l3 5 3-5"/><rect x="9" y="12" width="6" height="5" rx="1"/><path d="M9 13.8h6M10.5 11v1.6M13.5 11v1.6"/></svg>',
+ 'Duo of the Month':'<svg viewBox="0 0 24 24"><path d="M3.5 4.5h6v3.5a3 3 0 0 1-6 0zM14.5 4.5h6v3.5a3 3 0 0 1-6 0z"/><path d="M6.5 11v3M17.5 11v3M4.5 14h4v2.5h-4zM15.5 14h4v2.5h-4z"/><path d="M8.5 19.5c2.2 1.3 4.8 1.3 7 0"/></svg>'};
+const awTrophy=a=>'<span class="awtrophy t-'+(a==='Player of the Month'||a==='Series Champion'||a==='Player of the Year'?'gold':a==='Most Improved'?'mint':a==='Ever-present'?'ice':'coral')+'">'+(AW_TROPHY[a]||AW_TROPHY['Player of the Month'])+'</span>';
 const awLeagueName=g=>g||'Your friends';
 const awIcon=a=>a==='Player of the Month'||a==='Series Champion'||a==='Player of the Year'?'🏆':a==='Most Improved'?'📈':a==='Ever-present'?'🗓️':'🤝';
 // Home: last month's awards for the first week of the new month
 function awHomeHtml(){const d=new Date();if(d.getDate()>7)return'';const id='m'+new Date(d.getFullYear(),d.getMonth()-1,1).getFullYear()+'-'+new Date(d.getFullYear(),d.getMonth()-1,1).getMonth();if(store.get('db-aw-seen')===id)return'';
   const sets=awAll().filter(x=>x.per.id===id);if(!sets.length)return'';
-  return'<section class="cfcard awcard" id="awHome"><b class="cfttl">'+esc(sets[0].per.label.split(' ')[0])+'\'s awards</b>'+sets.slice(0,2).map(x=>(sets.length>1||x.group?'<p class="cfsub">'+esc(awLeagueName(x.group))+'</p>':'')+x.awards.map(a=>'<div class="awrow"><span class="awic">'+awIcon(a.award)+'</span><span><b>'+esc(a.award)+'</b><em>'+esc(a.name)+' · '+esc(a.detail)+'</em></span></div>').join('')).join('')+'<button class="linkbtn" data-awok="'+id+'">Got it</button></section>'}
+  return'<section class="cfcard awcard" id="awHome"><b class="cfttl">'+esc(sets[0].per.label.split(' ')[0])+'\'s awards</b>'+sets.slice(0,2).map(x=>(sets.length>1||x.group?'<p class="cfsub">'+esc(awLeagueName(x.group))+'</p>':'')+x.awards.map(a=>'<div class="awrow">'+awTrophy(a.award)+'<span><b>'+esc(a.award)+'</b><em>'+esc(a.name)+' · '+esc(a.detail)+'</em></span></div>').join('')).join('')+'<button class="linkbtn" data-awok="'+id+'">Got it</button></section>'}
 document.addEventListener('click',e=>{const b=e.target.closest&&e.target.closest('[data-awok]');if(!b)return;store.set('db-aw-seen',b.dataset.awok);const c=$('awHome');if(c)c.remove()});
+
+// this month so far: who's leading each award right now
+function awRaceHtml(group){const d=new Date(),from=new Date(d.getFullYear(),d.getMonth(),1).getTime(),per={kind:'month',from,to:Date.now()+1,label:'This month so far'};
+  const a=awardsFor(group,per),days=new Date(d.getFullYear(),d.getMonth()+1,0).getDate()-d.getDate();
+  return'<div class="awrace"><p class="awper">'+MON[d.getMonth()]+' so far · decided in '+days+' day'+(days===1?'':'s')+'</p>'+(a.length?a.map(x=>'<div class="awrow">'+awTrophy(x.award)+'<span><b>'+esc(x.award)+'</b><em>Leading: '+esc(x.name)+' · '+esc(x.detail)+'</em></span></div>').join(''):'<p class="help">Nobody has played '+AW_MIN.month+' matches in this league yet this month. Play '+AW_MIN.month+' to be in the running.</p>')+'</div>'}
 // League tab: the awards history for the league you're looking at
-function awLeagueHtml(group){const sets=awAll().filter(x=>(x.group||'')===(group||'')||(!group&&awLeagues()[0]===x.group)).slice(0,6);if(!sets.length)return'<details class="awhist"><summary>Awards</summary><p class="help">Awards appear at the end of each month, quarter and year. Players need '+AW_MIN.month+' matches in a month to be in the running.</p></details>';
-  return'<details class="awhist" open><summary>Awards</summary>'+sets.map(x=>'<p class="awper">'+esc(x.per.label)+'</p>'+x.awards.map(a=>'<div class="awrow"><span class="awic">'+awIcon(a.award)+'</span><span><b>'+esc(a.award)+'</b><em>'+esc(a.name)+' · '+esc(a.detail)+'</em></span></div>').join('')).join('')+'<p class="help">Players need '+AW_MIN.month+' matches in a month, '+AW_MIN.quarter+' in a Series or '+AW_MIN.year+' in a year to be in the running.</p></details>'}
+function awLeagueHtml(group){const g=group||awLeagues()[0]||'',sets=awAll().filter(x=>(x.group||'')===g).slice(0,6);if(!sets.length)return'<details class="awhist" open><summary>Awards</summary>'+awRaceHtml(g)+'<p class="help">Awards are decided at the end of each month, quarter and year. Players need '+AW_MIN.month+' matches in a month to be in the running.</p></details>';
+  return'<details class="awhist" open><summary>Awards</summary>'+awRaceHtml(g)+sets.map(x=>'<p class="awper">'+esc(x.per.label)+'</p>'+x.awards.map(a=>'<div class="awrow">'+awTrophy(a.award)+'<span><b>'+esc(a.award)+'</b><em>'+esc(a.name)+' · '+esc(a.detail)+'</em></span></div>').join('')).join('')+'<p class="help">Players need '+AW_MIN.month+' matches in a month, '+AW_MIN.quarter+' in a Series or '+AW_MIN.year+' in a year to be in the running.</p></details>'}
 // Profile: your trophy cabinet
 function awMineHtml(){const me=meKey();if(!me)return'';const mine=[];awAll().forEach(x=>x.awards.forEach(a=>{if(a.key===me||(a.keys||[]).includes(me))mine.push({a,x})}));if(!mine.length)return'';
-  return'<p class="sh">Trophy cabinet <span class="muted">'+mine.length+'</span></p><div class="awcab">'+mine.slice(0,12).map(m=>'<div class="awtro"><span class="awic">'+awIcon(m.a.award)+'</span><span><b>'+esc(m.a.award)+'</b><em>'+esc(m.x.per.label)+(m.x.group?' · '+esc(m.x.group):'')+'</em></span></div>').join('')+'</div>'}
+  return'<p class="sh">Trophy cabinet <span class="muted">'+mine.length+'</span></p><div class="awcab">'+mine.slice(0,12).map(m=>'<div class="awtro">'+awTrophy(m.a.award)+'<span><b>'+esc(m.a.award)+'</b><em>'+esc(m.x.per.label)+(m.x.group?' · '+esc(m.x.group):'')+'</em></span></div>').join('')+'</div>'}
 
 
 /* ================= the watch hears straight away when filming starts or stops, so its Clip button appears and goes ================= */
@@ -3989,6 +3998,40 @@ document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('#lo
   document.addEventListener('pointerdown',go);['pointerup','pointercancel','pointerleave'].forEach(ev=>document.addEventListener(ev,stop,true))})();
 // leaving the court screen always unlocks, so nobody gets stuck
 const _showHomeP=showHome;showHome=function(){if(POCKET.on)pocketLock(false);return _showHomeP.apply(this,arguments)};
+
+
+/* ================= the player picker list never lingers: it closes whenever the screen changes ================= */
+{const shut=()=>{try{if(typeof pickClose==='function'&&PICK&&PICK.box)pickClose()}catch(e){}};
+ const _hs=hideSheet;hideSheet=function(){shut();return _hs.apply(this,arguments)};
+ const _ss=showSheet;showSheet=function(){shut();return _ss.apply(this,arguments)};
+ const _sh=showHome;showHome=function(){shut();return _sh.apply(this,arguments)};
+ document.addEventListener('click',e=>{if(e.target.closest&&e.target.closest('[data-nav],#startBtn,#resultsBtn,#fnav button'))shut()},true)}
+
+/* ================= playing streak: weeks in a row with a counted match ================= */
+function weekKey(ts){const d=new Date(ts);d.setHours(0,0,0,0);d.setDate(d.getDate()-((d.getDay()+6)%7));return d.getTime()}
+function playStreak(key){key=key||meKey();const weeks=new Set();allRows().forEach(r=>{if([0,1].some(s=>members(r.cfg,s).some(n=>pkey(n)===key)))weeks.add(weekKey(r.date))});
+  if(!weeks.size)return{now:0,best:0};const W=7*864e5,sorted=[...weeks].sort((a,b)=>a-b);let best=1,run=1;for(let i=1;i<sorted.length;i++){run=Math.abs(sorted[i]-sorted[i-1]-W)<36e5*2?run+1:1;best=Math.max(best,run)}
+  let w=weekKey(Date.now());if(!weeks.has(w))w-=W;let now=0;while(weeks.has(w)){now++;w-=W;const d=new Date(w);w=weekKey(d.getTime()+12*36e5)}return{now,best}}
+/* ================= share a match or session to WhatsApp ================= */
+function shareText(h){const list=h.session?history.filter(x=>x.session===h.session&&x.cs!=='no').sort((a,b)=>(a.date||0)-(b.date||0)):[h];
+  const rows=list.map(rowOf),first=rows[0],d=new Date(first.date||Date.now()),venue=(first.cfg&&first.cfg.venue)||'';
+  const lines=rows.map(r=>{const w=r.winner===0?r.cfg.pa:r.winner===1?r.cfg.pb:null,l=r.winner===0?r.cfg.pb:r.winner===1?r.cfg.pa:null;return w?w.join(' & ')+' beat '+l.join(' & ')+' '+(r.score||''):(r.cfg.pa.join(' & ')+' v '+r.cfg.pb.join(' & ')+' '+(r.score||''))});
+  let top='';if(rows.length>1){const W={};rows.forEach(r=>{if(r.winner===null||r.winner===undefined)return;(r.winner===0?r.cfg.pa:r.cfg.pb).forEach(n=>W[n]=(W[n]||0)+1)});const best=Object.entries(W).sort((a,b)=>b[1]-a[1])[0];if(best)top='\nMost wins: '+best[0]+' ('+best[1]+' of '+rows.length+')'}
+  return'🎾 PadelCred · '+d.toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'short'})+(venue?' · '+venue:'')+'\n'+lines.join('\n')+top+'\n\nRecord your padel: '+location.origin+location.pathname}
+async function shareToWhatsApp(h){const text=shareText(h);try{if(navigator.share){await navigator.share({text});return}}catch(e){if(e&&e.name==='AbortError')return}
+  window.open('https://wa.me/?text='+encodeURIComponent(text),'_blank')}
+/* ================= same time next week: the planner with the same players, venue and time ================= */
+function planNextWeek(h){const r=rowOf(h),names=[...members(r.cfg,0),...members(r.cfg,1)].filter(Boolean),t=new Date((r.date||Date.now())+7*864e5);
+  hideSheet();setTimeout(()=>{openPlan();PLAN.cur.players=names.slice(0,8);while(PLAN.cur.players.length<4)PLAN.cur.players.push('');PLAN.cur.venue=(r.cfg&&r.cfg.venue)||PLAN.cur.venue;PLAN.cur.at=t.getTime();
+    try{renderPlan()}catch(e){}toast('Same players, same time, next week. Check the details, then send it.')},300)}
+document.addEventListener('click',e=>{const s=e.target.closest&&e.target.closest('[data-sharewa]');if(s){const h=history.find(x=>x.id===s.dataset.sharewa);if(h)shareToWhatsApp(h);return}
+  const n=e.target.closest&&e.target.closest('[data-plannext]');if(n){const h=history.find(x=>x.id===n.dataset.plannext);if(h)planNextWeek(h);return}
+  const rv=e.target.closest&&e.target.closest('[data-rivalof]');if(rv){hideSheet();setTimeout(()=>{try{rivalKey=meKey()}catch(err){}const b=document.querySelector('#fnav [data-nav=rivals]');b&&b.click()},250)}});
+{const _openRow=openRow;openRow=function(id){const r=_openRow.apply(this,arguments);try{const h=history.find(x=>x.id===id),b=$('rowBody');if(h&&b&&!b.querySelector('.rowshare'))b.insertAdjacentHTML('beforeend','<div class="rowshare"><button class="secondary nrbtn" data-sharewa="'+esc(id)+'">Share to WhatsApp</button><button class="secondary nrbtn" data-plannext="'+esc(id)+'">Same time next week</button></div>')}catch(e){}return r}}
+/* ================= Home: the playing streak under your Overall ================= */
+function streakHtml(){const s=playStreak();return s.now>=2?'<div class="hmstreak">🔥 <b>'+s.now+'-week</b> playing streak'+(s.best>s.now?' · best '+s.best:'')+'</div>':''}
+/* ================= results only ever count every match: the live-only option is gone ================= */
+try{if(store.get('db-live-only')===true){store.set('db-live-only',false);bumpHV()}}catch(e){}
 
 /* ================= bug reports ================= */
 const appVersion=()=>((document.querySelector('meta[name="app-version"]')||{}).content||'');
@@ -4843,9 +4886,9 @@ function renderProfile(){
   box.innerHTML='<div id="profAccount"></div>'+profSpotlightHtml(p,i,L,key)+(PROF.bio?'<p class="bio spotbio">'+esc(PROF.bio)+'</p>':'')+(socials?'<div class="socials">'+socials+'</div>':'')+
     ovrCard(overallFor(i>=0?p:{p:0,rating:seedFor(key),maxRating:seedFor(key)}),true)+trustLine(trustStats())+rankLineHtml()+'<button class="secondary sharecardbtn" id="profShare">Share my Courtfolio</button>'+skillCardHtml(skillAgg(),true,PROF.name)+formCardHtml(i>=0?formData(p):null,PROF.name,true)+formInsightsHtml(i>=0?p:null)+highlightsHtml(i>=0?p:null,true)+
     (yipSeason()?'<button class="hmyip" id="profYip" style="margin-top:14px"><span><em>Your '+yipYear()+' in padel</em><b>Your year, wrapped.</b></span><i>Play</i></button>':'')+
-    '<div class="frbox">'+friendsHtml()+'</div>'+
+    '<div class="frbox">'+friendsHtml()+'</div>'+(i>=0?awMineHtml():'')+
     badgesHtml(Object.assign({},p,{ex:myExclusive(),exMine:true}))+
-    (i>=0?profYearHtml(p,key):'')+(i>=0?profBestsHtml(p,key):'')+(i>=0?awMineHtml():'')+'<p class="sh">All-time stats</p>'+
+    (i>=0?profYearHtml(p,key):'')+'<p class="sh">All-time stats</p>'+(i>=0?profBestsHtml(p,key):'')+
     (i>=0?'<div class="cards c4">'+card(p.p,'Played',0)+card(Math.round(p.w/Math.max(1,p.p)*100)+'%','Win rate',1)+card('#'+(i+1),'of '+L.length+' in league',2)+card(perfScore(p.maxRating||p.rating),'Best Overall',3)+'</div>'+
       '<table class="stats plain"><tbody><tr><td>Record</td><td>'+p.w+' won, '+p.l+' lost</td></tr><tr><td>Form</td><td>'+formDots(p.form)+'</td></tr>'+
       (partner?'<tr><td>Best partner</td><td>'+esc(partner.name)+' ('+partner.w+' of '+partner.p+' won)</td></tr>':'')+
@@ -4941,7 +4984,7 @@ $('peCancel').onclick=()=>hideSheet();
 
 
 /* ================= home logo and updates ================= */
-const APP_VERSION='2.44';
+const APP_VERSION='2.46';
 document.querySelectorAll('.vlogo').forEach(i=>i.src=$('logo').src);
 function goHome(e){
   const el=e&&e.currentTarget;if(el){el.classList.remove('tap');void el.offsetWidth;el.classList.add('tap')}
@@ -5331,7 +5374,7 @@ document.addEventListener('keydown',e=>{if(!$('tourView').classList.contains('on
 $('dataRules').onclick=openRules;
 $('dataAccount').onclick=()=>{hideSheet();openAccount()};
 $('dataYip').onclick=()=>openYip(true);
-$('liveOnly').onchange=e=>{store.set('db-live-only',e.target.checked);bumpHV();if($('resultsView').classList.contains('on'))setTab(tab)};
+if($('liveOnly'))$('liveOnly').onchange=e=>{store.set('db-live-only',e.target.checked);bumpHV();if($('resultsView').classList.contains('on'))setTab(tab)};
 $('dataWelcome').onclick=()=>{hideSheet();$('resultsView').classList.remove('on');setTimeout(openWelcome,250)};
 $('dataTour').onclick=()=>{hideSheet();$('resultsView').classList.remove('on');setTimeout(startTour,200)};
 
@@ -6959,16 +7002,16 @@ function renderHome(){try{
   box.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{openResults();setTab(b.dataset.go)});
   $('hmRules').onclick=()=>openRules();
   if($('hmAmer'))$('hmAmer').onclick=()=>openAmer();
-  {const am=$('hmAmer');if(am&&!$('hmKo')){const cur=KO.list.find(x=>!x.done);am.insertAdjacentHTML('afterend','<button class="hmamer hmko" id="hmKo"><span class="hmamic"><svg viewBox="0 0 24 24"><path d="M7 4h10v4a5 5 0 0 1-10 0z"/><path d="M7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3M12 13v4M8.5 20h7M10 17h4"/></svg></span><span><b>'+(cur?'Carry on: '+esc(cur.name):'Knockout')+'</b><em>'+(cur?'Your bracket is in progress':'One bracket. Plenty at stake.')+'</em></span><i>'+(cur?'Open':'Set up')+'</i></button>');$('hmKo').onclick=()=>openKo(cur?cur.id:null)}}
-  {const kb=$('hmKo');if(kb&&!$('hmPlan')){const np=nextPlan();const inN=np?np.players.filter(Boolean).length:0,okN=np?(np.ok||[]).filter(Boolean).length:0;kb.insertAdjacentHTML('afterend','<button class="hmamer hmko" id="hmPlan"><span class="hmamic"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4M9 14.5l2 2 4-4"/></svg></span><span><b>'+(np?esc(planWhen(np)):'Plan a match night')+'</b><em>'+(np?esc((np.venue?np.venue+' · ':'')+okN+' of '+Math.max(4,inN)+' in'):'Invite your group')+'</em></span><i>'+(np?'Open':'Plan')+'</i></button>');$('hmPlan').onclick=()=>openPlan(np?np.id:null)}}
-  {const pb=$('hmPlan');if(pb&&!$('hmBox')){const cur=BOX.list.find(x=>x.fx.some(f=>f.sa==null));pb.insertAdjacentHTML('afterend','<button class="hmamer hmko" id="hmBox"><span class="hmamic"><svg viewBox="0 0 24 24"><rect x="3.5" y="4" width="17" height="16" rx="2.5"/><path d="M3.5 9.5h17M3.5 14.5h17M9.5 4v16"/></svg></span><span><b>'+(cur?'Carry on: '+esc(cur.name):'Box league')+'</b><em>'+(cur?cur.fx.filter(f=>f.sa!=null).length+' of '+cur.fx.length+' matches played':'Everyone plays everyone')+'</em></span><i>'+(cur?'Open':'Set up')+'</i></button>');$('hmBox').onclick=()=>openBox(cur?cur.id:null)}}
+  {const am=$('hmAmer');if(am&&!$('hmKo')){const cur=KO.list.find(x=>!x.done);void 0}}
+  {const kb=$('hmAmer');if(kb&&!$('hmPlan')){const np=nextPlan();const inN=np?np.players.filter(Boolean).length:0,okN=np?(np.ok||[]).filter(Boolean).length:0;kb.insertAdjacentHTML('afterend','<button class="hmamer hmko" id="hmPlan"><span class="hmamic"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4M9 14.5l2 2 4-4"/></svg></span><span><b>'+(np?esc(planWhen(np)):'Plan a match night')+'</b><em>'+(np?esc((np.venue?np.venue+' · ':'')+okN+' of '+Math.max(4,inN)+' in'):'Invite your group')+'</em></span><i>'+(np?'Open':'Plan')+'</i></button>');$('hmPlan').onclick=()=>openPlan(np?np.id:null)}}
+  {const pb=$('hmPlan');if(pb&&!$('hmBox')){const cur=BOX.list.find(x=>x.fx.some(f=>f.sa==null));void 0}}
   {const a=$('hmAmer');if(a&&!a.closest('.hmorg')){const g=document.createElement('section');g.className='hmorg';g.innerHTML='<b class="hmorgttl">Organise</b><div class="hmorggrid"></div>';a.parentNode.insertBefore(g,a);const grid=g.querySelector('.hmorggrid');['hmPlan','hmAmer','hmKo','hmBox'].forEach(id=>{const el=$(id);if(el)grid.appendChild(el)})}}
   if($('hmYip'))$('hmYip').onclick=()=>openYip();
   if($('hmAcc'))$('hmAcc').onclick=()=>{authMode='up';openAccount()};
   $('hmTour').onclick=()=>startTour();
   syncHomeAvatar();
 
-}finally{(()=>{try{const st=$('hmStart');if(st&&!$('cfCard')){const html=confCardsHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}try{const st=$('hmStart');if(st&&!$('invCard')){const html=invCardsHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}try{const st=$('hmStart');if(st&&!$('nightCard')){const html=nightCardsHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}try{const st=$('hmStart');if(st&&!$('awHome')){const html=awHomeHtml();if(html)st.insertAdjacentHTML('afterend',html)}}catch(e){}try{const st=$('hmStart');if(st&&!$('rateDue')){const html=rateDueHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}try{const st=$('hmStart');if(st&&!$('ginvCard')){const html=ginvHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}try{const hb=$('homeBody');if(hb&&!hb.querySelector('.hmhero')){const html=heroHtml()+weekHtml(),hd=hb.querySelector('.hmhead');if(html){if(hd)hd.insertAdjacentHTML('afterend',html);else hb.insertAdjacentHTML('afterbegin',html)}}}catch(e){}try{const st=$('hmStart');if(st&&!$('admWait')){const html=adminWaitHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}})()}}
+}finally{(()=>{try{const st=$('hmStart');if(st&&!$('cfCard')){const html=confCardsHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}try{const st=$('hmStart');if(st&&!$('invCard')){const html=invCardsHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}try{const st=$('hmStart');if(st&&!$('nightCard')){const html=nightCardsHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}setTimeout(()=>{try{const hv=$('homeView'),hr=hv&&hv.querySelector('.hmhero');if(hr&&!hv.querySelector('.hmstreak')){const html=streakHtml();if(html)hr.insertAdjacentHTML('afterend',html)}}catch(e){}},0);try{const st=$('hmStart');if(st&&!$('awHome')){const html=awHomeHtml();if(html)st.insertAdjacentHTML('afterend',html)}}catch(e){}try{const st=$('hmStart');if(st&&!$('rateDue')){const html=rateDueHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}try{const st=$('hmStart');if(st&&!$('ginvCard')){const html=ginvHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}try{const hb=$('homeBody');if(hb&&!hb.querySelector('.hmhero')){const html=heroHtml()+weekHtml(),hd=hb.querySelector('.hmhead');if(html){if(hd)hd.insertAdjacentHTML('afterend',html);else hb.insertAdjacentHTML('afterbegin',html)}}}catch(e){}try{const st=$('hmStart');if(st&&!$('admWait')){const html=adminWaitHtml();if(html)st.insertAdjacentHTML('beforebegin',html)}}catch(e){}})()}}
 setTimeout(()=>{try{lockSeed()}catch(e){}},1500);
 function syncHomeAvatar(){const b=$('hmAv');if(!b)return;b.innerHTML=$('avBtn').innerHTML;b.className=$('avBtn').className;b.id='hmAv';b.setAttribute('data-n',$('avBtn').getAttribute('data-n')||'')}
 
@@ -6987,7 +7030,7 @@ function bindConnect(f){
   if($('frInvite'))$('frInvite').onclick=inviteFriend;
 }
 
-function friendHero(f){return friendHeroBase(f)+ginviteBtnHtml(f)+(meKey()&&f&&f.key?'<button class="secondary nrbtn cmpbtn" data-compare="'+esc(f.key)+'">Compare with you</button><div class="cmpbox" id="cmpBox"></div>':'')}
+function friendHero(f){return friendHeroBase(f)+ginviteBtnHtml(f)+(meKey()&&f&&f.key&&f.key!==meKey()?'<button class="secondary nrbtn" data-rivalof="'+esc(f.key)+'">See your rivalry</button>':'')}
 function friendHeroBase(f){const nm=f.name||f.username||'';
   return'<div class="profhero">'+(f.founder?'<span class="avwrap fnd" data-n="'+f.founder+'" title="Founding member #'+f.founder+'">'+avatar('pav big',nm,f.photo)+'</span>':avatar('pav big',nm,f.photo))+'<div class="phinfo"><h3>'+esc(f.name||(f.username?'@'+f.username:'New player'))+(f.name?'':'<small class="noname"> hasn\'t added their name yet</small>')+(f.country?' <span class="flag-e">'+flagOf(f.country)+'</span>':'')+'</h3>'+(f.username?'<span class="handle">@'+esc(f.username)+'</span>':'')+styleTag(f.style)+'<span class="frtag2">'+(friendOf(f.key)?(f.uid?'Friend on PadelCred':'Friend'):'On PadelCred')+'</span>'+(f.founder?'<span class="fndline">Founding member #'+f.founder+'</span>':'')+'</div></div>';
 }
@@ -7094,3 +7137,5 @@ if(!onboarded())setTimeout(openWelcome,300);
 else{freshStart();showHome()}
 
 })();
+
+try{$('donePlan').onclick=()=>{const h=history.find(x=>x.id===M.id);if(h)planNextWeek(h);else toast('Save the match first.')};$('doneShare').onclick=()=>{const h=history.find(x=>x.id===M.id);if(h)shareToWhatsApp(h);else toast('Save the match first.')}}catch(e){}

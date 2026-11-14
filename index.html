@@ -10,13 +10,13 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="PadelCred">
-<meta name="app-version" content="2.44">
+<meta name="app-version" content="2.46">
 <title>PadelCred</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="padelcred.css?v=2.44">
+<link rel="stylesheet" href="padelcred.css?v=2.46">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/png" sizes="64x64" href="favicon-64.png">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -76,6 +76,8 @@
         <button class="secondary" id="doneStats">Match stats and awards</button>
         <button class="secondary" id="doneSwap">Swap partners, next set</button>
         <button class="secondary" id="doneRematch">Rematch</button>
+        <button class="secondary" id="donePlan">Same time next week</button>
+        <button class="secondary" id="doneShare">Share to WhatsApp</button>
         <button class="secondary" id="doneNew">Start new match</button>
         <button class="secondary" id="doneHome">Home</button>
         <button class="linkbtn light" id="doneUndo">Undo last point</button>
@@ -315,7 +317,6 @@
 <section class="sheet" id="cardSheet" aria-label="Match card">
   <h3 id="cardTitle">Match card</h3>
   <p>Sized for Instagram and WhatsApp stories.</p>
-  <div class="seg quad cstyles" aria-label="Card style"><button data-cstyle="0" aria-pressed="true">Mint</button><button data-cstyle="-105" aria-pressed="false">Gold</button><button data-cstyle="45" aria-pressed="false">Ice</button><button data-cstyle="-150" aria-pressed="false">Coral</button></div>
   <img id="cardImg" class="cardimg" alt="Match card preview">
   <div class="btns">
     <button class="primary" id="cardShare">Share</button>
@@ -696,7 +697,6 @@
     <button class="secondary" id="dataCsv">Export results to a spreadsheet</button>
     <button class="secondary" id="dataEdit">Make a clip from a video</button>
     <div class="field themeseg"><span class="lbl">Appearance</span><div class="seg" id="segTheme"><button data-v="light">Light</button><button data-v="dark">Dark</button><button data-v="auto">Automatic</button></div><p class="help">Automatic matches your phone.</p></div>
-    <label class="livetoggle datatoggle"><input type="checkbox" id="liveOnly"> League: only count matches scored live (ignore results added by hand)</label>
     <label class="livetoggle"><input type="checkbox" id="rankOpt"> Show me in the PadelCred rankings</label>
     <button class="secondary" id="dataVenues">Tidy up venues from notes</button>
     <button class="secondary" data-howrate>How ratings work</button>
@@ -710,7 +710,7 @@
     <button class="secondary" id="termsBtn">Terms</button>
     <button class="secondary" id="dataUpdate">Check for updates</button>
   </div>
-  <p class="help" style="text-align:center;margin:14px 0 0">PadelCred v2.44<br><span class="copyr">© 2026 Raza Rebuilt. All rights reserved.</span></p>
+  <p class="help" style="text-align:center;margin:14px 0 0">PadelCred v2.46<br><span class="copyr">© 2026 Raza Rebuilt. All rights reserved.</span></p>
 </section>
 
 <section class="camview" id="camView" aria-label="Camera">
@@ -927,7 +927,7 @@
 <canvas class="fx" id="fx"></canvas>
 <div class="toast" id="toast" role="status"></div>
 
-<script src="padelcred.js?v=2.44"></script>
+<script src="padelcred.js?v=2.46"></script>
 <script>if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol))addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));</script>
 <div id="pocketLock" class="pocketlock" aria-live="polite"><div class="plbox"><b>Scoring locked</b><span>Score from your watch. Touches on this phone are ignored.</span><button id="unlockHold" class="plhold">Hold to unlock</button></div></div>
 </body>
