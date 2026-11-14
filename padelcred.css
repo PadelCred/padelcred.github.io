@@ -2035,3 +2035,25 @@ body.gated #usernameSheet{z-index:21!important}
 /* v2.46 */
 .hmstreak{margin:-4px 0 12px;padding:9px 14px;border-radius:14px;background:rgba(233,196,106,.1);border:1.5px solid rgba(233,196,106,.35);color:#F5F7FA;font-size:14px}.hmstreak b{color:#E9C46A}
 .rowshare{display:grid;gap:8px;margin-top:12px}
+/* v2.47: an exciting League and Rivals */
+.lgtop{margin:0 0 16px}
+.podium{display:grid;grid-template-columns:1fr 1.15fr 1fr;align-items:end;gap:8px;margin:6px 0 12px}
+.pod{display:grid;justify-items:center;gap:3px;text-align:center;min-width:0}.pod b{font:800 14.5px var(--heading);color:#F5F7FA;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pod em{font-style:normal;font:800 13px var(--heading);color:#9FB0C3}
+.podav{position:relative}.podav .pav{width:50px;height:50px;font-size:17px}.p1 .podav .pav{width:64px;height:64px;font-size:21px;box-shadow:0 0 0 3px #E9C46A}.p2 .podav .pav{box-shadow:0 0 0 3px #C9D3DD}.p3 .podav .pav{box-shadow:0 0 0 3px #D29A6B}
+.podcrown{position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-style:normal;font-size:20px}
+.podstep{display:grid;place-items:center;width:100%;border-radius:12px 12px 4px 4px;font:800 18px var(--heading);color:#0B1420}.p1 .podstep{height:58px;background:linear-gradient(180deg,#F2D484,#D9AE47)}.p2 .podstep{height:42px;background:linear-gradient(180deg,#E3E9EF,#AEB9C4)}.p3 .podstep{height:32px;background:linear-gradient(180deg,#E6B48C,#B9784C)}.pod.empty .podstep{opacity:.25}
+.lgspot{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:16px;background:linear-gradient(135deg,#142132,#0F1A28);border:2px solid #22314A}
+.lgpos{flex:none;display:grid;place-items:center;min-width:52px;height:52px;padding:0 6px;border-radius:14px;background:#0B1420;color:#6EE7B7;font:800 20px var(--heading)}.lgspx{display:grid;gap:2px;min-width:0}.lgspx b{font:800 15px var(--heading);color:#F5F7FA}.lgspx em{font-style:normal;font-size:13.5px;color:#BAC9D3}.lgspx em b{font:inherit;font-weight:800;color:#6EE7B7}
+.lgrace{margin-top:12px}.lgracerow{display:grid;grid-template-columns:repeat(auto-fit,minmax(96px,1fr));gap:8px}.lgraceitem{display:grid;justify-items:center;gap:3px;padding:10px 6px;border-radius:14px;background:var(--card);border:2px solid var(--line);text-align:center;min-width:0}.lgraceitem b{font:800 12.5px var(--heading);color:#F5F7FA}.lgraceitem em{font-style:normal;font-size:12px;color:#BAC9D3;overflow-wrap:anywhere}
+.lgfire{font-style:normal;font-size:12px;font-weight:800;color:#E9C46A;white-space:nowrap}
+.seaearlier{box-sizing:border-box;width:100%;margin:8px 0 4px;padding:11px 36px 11px 14px;border-radius:12px;border:2px solid rgba(245,247,250,.13);background:#0D1826;color:#F5F7FA;font:600 15px var(--body);appearance:none;-webkit-appearance:none;background-image:linear-gradient(45deg,transparent 50%,#9FB0C3 50%),linear-gradient(135deg,#9FB0C3 50%,transparent 50%);background-position:calc(100% - 20px) 50%,calc(100% - 14px) 50%;background-size:6px 6px;background-repeat:no-repeat}
+.seapast{margin:4px 2px 0;font-size:13px;color:#E9C46A;font-weight:700}
+.rvhead{margin:0 0 16px;padding:16px;border-radius:20px;background:linear-gradient(135deg,#142132,#0F1A28);border:2px solid #22314A}
+.rvvs{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;margin:8px 0 10px}.rvvs span{display:grid;justify-items:center;gap:4px;min-width:0}.rvvs span b{font:800 15px var(--heading);color:#F5F7FA;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rvvs .pav{width:54px;height:54px;font-size:18px}
+.rvvs strong{font:800 40px var(--heading);color:#F5F7FA;letter-spacing:-.02em}.rvvs strong i{font-style:normal;color:#5B6B7F;margin:0 4px}
+.rvtug{height:10px;border-radius:999px;background:#FF8C80;overflow:hidden}.rvtug i{display:block;height:100%;background:#6EE7B7;border-radius:999px 0 0 999px}
+.rvlast{display:flex;align-items:center;gap:6px;margin:10px 0 2px}.rvlast span{display:grid;place-items:center;width:26px;height:26px;border-radius:8px;font:800 12px var(--heading);color:#0B1420}.rvlast .w{background:#6EE7B7}.rvlast .l{background:#FF8C80}.rvlast em{font-style:normal;font-size:12px;color:#9FB0C3;margin-left:4px}
+.rvstreak{margin:8px 0 0;font-weight:700;color:#E9C46A;font-size:14px}.rvgrudge{width:100%;margin-top:12px}
+.rcall .pav{width:34px;height:34px;font-size:13px;margin-bottom:4px}
+.podium{margin-top:30px}
+.lgracerow{grid-template-columns:repeat(2,minmax(0,1fr))}
