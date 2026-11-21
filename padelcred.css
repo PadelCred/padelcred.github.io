@@ -2057,3 +2057,5 @@ body.gated #usernameSheet{z-index:21!important}
 .rcall .pav{width:34px;height:34px;font-size:13px;margin-bottom:4px}
 .podium{margin-top:30px}
 .lgracerow{grid-template-columns:repeat(2,minmax(0,1fr))}
+/* v2.48: terms and privacy show above the invite-only screen */
+body.gated #termsSheet,body.gated #privacySheet{z-index:21!important}
